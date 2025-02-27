@@ -15,7 +15,7 @@
       <div class="container-fluid jumbotron">
         <div class="container d-flex justify-content-center align-items-center">
           <div class="jumbotron-content pt-4">
-            <!-- Search Car -->
+            <!-- Search Cars -->
             <form id="searchForm" action="cars" class="d-flex">
               <input class="form-control" type="text" name="keyword" required placeholder="Search by Make, Model, or Year" />
               <button type="submit" class="btn btn-light">
@@ -26,7 +26,7 @@
             <div class="jumbotron-text">
               <h2 class="fw-bolder m-0">Affordable</h2>
               <h2 class="fw-bolder">and Like New</h2>
-              <p>24-hr test drives & 30-day returns (up to 1500 mi)</p>
+              <p>24-hr test drives & 30-day returns (up to 1500 km)</p>
             </div>
             <a href="<%= request.getContextPath() %>/cars">
               <button class="btn-search btn btn-outline-light text-uppercase mt-3">Search Cars</button>
@@ -62,16 +62,31 @@
       <!-- Cars Card -->
 
       <!-- Services -->
-      <!-- <div class="container mt-4">
+      <div class="container mt-4">
         <div class="sell-your-car text-center">
           <h3 class="fw-bold">Sell Your Car For The Best Price</h3>
-          <button class="btn btn-outline-light mb-3 mt-2">Sell Car Now</button>
+          <c:choose>
+            <c:when test="${not empty sessionScope.SPRING_SECURITY_CONTEXT}">
+              <a href="<%= request.getContextPath() %>/user/post-car">
+                <button class="btn btn-outline-light mb-3 mt-2">Sell Car Now</button>
+              </a>
+            </c:when>
+            <c:otherwise>
+              <a href="<%= request.getContextPath() %>/login">
+                <button class="btn btn-outline-light mb-3 mt-2">Sell Car Now</button>
+              </a>
+            </c:otherwise>
+          </c:choose>
           <p class="text-uppercase m-0">100% Verified Buyers</p>
         </div>
-      </div> -->
+      </div>
     </main>
 
     <!-- Footer -->
     <%@ include file="components/footer.jsp" %>
   </body>
 </html>
+
+adkfh askeeioefjnflkjeofijefefčaefaef
+
+[[[[[ljfnefijqelfsndflQAAnfaljkef0aef {{{{!/ghame assfkfnkmf test classs}}}}]]]]]

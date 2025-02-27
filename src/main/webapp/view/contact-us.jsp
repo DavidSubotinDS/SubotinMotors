@@ -38,9 +38,9 @@
         <div class="social-media mb-3">
           <h3 class="text-center">Contact</h3>
           <ul>
-            <li><i class="fa-solid fa-phone"></i> <a href="">+62812345678</a>, <a href="">+62811122233</a></li>
-            <li><i class="fa-solid fa-envelope"></i> <a href="">abc_cars@email.com</a></li>
-            <li><i class="fa-solid fa-location-pin"></i> Jl Manyar Sambongan 56, Jawa Timur</li>
+            <li><i class="fa-solid fa-phone"></i> <a href="">+38112345678</a>, <a href="">+38111122233</a></li>
+            <li><i class="fa-solid fa-envelope"></i> <a href="">subotin_motors@email.com</a></li>
+            <li><i class="fa-solid fa-location-pin"></i> bul. Cara Lazara 90, Novi Sad</li>
             <li class="text-center"><i class="fa-brands fa-facebook"></i> <i class="fa-brands fa-instagram"></i> <i class="fa-brands fa-youtube"></i></li>
           </ul>
         </div>

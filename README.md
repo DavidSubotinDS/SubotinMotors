@@ -1,70 +1,92 @@
-# ABC-Cars-Portal
+# Subotin-Motors-Portal
 
-A website application that offers a marketplace for buying and selling used
-cars. It allows users to browse a wide selection of pre-owned vehicles and
-place bids on cars they are interested in, providing them with the potential to
-purchase a vehicle at a lower price.
+Veb aplikacija koja nudi tržište za kupovinu i prodaju polovnih automobila. Omogućava korisnicima da pregledaju širok izbor polovnih vozila i daju ponude za automobile za koje su zainteresovani, pružajući im potencijal da kupe vozilo po nižoj ceni.
 
-## Project Overview
+## Pregled projekta
 
-**There are 2 types of users in this Used Cars Sales portal. They are**
+**Postoje 2 tipa korisnika na ovom portalu. I oni su**
 
-1.  Users
-2.  Administrator
+1.  Krajni korisnici
+2.  Administratori
 
-**Users should be able to perform following functions in the portal**
+**Korisnici su u mogućnosti da obavljaju sledeće funkcije na portalu**
 
-1.  Register in the Portal
-2.  Login to the Portal
-3.  Post a Car for Sale along with Picture upload
-4.  Deactivate an Existing car sale
-5.  Update their Profile after logging in.
-6.  Book an appointment for test drive
-7.  Post the bidding price
+1.  Registraciju na portal
+2.  Prijavu na portal
+3.  Postavljanje automobila na prodaju zajedno sa otpremanjem slike
+4.  Deaktivaciju postojećeg oglasa
+5.  Ažuriranje njihovog profila nakon prijave
+6.  Zakazivanje probne vožnje
+7.  Objavu ponudne cene
 
-**Administrators should be able to perform the following functions in the
-portal**
+**Administratori su u mogućnosti da obavljaju sledeće funkcije na portalu**
 
-1.  Register in the Portal
-2.  Login to the portal
-3.  View List of Registered Users
-4.  Mark a User as Administrator
-5.  Activate / Deactivate a Car post
-6.  Update their profile
-7.  Approve or deny the users appointment based on the bidding
-8.  Transact the sales if price is right
+1.  Registraciju na portal
+2.  Prijavu na portal
+3.  Pregled registrovanih korisnika
+4.  Označavanje korisnika kao administratora
+5.  Aktivaciju / Deaktivaciju oglasa
+6.  Ažuriranje njihovog profila nakon prijave
+7.  Odobreti / Odbiti termin test vožnje korisnika na osnovu licitacije
+8.  Obavljanje transakcije ukoliko je odgovarajuća cena
 
-**Both Users & Administrator**
+**Korisnici i Administratori su u mogućnosti da obavljaju sledeće funkcije na portalu**
 
-1.  Visit Home Page
-2.  View Car Listing
-3.  Search for a Car by Make, Model, Registration Year & Price Range
+1.  Posećivanje početne stranice
+2.  Pregled svih oglasa
+3.  Potraga automobila na osnovu marke, modela, godišta registracije i raspona cena
 4.  About Us Page
 5.  Contact Us Page
 
-## Technologies Used & System Requirements
+## Korišćene tehnologije
 
-Backend : Java SE 11, MySQL 8, Spring Boot, Spring Security <br/>
-Frontend : JSP (Jakarta Server Page), JavaScript, Bootstrap <br/>
+Backend : Java SE 11, MySQL 8, Spring Boot, Spring Security
+Frontend : JSP, JavaScript, Bootstrap
 
-## HOW TO RUN
+## Kako pokrenuti
 
-1. **Import Existing Project into Visual Studio Code** <br/>
-2. **Create MySQL database**
+1. **Import-ovati postojeći projekat u Visual Studio Code** 
+2. **Kreirati MySQL bazu podataka**
 
 ```bash
-mysql> create database abc_cars
+mysql> CREATE DATABASE abc_cars;
 ```
+2. **Podesite 'application propreties'**
 
-3. **Setup application.properties**
-
-```properties
-spring.datasource.url=jdbc:mysql://localhost:3306/abc_cars
+```bash
 spring.datasource.username=<YOUR_DB_USERNAME>
 spring.datasource.password=<YOUR_DB_PASSWORD>
 ```
 
-4. **Run Java Application and open [http://localhost:8080](http://localhost:8080)**
+4. **Pokretanje aplikacije**
+
+    U terminalu u Visual Studio Code, navigirajte do direktorijuma vašeg projekta:
+
+    sh
+
+```bash
+cd C:\Users\David\Subotin-Motors-Portal
+```
+    Pokrećete aplikaciju koristeći Maven:
+
+sh
+
+```bash
+    mvn spring-boot:run
+```
+
+Pristup aplikaciji:
+
+    Otvorite web browser i idite na http://localhost:8080.
+    Prijavite se koristeći sledeće kredencijale:
+        Admin: admin123 / admin123
+        User: user123 / user123
+
+Brisanje Browser Cache-a (po potrebi):
+
+    Ako imate problema sa prikazom starih podataka, obrišite keš pregledača za http://localhost:8080.
+
+
 
 ## Screenshot
 

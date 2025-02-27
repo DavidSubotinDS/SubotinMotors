@@ -13,7 +13,7 @@
     <main>
       <div class="container-fluid jumbotron">
         <div class="container p-4">
-          <h2 class="pt-5 fw-bolder">About abc.cars</h2>
+          <h2 class="pt-5 fw-bolder">About Subotin Motors</h2>
         </div>
       </div>
 
@@ -21,10 +21,7 @@
         <div class="about p-4">
           <h3 class="fw-bolder">Who we are</h3>
           <p class="text-secondary">
-            abc.cars is a leading digital marketplace and solutions provider for the automotive industry that connects car shoppers with sellers. Launched in 1998 and headquartered in Indonesia, the Company empowers shoppers with the data,
-            resources and digital tools needed to make informed buying decisions and seamlessly connect with automotive retailers. In a rapidly changing market, abc.cars enables dealerships and OEMs with innovative technical solutions and
-            data-driven intelligence to better reach and influence ready-to-buy shoppers, increase inventory turn and gain market share. In 2018, abc.cars acquired Dealer Inspire®, an innovative technology company building solutions that
-            future-proof dealerships with more efficient operations, a faster and easier car buying process, and connected digital experiences that sell and service more vehicles.
+            Subotin Motors is a leading digital marketplace and solutions provider for the automotive industry that connects car shoppers with sellers. Founded in 2024 and headquartered in Serbia, the company empowers shoppers with the data, resources, and digital tools needed to make informed buying decisions and seamlessly connect with automotive retailers. In a rapidly changing market, Subotin Motors enables dealerships and OEMs with innovative technical solutions and data-driven intelligence to better reach and influence ready-to-buy shoppers, increase inventory turn, and gain market share.
           </p>
         </div>
         <img class="image-about" src="/images/background/about-us-02.jpg" alt="" />

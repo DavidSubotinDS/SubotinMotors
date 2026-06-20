@@ -22,6 +22,9 @@
               <li class="active-page">
                 <a href="<%= request.getContextPath() %>/admin/car-management"><i class="fa-solid fa-car"></i> Car Management</a>
               </li>
+              <li>
+                <a href="<%= request.getContextPath() %>/admin/transactions"><i class="fa-solid fa-receipt"></i> Transactions</a>
+              </li>
             </ul>
           </aside>
 

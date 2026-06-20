@@ -31,6 +31,14 @@ Seeded accounts:
 
 - Admin: `admin123` / `admin123`
 - User: `user123` / `user123`
+- Bidder-only demo: `demo_bidder` / `demo123`
+- Seller-only demo: `demo_seller` / `demo123`
+- Buyer-and-seller demo: `demo_trader` / `demo123`
+- New user with no history: `demo_newcomer` / `demo123`
+
+The demo data includes active auctions, listings with no bids yet, listings
+awaiting administrator approval, inactive/reserved/sold cars, bid and payment
+history, and test-drive requests in each lifecycle state.
 
 Local data is stored in `data/` and is ignored by Git.
 

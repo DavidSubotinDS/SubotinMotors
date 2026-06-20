@@ -60,7 +60,7 @@ public class UserCarServiceImpl implements UserCarService {
     picture.setCar(car);
 
     car.setCarPicture(picture);
-    car.setStatus("ACTIVE");
+    car.setStatus("PENDING");
     car.setUser(user);
     carRepo.save(car);
   }
@@ -92,6 +92,9 @@ public class UserCarServiceImpl implements UserCarService {
   @Transactional
   public void changeOwnedCarStatus(int id, String status) {
     Car car = getOwnedCarById(id);
+    if ("PENDING".equals(car.getStatus())) {
+      throw new IllegalStateException("Listings awaiting approval can only be reviewed by an administrator");
+    }
     changeStatus(car, status);
   }
 

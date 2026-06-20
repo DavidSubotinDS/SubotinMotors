@@ -5,10 +5,12 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.time.LocalDate;
+import java.util.Base64;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.transaction.annotation.Transactional;
@@ -42,6 +44,31 @@ class UserCarSecurityIntegrationTests {
 
   @Autowired
   private UserCarService userCarService;
+
+  @Test
+  @WithMockUser(username = "user123", roles = "USER")
+  void newlyPostedCarsRequireAdministratorApproval() throws Exception {
+    MockMultipartFile image = new MockMultipartFile(
+        "imageFile",
+        "demo.png",
+        "image/png",
+        Base64.getDecoder().decode(
+            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII="));
+    Car car = new Car();
+    car.setMake("Pending");
+    car.setModel("Approval");
+    car.setYear("2025");
+    car.setPrice(15000);
+
+    userCarService.postCar(image, car);
+
+    assertEquals("PENDING", car.getStatus());
+    assertThrows(IllegalStateException.class,
+        () -> userCarService.changeOwnedCarStatus(car.getIdCar(), "ACTIVE"));
+
+    userCarService.changeCarStatusByAdmin(car.getIdCar(), "ACTIVE");
+    assertEquals("ACTIVE", carRepository.findById(car.getIdCar()).orElseThrow().getStatus());
+  }
 
   @Test
   @WithMockUser(username = "user123", roles = "USER")

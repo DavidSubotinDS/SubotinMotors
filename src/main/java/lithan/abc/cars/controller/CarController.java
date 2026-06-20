@@ -66,7 +66,7 @@ public class CarController {
   @GetMapping("/{make}/{model}/{year}/{id_car}")
   public String carDetails(@PathVariable("id_car") int id, Model model) {
     Car car = carService.getCarById(id);
-    if ("DEACTIVE".equals(car.getStatus())) {
+    if ("DEACTIVE".equals(car.getStatus()) || "PENDING".equals(car.getStatus())) {
       throw new ResourceNotFoundException();
     }
 

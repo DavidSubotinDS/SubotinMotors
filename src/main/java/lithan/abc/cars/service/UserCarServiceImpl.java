@@ -139,6 +139,25 @@ public class UserCarServiceImpl implements UserCarService {
   }
 
   @Override
+  public List<CarBidding> listCurrentUserBids() {
+    return carBidRepo.findByUserOrderByIdBidDesc(userService.getUserLogin());
+  }
+
+  @Override
+  @Transactional
+  public void cancelCurrentUserBid(int bidId) {
+    CarBidding bid = carBidRepo.findById(bidId).orElseThrow(ResourceNotFoundException::new);
+    if (bid.getUser().getIdUser() != userService.getUserLogin().getIdUser()) {
+      throw new AccessDeniedException("This bid belongs to another user");
+    }
+    if (!"ONGOING".equals(bid.getStatus())) {
+      throw new IllegalStateException("Only ongoing bids can be cancelled");
+    }
+    bid.setStatus("CANCELLED");
+    carBidRepo.save(bid);
+  }
+
+  @Override
   public int highestBidding(int idCar) {
     Integer highestBid = carBidRepo.highestBid(idCar);
     return highestBid == null ? 0 : highestBid;
@@ -147,9 +166,7 @@ public class UserCarServiceImpl implements UserCarService {
   @Override
   @Transactional
   public void saveTestDrive(LocalDate date, int carId) {
-    if (date == null || date.isBefore(LocalDate.now())) {
-      throw new IllegalArgumentException("Test drive date cannot be in the past");
-    }
+    validateTestDriveDate(date);
     Car car = getCarById(carId);
     UserAccount user = userService.getUserLogin();
     if (!"ACTIVE".equals(car.getStatus())) {
@@ -157,6 +174,9 @@ public class UserCarServiceImpl implements UserCarService {
     }
     if (car.getUser().getIdUser() == user.getIdUser()) {
       throw new IllegalStateException("You cannot book a test drive for your own car");
+    }
+    if (testDriveRepo.existsByUserAndCarAndDate(user, car, date)) {
+      throw new IllegalStateException("You already booked this car for that date");
     }
 
     TestDrive testDrive = new TestDrive();
@@ -168,7 +188,49 @@ public class UserCarServiceImpl implements UserCarService {
 
   @Override
   public List<TestDrive> listTestDriveForOwnedCars() {
-    return testDriveRepo.findByCarUser(userService.getUserLogin());
+    return testDriveRepo.findByCarUserOrderByDateAsc(userService.getUserLogin());
+  }
+
+  @Override
+  public List<TestDrive> listCurrentUserTestDrives() {
+    return testDriveRepo.findByUserOrderByDateAsc(userService.getUserLogin());
+  }
+
+  @Override
+  @Transactional
+  public void rescheduleCurrentUserTestDrive(int testDriveId, LocalDate date) {
+    validateTestDriveDate(date);
+    TestDrive testDrive = getCurrentUserTestDrive(testDriveId);
+    if (!"ACTIVE".equals(testDrive.getCar().getStatus())) {
+      throw new IllegalStateException("Only test drives for active cars can be rescheduled");
+    }
+    if (testDriveRepo.existsByUserAndCarAndDateAndIdTestDriveNot(
+        testDrive.getUser(), testDrive.getCar(), date, testDriveId)) {
+      throw new IllegalStateException("You already booked this car for that date");
+    }
+    testDrive.setDate(date);
+    testDriveRepo.save(testDrive);
+  }
+
+  @Override
+  @Transactional
+  public void cancelCurrentUserTestDrive(int testDriveId) {
+    testDriveRepo.delete(getCurrentUserTestDrive(testDriveId));
+  }
+
+  private TestDrive getCurrentUserTestDrive(int testDriveId) {
+    TestDrive testDrive = testDriveRepo.findById(testDriveId)
+        .orElseThrow(ResourceNotFoundException::new);
+    if (testDrive.getUser().getIdUser() != userService.getUserLogin().getIdUser()) {
+      throw new AccessDeniedException("This test drive belongs to another user");
+    }
+    return testDrive;
+  }
+
+  private void validateTestDriveDate(LocalDate date) {
+    if (date == null || date.isBefore(LocalDate.now())) {
+      throw new IllegalArgumentException("Test drive date cannot be in the past");
+    }
   }
 
   @Override

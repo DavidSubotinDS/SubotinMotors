@@ -27,12 +27,28 @@ public class PaymentWebhookEvent {
   @Column(name = "processed_at", nullable = false)
   private Instant processedAt;
 
+  public int getIdWebhookEvent() {
+    return idWebhookEvent;
+  }
+
+  public String getProviderEventId() {
+    return providerEventId;
+  }
+
   public void setProviderEventId(String providerEventId) {
     this.providerEventId = providerEventId;
   }
 
+  public String getEventType() {
+    return eventType;
+  }
+
   public void setEventType(String eventType) {
     this.eventType = eventType;
+  }
+
+  public Instant getProcessedAt() {
+    return processedAt;
   }
 
   public void setProcessedAt(Instant processedAt) {

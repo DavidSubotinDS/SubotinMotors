@@ -6,6 +6,7 @@ import java.util.List;
 import org.springframework.web.multipart.MultipartFile;
 
 import lithan.abc.cars.entity.Car;
+import lithan.abc.cars.entity.CarBidding;
 import lithan.abc.cars.entity.TestDrive;
 
 public interface UserCarService {
@@ -26,11 +27,21 @@ public interface UserCarService {
 
   void placeBid(int carId, int bidPrice);
 
+  List<CarBidding> listCurrentUserBids();
+
+  void cancelCurrentUserBid(int bidId);
+
   int highestBidding(int idCar);
 
   void saveTestDrive(LocalDate date, int carId);
 
   List<TestDrive> listTestDriveForOwnedCars();
+
+  List<TestDrive> listCurrentUserTestDrives();
+
+  void rescheduleCurrentUserTestDrive(int testDriveId, LocalDate date);
+
+  void cancelCurrentUserTestDrive(int testDriveId);
 
   void saveUploadPicture(MultipartFile file, int carId) throws Exception;
 }

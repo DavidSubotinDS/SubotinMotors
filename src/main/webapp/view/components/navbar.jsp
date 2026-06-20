@@ -49,7 +49,13 @@
                 <a class="dropdown-item" href="<%= request.getContextPath() %>/user/my-posted-car"><i class="fa-solid fa-car"></i> My Posted Car</a>
               </li>
               <li>
+                <a class="dropdown-item" href="<%= request.getContextPath() %>/user/bids"><i class="fa-solid fa-gavel"></i> My Bids</a>
+              </li>
+              <li>
                 <a class="dropdown-item" href="<%= request.getContextPath() %>/user/test-drive"><i class="fa-regular fa-calendar-check"></i> Appointment</a>
+              </li>
+              <li>
+                <a class="dropdown-item" href="<%= request.getContextPath() %>/user/payments"><i class="fa-solid fa-receipt"></i> Payments</a>
               </li>
               <!-- Admin Dashboard -->
               <security:authorize access="hasRole('ADMIN')">

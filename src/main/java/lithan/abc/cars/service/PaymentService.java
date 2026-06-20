@@ -6,6 +6,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import lithan.abc.cars.entity.PaymentAccount;
 import lithan.abc.cars.entity.PaymentOrder;
+import lithan.abc.cars.entity.PaymentWebhookEvent;
 import lithan.abc.cars.payment.StripeWebhookEvent;
 
 public interface PaymentService {
@@ -26,6 +27,8 @@ public interface PaymentService {
   Page<PaymentOrder> listCurrentUserSales(Pageable pageable);
 
   Page<PaymentOrder> listAllPayments(Pageable pageable);
+
+  Page<PaymentWebhookEvent> listWebhookEvents(Pageable pageable);
 
   Optional<PaymentOrder> findCurrentBuyerPaymentBySession(String sessionId);
 

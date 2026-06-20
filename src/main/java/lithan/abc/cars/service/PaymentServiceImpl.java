@@ -181,6 +181,11 @@ public class PaymentServiceImpl implements PaymentService {
   }
 
   @Override
+  public Page<PaymentWebhookEvent> listWebhookEvents(Pageable pageable) {
+    return webhookEventRepository.findAll(pageable);
+  }
+
+  @Override
   public Optional<PaymentOrder> findCurrentBuyerPaymentBySession(String sessionId) {
     UserAccount buyer = userService.getUserLogin();
     return paymentRepository.findByCheckoutSessionId(sessionId)

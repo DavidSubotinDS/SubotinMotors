@@ -153,6 +153,37 @@
                 </ul>
               </nav>
             </c:if>
+
+            <h3 class="h5 mt-5">Processed webhook events</h3>
+            <p class="text-secondary">
+              Audit records are read-only. They are created only after Stripe signature verification
+              and are retained for idempotency and troubleshooting.
+            </p>
+            <div class="table-responsive">
+              <table class="table table-striped align-middle">
+                <thead>
+                  <tr>
+                    <th>Event ID</th>
+                    <th>Type</th>
+                    <th>Processed at</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <c:forEach items="${webhookEvents}" var="event">
+                    <tr>
+                      <td><code>${event.providerEventId}</code></td>
+                      <td>${event.eventType}</td>
+                      <td>${event.processedAt}</td>
+                    </tr>
+                  </c:forEach>
+                  <c:if test="${empty webhookEvents}">
+                    <tr>
+                      <td colspan="3" class="text-center text-secondary py-4">No webhook events recorded yet.</td>
+                    </tr>
+                  </c:if>
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       </div>

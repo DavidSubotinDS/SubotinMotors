@@ -76,9 +76,21 @@ class AbcCarsApplicationTests {
 						.param("sort", "amountMinor")
 						.param("direction", "asc"))
 				.andExpect(status().isOk())
-				.andExpect(model().attributeExists("transactionPage", "transactions"))
+				.andExpect(model().attributeExists("transactionPage", "transactions", "webhookEvents"))
 				.andExpect(model().attribute("sort", "amountMinor"))
 				.andExpect(model().attribute("direction", "asc"));
+	}
+
+	@Test
+	@WithMockUser(username = "user123", roles = "USER")
+	void bidAndTestDriveManagementPagesAreAvailable() throws Exception {
+		mockMvc.perform(get("/user/bids"))
+				.andExpect(status().isOk())
+				.andExpect(model().attributeExists("bids"));
+
+		mockMvc.perform(get("/user/test-drive"))
+				.andExpect(status().isOk())
+				.andExpect(model().attributeExists("bookedTestDrives", "receivedTestDrives"));
 	}
 
 	@Test

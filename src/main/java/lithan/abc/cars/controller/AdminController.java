@@ -1,11 +1,12 @@
 package lithan.abc.cars.controller;
 
-import java.util.List;
-
 import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
@@ -44,12 +45,32 @@ public class AdminController {
   }
 
   @GetMapping("/dashboard")
-  public String dashboard(Model model, HttpSession session) {
-    List<UserAccount> listUser = adminService.listUser();
-    List<UserAccount> listAdmin = adminService.listAdmin();
+  public String dashboard(
+      @RequestParam(defaultValue = "0") int userPage,
+      @RequestParam(defaultValue = "idUser") String userSort,
+      @RequestParam(defaultValue = "asc") String userDirection,
+      @RequestParam(defaultValue = "0") int adminPage,
+      @RequestParam(defaultValue = "idUser") String adminSort,
+      @RequestParam(defaultValue = "asc") String adminDirection,
+      Model model,
+      HttpSession session) {
+    String safeUserSort = userSortProperty(userSort);
+    String safeAdminSort = userSortProperty(adminSort);
+    Sort.Direction safeUserDirection = sortDirection(userDirection);
+    Sort.Direction safeAdminDirection = sortDirection(adminDirection);
+    Page<UserAccount> users = adminService.listUser(
+        PageRequest.of(Math.max(userPage, 0), 5, Sort.by(safeUserDirection, safeUserSort)));
+    Page<UserAccount> admins = adminService.listAdmin(
+        PageRequest.of(Math.max(adminPage, 0), 5, Sort.by(safeAdminDirection, safeAdminSort)));
 
-    model.addAttribute("listUser", listUser);
-    model.addAttribute("listAdmin", listAdmin);
+    model.addAttribute("userPage", users);
+    model.addAttribute("listUser", users.getContent());
+    model.addAttribute("userSort", safeUserSort);
+    model.addAttribute("userDirection", safeUserDirection.name().toLowerCase());
+    model.addAttribute("adminPage", admins);
+    model.addAttribute("listAdmin", admins.getContent());
+    model.addAttribute("adminSort", safeAdminSort);
+    model.addAttribute("adminDirection", safeAdminDirection.name().toLowerCase());
 
     UserAccount user = userService.getUserLogin();
     UserProfile profile = user.getProfile();
@@ -90,12 +111,31 @@ public class AdminController {
 
   // Car Management
   @GetMapping("/car-management")
-  public String carManagement(Model model) {
-    List<Car> listCar = adminService.listCar();
-    List<CarBidding> listCarBid = adminService.listCarBid();
+  public String carManagement(
+      @RequestParam(defaultValue = "0") int carPage,
+      @RequestParam(defaultValue = "idCar") String carSort,
+      @RequestParam(defaultValue = "desc") String carDirection,
+      @RequestParam(defaultValue = "0") int bidPage,
+      @RequestParam(defaultValue = "idBid") String bidSort,
+      @RequestParam(defaultValue = "desc") String bidDirection,
+      Model model) {
+    String safeCarSort = carSortProperty(carSort);
+    String safeBidSort = bidSortProperty(bidSort);
+    Sort.Direction safeCarDirection = sortDirection(carDirection);
+    Sort.Direction safeBidDirection = sortDirection(bidDirection);
+    Page<Car> cars = adminService.listCar(
+        PageRequest.of(Math.max(carPage, 0), 5, Sort.by(safeCarDirection, safeCarSort)));
+    Page<CarBidding> bids = adminService.listCarBid(
+        PageRequest.of(Math.max(bidPage, 0), 5, Sort.by(safeBidDirection, safeBidSort)));
 
-    model.addAttribute("listCar", listCar);
-    model.addAttribute("listCarBid", listCarBid);
+    model.addAttribute("carPage", cars);
+    model.addAttribute("listCar", cars.getContent());
+    model.addAttribute("carSort", safeCarSort);
+    model.addAttribute("carDirection", safeCarDirection.name().toLowerCase());
+    model.addAttribute("bidPage", bids);
+    model.addAttribute("listCarBid", bids.getContent());
+    model.addAttribute("bidSort", safeBidSort);
+    model.addAttribute("bidDirection", safeBidDirection.name().toLowerCase());
 
     return "admin/car-management";
   }
@@ -130,5 +170,30 @@ public class AdminController {
     adminService.denyCarBid(id);
 
     return "redirect:/admin/car-management";
+  }
+
+  private Sort.Direction sortDirection(String direction) {
+    return "desc".equalsIgnoreCase(direction) ? Sort.Direction.DESC : Sort.Direction.ASC;
+  }
+
+  private String userSortProperty(String sort) {
+    return switch (sort) {
+      case "idUser", "username", "profile.firstName", "profile.lastName" -> sort;
+      default -> "idUser";
+    };
+  }
+
+  private String carSortProperty(String sort) {
+    return switch (sort) {
+      case "idCar", "make", "model", "year", "price", "status" -> sort;
+      default -> "idCar";
+    };
+  }
+
+  private String bidSortProperty(String sort) {
+    return switch (sort) {
+      case "idBid", "bidPrice", "status", "car.make", "car.year" -> sort;
+      default -> "idBid";
+    };
   }
 }

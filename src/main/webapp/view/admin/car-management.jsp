@@ -28,7 +28,27 @@
           <!-- Content -->
           <div class="content-wrapper">
             <!-- List Car -->
-            <h2 class="fw-bold mb-3">Car List</h2>
+            <div class="d-flex flex-wrap justify-content-between align-items-end gap-3 mb-3">
+              <h2 class="fw-bold mb-0 flex-grow-1">Car List</h2>
+              <form action="${pageContext.request.contextPath}/admin/car-management" class="d-flex gap-2">
+                <input type="hidden" name="bidPage" value="${bidPage.number}" />
+                <input type="hidden" name="bidSort" value="${bidSort}" />
+                <input type="hidden" name="bidDirection" value="${bidDirection}" />
+                <select class="form-select" name="carSort" aria-label="Sort cars">
+                  <option value="idCar" ${carSort eq 'idCar' ? 'selected' : ''}>ID</option>
+                  <option value="make" ${carSort eq 'make' ? 'selected' : ''}>Make</option>
+                  <option value="model" ${carSort eq 'model' ? 'selected' : ''}>Model</option>
+                  <option value="year" ${carSort eq 'year' ? 'selected' : ''}>Year</option>
+                  <option value="price" ${carSort eq 'price' ? 'selected' : ''}>Price</option>
+                  <option value="status" ${carSort eq 'status' ? 'selected' : ''}>Status</option>
+                </select>
+                <select class="form-select" name="carDirection" aria-label="Car sort direction">
+                  <option value="asc" ${carDirection eq 'asc' ? 'selected' : ''}>Ascending</option>
+                  <option value="desc" ${carDirection eq 'desc' ? 'selected' : ''}>Descending</option>
+                </select>
+                <button class="btn btn-outline-secondary" type="submit">Sort</button>
+              </form>
+            </div>
             <div class="table-responsive-md">
               <table class="table table-striped">
                 <!-- Head -->
@@ -98,9 +118,57 @@
                 </tbody>
               </table>
             </div>
+            <c:if test="${carPage.totalPages > 1}">
+              <nav aria-label="Car management pages">
+                <ul class="pagination justify-content-end">
+                  <c:url var="previousAdminCarsUrl" value="/admin/car-management">
+                    <c:param name="carPage" value="${carPage.number - 1}" />
+                    <c:param name="carSort" value="${carSort}" />
+                    <c:param name="carDirection" value="${carDirection}" />
+                    <c:param name="bidPage" value="${bidPage.number}" />
+                    <c:param name="bidSort" value="${bidSort}" />
+                    <c:param name="bidDirection" value="${bidDirection}" />
+                  </c:url>
+                  <li class="page-item ${carPage.first ? 'disabled' : ''}">
+                    <a class="page-link" href="${carPage.first ? '#' : previousAdminCarsUrl}">Previous</a>
+                  </li>
+                  <li class="page-item disabled"><span class="page-link">${carPage.number + 1} / ${carPage.totalPages}</span></li>
+                  <c:url var="nextAdminCarsUrl" value="/admin/car-management">
+                    <c:param name="carPage" value="${carPage.number + 1}" />
+                    <c:param name="carSort" value="${carSort}" />
+                    <c:param name="carDirection" value="${carDirection}" />
+                    <c:param name="bidPage" value="${bidPage.number}" />
+                    <c:param name="bidSort" value="${bidSort}" />
+                    <c:param name="bidDirection" value="${bidDirection}" />
+                  </c:url>
+                  <li class="page-item ${carPage.last ? 'disabled' : ''}">
+                    <a class="page-link" href="${carPage.last ? '#' : nextAdminCarsUrl}">Next</a>
+                  </li>
+                </ul>
+              </nav>
+            </c:if>
 
             <!-- Car Bid -->
-            <h2 class="fw-bold mb-3 mt-5">Car Bid</h2>
+            <div class="d-flex flex-wrap justify-content-between align-items-end gap-3 mb-3 mt-5">
+              <h2 class="fw-bold mb-0 flex-grow-1">Car Bid</h2>
+              <form action="${pageContext.request.contextPath}/admin/car-management" class="d-flex gap-2">
+                <input type="hidden" name="carPage" value="${carPage.number}" />
+                <input type="hidden" name="carSort" value="${carSort}" />
+                <input type="hidden" name="carDirection" value="${carDirection}" />
+                <select class="form-select" name="bidSort" aria-label="Sort bids">
+                  <option value="idBid" ${bidSort eq 'idBid' ? 'selected' : ''}>Bid ID</option>
+                  <option value="car.make" ${bidSort eq 'car.make' ? 'selected' : ''}>Car make</option>
+                  <option value="car.year" ${bidSort eq 'car.year' ? 'selected' : ''}>Car year</option>
+                  <option value="bidPrice" ${bidSort eq 'bidPrice' ? 'selected' : ''}>Bid price</option>
+                  <option value="status" ${bidSort eq 'status' ? 'selected' : ''}>Status</option>
+                </select>
+                <select class="form-select" name="bidDirection" aria-label="Bid sort direction">
+                  <option value="asc" ${bidDirection eq 'asc' ? 'selected' : ''}>Ascending</option>
+                  <option value="desc" ${bidDirection eq 'desc' ? 'selected' : ''}>Descending</option>
+                </select>
+                <button class="btn btn-outline-secondary" type="submit">Sort</button>
+              </form>
+            </div>
             <div class="table-responsive-md">
               <table class="table table-striped">
                 <!-- Head -->
@@ -166,6 +234,35 @@
                 </tbody>
               </table>
             </div>
+            <c:if test="${bidPage.totalPages > 1}">
+              <nav aria-label="Bid management pages">
+                <ul class="pagination justify-content-end">
+                  <c:url var="previousBidsUrl" value="/admin/car-management">
+                    <c:param name="bidPage" value="${bidPage.number - 1}" />
+                    <c:param name="bidSort" value="${bidSort}" />
+                    <c:param name="bidDirection" value="${bidDirection}" />
+                    <c:param name="carPage" value="${carPage.number}" />
+                    <c:param name="carSort" value="${carSort}" />
+                    <c:param name="carDirection" value="${carDirection}" />
+                  </c:url>
+                  <li class="page-item ${bidPage.first ? 'disabled' : ''}">
+                    <a class="page-link" href="${bidPage.first ? '#' : previousBidsUrl}">Previous</a>
+                  </li>
+                  <li class="page-item disabled"><span class="page-link">${bidPage.number + 1} / ${bidPage.totalPages}</span></li>
+                  <c:url var="nextBidsUrl" value="/admin/car-management">
+                    <c:param name="bidPage" value="${bidPage.number + 1}" />
+                    <c:param name="bidSort" value="${bidSort}" />
+                    <c:param name="bidDirection" value="${bidDirection}" />
+                    <c:param name="carPage" value="${carPage.number}" />
+                    <c:param name="carSort" value="${carSort}" />
+                    <c:param name="carDirection" value="${carDirection}" />
+                  </c:url>
+                  <li class="page-item ${bidPage.last ? 'disabled' : ''}">
+                    <a class="page-link" href="${bidPage.last ? '#' : nextBidsUrl}">Next</a>
+                  </li>
+                </ul>
+              </nav>
+            </c:if>
             <!-- List Admin -->
           </div>
         </div>

@@ -1,6 +1,7 @@
 package lithan.abc.cars.service;
 
-import java.util.List;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -66,17 +67,13 @@ public class AdminServiceImpl implements AdminService {
   }
 
   @Override
-  public List<UserAccount> listUser() {
-    return userRepo.findAll().stream()
-        .filter(user -> user.getRoles().stream().noneMatch(role -> "ROLE_ADMIN".equals(role.getRole())))
-        .collect(java.util.stream.Collectors.toList());
+  public Page<UserAccount> listUser(Pageable pageable) {
+    return userRepo.findCustomers(pageable);
   }
 
   @Override
-  public List<UserAccount> listAdmin() {
-    return userRepo.findAll().stream()
-        .filter(user -> user.getRoles().stream().anyMatch(role -> "ROLE_ADMIN".equals(role.getRole())))
-        .collect(java.util.stream.Collectors.toList());
+  public Page<UserAccount> listAdmin(Pageable pageable) {
+    return userRepo.findAdmins(pageable);
   }
 
   @Override
@@ -85,13 +82,13 @@ public class AdminServiceImpl implements AdminService {
   }
 
   @Override
-  public List<Car> listCar() {
-    return carRepo.findAll();
+  public Page<Car> listCar(Pageable pageable) {
+    return carRepo.findAll(pageable);
   }
 
   @Override
-  public List<CarBidding> listCarBid() {
-    return carBidRepo.findByStatusNot("STARTING");
+  public Page<CarBidding> listCarBid(Pageable pageable) {
+    return carBidRepo.findByStatusNot("STARTING", pageable);
   }
 
   @Override

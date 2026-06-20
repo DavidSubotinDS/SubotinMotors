@@ -2,7 +2,9 @@ package lithan.abc.cars.service;
 
 import java.util.List;
 
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -22,23 +24,17 @@ public class CarServiceImpl implements CarService {
   }
 
   @Override
-  public List<Car> searchCar(String keyword) {
-    return carRepo.searchCar(keyword.trim());
-  }
-
-  @Override
-  public List<Car> searchCarByPriceRange(int low, int high) {
-    return carRepo.searchCarByPriceRange(low, high);
-  }
-
-  @Override
   public Car getCarById(int id) {
     return carRepo.findById(id).orElseThrow(ResourceNotFoundException::new);
   }
 
   @Override
-  public List<Car> searchCarByKeywordAndPriceRange(String keyword, int low, int high) {
-    return carRepo.searchCarByKeywordAndPriceRange(keyword.trim(), low, high);
+  public Page<Car> findCatalogCars(String keyword, Integer low, Integer high, Pageable pageable) {
+    String normalizedKeyword = keyword == null || keyword.isBlank() ? null : keyword.trim();
+    if (low != null && high != null && low > high) {
+      throw new IllegalArgumentException("Minimum price cannot be greater than maximum price");
+    }
+    return carRepo.findCatalogCars(normalizedKeyword, low, high, pageable);
   }
 
   @Override

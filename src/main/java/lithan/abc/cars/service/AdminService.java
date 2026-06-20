@@ -1,7 +1,7 @@
 package lithan.abc.cars.service;
 
-import java.util.List;
-
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import lithan.abc.cars.entity.Car;
 import lithan.abc.cars.entity.CarBidding;
 import lithan.abc.cars.entity.UserAccount;
@@ -15,13 +15,13 @@ public interface AdminService {
 
   UserProfile getProfileById(int idCar);
 
-  List<UserAccount> listUser();
+  Page<UserAccount> listUser(Pageable pageable);
 
-  List<UserAccount> listAdmin();
+  Page<UserAccount> listAdmin(Pageable pageable);
 
-  List<Car> listCar();
+  Page<Car> listCar(Pageable pageable);
 
-  List<CarBidding> listCarBid();
+  Page<CarBidding> listCarBid(Pageable pageable);
 
   void approveCarBid(int idBid);
 

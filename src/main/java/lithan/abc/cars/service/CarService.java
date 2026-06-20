@@ -2,6 +2,9 @@ package lithan.abc.cars.service;
 
 import java.util.List;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+
 import lithan.abc.cars.entity.Car;
 
 public interface CarService {
@@ -10,11 +13,7 @@ public interface CarService {
 
   List<Car> listCar();
 
-  List<Car> searchCar(String keyword);
-
-  List<Car> searchCarByPriceRange(int low, int high);
-
-  List<Car> searchCarByKeywordAndPriceRange(String keyword, int low, int high);
+  Page<Car> findCatalogCars(String keyword, Integer low, Integer high, Pageable pageable);
 
   List<Car> featuredCars();
 }

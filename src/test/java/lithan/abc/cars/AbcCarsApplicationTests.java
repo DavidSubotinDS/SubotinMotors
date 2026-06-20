@@ -10,8 +10,11 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrlPattern;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.model;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+
+import org.springframework.security.test.context.support.WithMockUser;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -28,6 +31,60 @@ class AbcCarsApplicationTests {
 	void homePageIsPublic() throws Exception {
 		mockMvc.perform(get("/"))
 				.andExpect(status().isOk());
+	}
+
+	@Test
+	void carCatalogueSupportsPaginationFilteringAndSorting() throws Exception {
+		mockMvc.perform(get("/cars")
+						.param("page", "0")
+						.param("size", "4")
+						.param("keyword", "test")
+						.param("low", "1000")
+						.param("high", "50000")
+						.param("sort", "price")
+						.param("direction", "asc"))
+				.andExpect(status().isOk())
+				.andExpect(model().attributeExists("carPage"))
+				.andExpect(model().attribute("sort", "price"))
+				.andExpect(model().attribute("direction", "asc"));
+	}
+
+	@Test
+	@WithMockUser(username = "admin123", roles = "ADMIN")
+	void adminListsSupportIndependentPaginationAndSorting() throws Exception {
+		mockMvc.perform(get("/admin/dashboard")
+						.param("userSort", "profile.lastName")
+						.param("userDirection", "desc")
+						.param("adminSort", "username")
+						.param("adminDirection", "asc"))
+				.andExpect(status().isOk())
+				.andExpect(model().attributeExists("userPage", "adminPage"))
+				.andExpect(model().attribute("userSort", "profile.lastName"))
+				.andExpect(model().attribute("adminSort", "username"));
+
+		mockMvc.perform(get("/admin/car-management")
+						.param("carSort", "price")
+						.param("carDirection", "asc")
+						.param("bidSort", "car.make")
+						.param("bidDirection", "desc"))
+				.andExpect(status().isOk())
+				.andExpect(model().attributeExists("carPage", "bidPage"))
+				.andExpect(model().attribute("carSort", "price"))
+				.andExpect(model().attribute("bidSort", "car.make"));
+	}
+
+	@Test
+	@WithMockUser(username = "user123", roles = "USER")
+	void paymentListsSupportIndependentPaginationAndSorting() throws Exception {
+		mockMvc.perform(get("/user/payments")
+						.param("purchaseSort", "status")
+						.param("purchaseDirection", "asc")
+						.param("saleSort", "amountMinor")
+						.param("saleDirection", "desc"))
+				.andExpect(status().isOk())
+				.andExpect(model().attributeExists("purchasePage", "salePage"))
+				.andExpect(model().attribute("purchaseSort", "status"))
+				.andExpect(model().attribute("saleSort", "amountMinor"));
 	}
 
 	@Test

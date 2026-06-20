@@ -1,8 +1,9 @@
 package lithan.abc.cars.controller;
 
-import java.util.List;
-
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -26,11 +27,28 @@ public class CarController {
   private UserCarService userCarService;
 
   @GetMapping("")
-  public String carPage(Model model) {
-    List<Car> listCar = carService.listCar();
+  public String carPage(
+      @RequestParam(defaultValue = "0") int page,
+      @RequestParam(defaultValue = "8") int size,
+      @RequestParam(defaultValue = "idCar") String sort,
+      @RequestParam(defaultValue = "desc") String direction,
+      @RequestParam(required = false) String keyword,
+      @RequestParam(required = false) Integer low,
+      @RequestParam(required = false) Integer high,
+      Model model) {
+    String sortProperty = catalogSortProperty(sort);
+    Sort.Direction sortDirection = sortDirection(direction);
+    Page<Car> carPage = carService.findCatalogCars(
+        keyword, low, high,
+        PageRequest.of(Math.max(page, 0), pageSize(size), Sort.by(sortDirection, sortProperty)));
 
-    model.addAttribute("listCar", listCar);
-
+    model.addAttribute("carPage", carPage);
+    model.addAttribute("listCar", carPage.getContent());
+    model.addAttribute("keyword", keyword);
+    model.addAttribute("low", low);
+    model.addAttribute("high", high);
+    model.addAttribute("sort", sortProperty);
+    model.addAttribute("direction", sortDirection.name().toLowerCase());
     return "cars";
   }
 
@@ -53,23 +71,18 @@ public class CarController {
     return "car-details";
   }
 
-  // Search Car
-  @GetMapping(value = "", params = "keyword")
-  public String searchCar(@RequestParam("keyword") String keyword, Model model) {
-
-    List<Car> searchCar = carService.searchCar(keyword);
-
-    model.addAttribute("listCar", searchCar);
-    return "cars";
+  private int pageSize(int size) {
+    return Math.min(Math.max(size, 1), 24);
   }
 
-  @GetMapping(value = "", params = { "low", "high" })
-  public String searchCarByPriceRange(@RequestParam("low") int low, @RequestParam("high") int high, Model model) {
-
-    List<Car> searchCar = carService.searchCarByPriceRange(low, high);
-
-    model.addAttribute("listCar", searchCar);
-    return "cars";
+  private Sort.Direction sortDirection(String direction) {
+    return "asc".equalsIgnoreCase(direction) ? Sort.Direction.ASC : Sort.Direction.DESC;
   }
 
+  private String catalogSortProperty(String sort) {
+    return switch (sort) {
+      case "make", "model", "year", "price", "idCar" -> sort;
+      default -> "idCar";
+    };
+  }
 }

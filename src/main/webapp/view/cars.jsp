@@ -27,8 +27,11 @@
               <li>
                 <p class="ms-1"><i class="fa-solid fa-dollar-sign"></i> Price Range</p>
                 <form action="<%= request.getContextPath() %>/cars">
-                  <input class="form-control mb-3 ps-4 pe-0" type="number" name="low" required placeholder="Minimum price" />
-                  <input class="form-control mb-3 ps-4 pe-0" type="number" name="high" required placeholder="Maximum price" />
+                  <input class="form-control mb-3 ps-4 pe-0" type="number" name="low" required value="${low}" placeholder="Minimum price" />
+                  <input class="form-control mb-3 ps-4 pe-0" type="number" name="high" required value="${high}" placeholder="Maximum price" />
+                  <c:if test="${not empty keyword}">
+                    <input type="hidden" name="keyword" value="${keyword}" />
+                  </c:if>
                   <button type="submit" class="btn btn-secondary">Search</button>
                 </form>
               </li>
@@ -39,10 +42,47 @@
           <div class="car-list">
             <!-- Search -->
             <form action="<%= request.getContextPath() %>/cars" id="searchForm" class="d-flex">
-              <input class="form-control" type="text" name="keyword" required placeholder="Search by Make, Model, or Year" />
+              <input class="form-control" type="text" name="keyword" required value="${keyword}" placeholder="Search by Make, Model, or Year" />
+              <c:if test="${low != null}">
+                <input type="hidden" name="low" value="${low}" />
+              </c:if>
+              <c:if test="${high != null}">
+                <input type="hidden" name="high" value="${high}" />
+              </c:if>
               <button type="submit" class="btn btn-light">
                 <i class="fa-solid fa-magnifying-glass"></i>
               </button>
+            </form>
+            <form action="<%= request.getContextPath() %>/cars" class="row g-2 align-items-end mt-2">
+              <c:if test="${not empty keyword}">
+                <input type="hidden" name="keyword" value="${keyword}" />
+              </c:if>
+              <c:if test="${low != null}">
+                <input type="hidden" name="low" value="${low}" />
+              </c:if>
+              <c:if test="${high != null}">
+                <input type="hidden" name="high" value="${high}" />
+              </c:if>
+              <div class="col-sm-5 col-lg-3">
+                <label class="form-label mb-1" for="sort">Sort by</label>
+                <select class="form-select" id="sort" name="sort">
+                  <option value="idCar" ${sort eq 'idCar' ? 'selected' : ''}>Newest listing</option>
+                  <option value="make" ${sort eq 'make' ? 'selected' : ''}>Make</option>
+                  <option value="model" ${sort eq 'model' ? 'selected' : ''}>Model</option>
+                  <option value="year" ${sort eq 'year' ? 'selected' : ''}>Year</option>
+                  <option value="price" ${sort eq 'price' ? 'selected' : ''}>Price</option>
+                </select>
+              </div>
+              <div class="col-sm-4 col-lg-3">
+                <label class="form-label mb-1" for="direction">Direction</label>
+                <select class="form-select" id="direction" name="direction">
+                  <option value="asc" ${direction eq 'asc' ? 'selected' : ''}>Ascending</option>
+                  <option value="desc" ${direction eq 'desc' ? 'selected' : ''}>Descending</option>
+                </select>
+              </div>
+              <div class="col-sm-3 col-lg-2">
+                <button class="btn btn-outline-secondary w-100" type="submit">Apply</button>
+              </div>
             </form>
             <!-- List -->
             <div class="mt-4 row">
@@ -68,6 +108,37 @@
                 <h4 class="fw-bold text-secondary text-center">Car not found</h4>
               </c:if>
             </div>
+            <c:if test="${carPage.totalPages > 1}">
+              <nav aria-label="Car catalogue pages" class="mt-3">
+                <ul class="pagination justify-content-center">
+                  <c:url var="previousCarsUrl" value="/cars">
+                    <c:param name="page" value="${carPage.number - 1}" />
+                    <c:param name="sort" value="${sort}" />
+                    <c:param name="direction" value="${direction}" />
+                    <c:if test="${not empty keyword}"><c:param name="keyword" value="${keyword}" /></c:if>
+                    <c:if test="${low != null}"><c:param name="low" value="${low}" /></c:if>
+                    <c:if test="${high != null}"><c:param name="high" value="${high}" /></c:if>
+                  </c:url>
+                  <li class="page-item ${carPage.first ? 'disabled' : ''}">
+                    <a class="page-link" href="${carPage.first ? '#' : previousCarsUrl}">Previous</a>
+                  </li>
+                  <li class="page-item disabled">
+                    <span class="page-link">Page ${carPage.number + 1} of ${carPage.totalPages}</span>
+                  </li>
+                  <c:url var="nextCarsUrl" value="/cars">
+                    <c:param name="page" value="${carPage.number + 1}" />
+                    <c:param name="sort" value="${sort}" />
+                    <c:param name="direction" value="${direction}" />
+                    <c:if test="${not empty keyword}"><c:param name="keyword" value="${keyword}" /></c:if>
+                    <c:if test="${low != null}"><c:param name="low" value="${low}" /></c:if>
+                    <c:if test="${high != null}"><c:param name="high" value="${high}" /></c:if>
+                  </c:url>
+                  <li class="page-item ${carPage.last ? 'disabled' : ''}">
+                    <a class="page-link" href="${carPage.last ? '#' : nextCarsUrl}">Next</a>
+                  </li>
+                </ul>
+              </nav>
+            </c:if>
           </div>
         </div>
       </div>

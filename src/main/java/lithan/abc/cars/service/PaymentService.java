@@ -1,8 +1,9 @@
 package lithan.abc.cars.service;
 
-import java.util.List;
 import java.util.Optional;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import lithan.abc.cars.entity.PaymentAccount;
 import lithan.abc.cars.entity.PaymentOrder;
 import lithan.abc.cars.payment.StripeWebhookEvent;
@@ -20,9 +21,9 @@ public interface PaymentService {
 
   String createBuyerCheckout(int paymentId);
 
-  List<PaymentOrder> listCurrentUserPurchases();
+  Page<PaymentOrder> listCurrentUserPurchases(Pageable pageable);
 
-  List<PaymentOrder> listCurrentUserSales();
+  Page<PaymentOrder> listCurrentUserSales(Pageable pageable);
 
   Optional<PaymentOrder> findCurrentBuyerPaymentBySession(String sessionId);
 

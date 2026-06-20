@@ -1,9 +1,10 @@
 package lithan.abc.cars.service;
 
 import java.time.Instant;
-import java.util.List;
 import java.util.Optional;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -165,13 +166,13 @@ public class PaymentServiceImpl implements PaymentService {
   }
 
   @Override
-  public List<PaymentOrder> listCurrentUserPurchases() {
-    return paymentRepository.findByBuyerOrderByCreatedAtDesc(userService.getUserLogin());
+  public Page<PaymentOrder> listCurrentUserPurchases(Pageable pageable) {
+    return paymentRepository.findByBuyer(userService.getUserLogin(), pageable);
   }
 
   @Override
-  public List<PaymentOrder> listCurrentUserSales() {
-    return paymentRepository.findBySellerOrderByCreatedAtDesc(userService.getUserLogin());
+  public Page<PaymentOrder> listCurrentUserSales(Pageable pageable) {
+    return paymentRepository.findBySeller(userService.getUserLogin(), pageable);
   }
 
   @Override

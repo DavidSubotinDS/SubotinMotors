@@ -61,7 +61,10 @@
                       <c:if test="${car.status.equals('SOLD')}">
                         <td class="fw-semibold text-success">${car.status}</td>
                       </c:if>
-                      <c:if test="${!car.status.equals('SOLD')}">
+                      <c:if test="${car.status.equals('RESERVED')}">
+                        <td class="fw-semibold text-warning">${car.status}</td>
+                      </c:if>
+                      <c:if test="${!car.status.equals('SOLD') && !car.status.equals('RESERVED')}">
                         <td>
                           <div class="dropdown">
                             <button class="btn btn-warning dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false"><i class="fa-regular fa-pen-to-square"></i></button>
@@ -85,6 +88,9 @@
                         </td>
                       </c:if>
                       <c:if test="${car.status.equals('SOLD')}">
+                        <td></td>
+                      </c:if>
+                      <c:if test="${car.status.equals('RESERVED')}">
                         <td></td>
                       </c:if>
                     </tr>
@@ -123,6 +129,15 @@
                       </c:if>
                       <c:if test="${bid.status.equals('APPROVED')}">
                         <td class="fw-semibold text-success">${bid.status}</td>
+                      </c:if>
+                      <c:if test="${bid.status.equals('ACCEPTED_PENDING_PAYMENT')}">
+                        <td class="fw-semibold text-warning">${bid.status}</td>
+                      </c:if>
+                      <c:if test="${bid.status.equals('PAID')}">
+                        <td class="fw-semibold text-success">${bid.status}</td>
+                      </c:if>
+                      <c:if test="${bid.status.equals('PAYMENT_FAILED') || bid.status.equals('EXPIRED')}">
+                        <td class="fw-semibold text-danger">${bid.status}</td>
                       </c:if>
                       <c:if test="${bid.status.equals('DENIED')}">
                         <td class="fw-semibold text-danger">${bid.status}</td>

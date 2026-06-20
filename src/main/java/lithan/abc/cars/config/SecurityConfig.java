@@ -32,6 +32,7 @@ public class SecurityConfig {
         .dispatcherTypeMatchers(DispatcherType.FORWARD, DispatcherType.ERROR).permitAll()
         .requestMatchers("/css/**", "/images/**", "/js/**").permitAll()
         .requestMatchers("/actuator/health").permitAll()
+        .requestMatchers("/webhooks/stripe").permitAll()
         .requestMatchers("/").permitAll()
         .requestMatchers("/cars/**").permitAll()
         .requestMatchers("/about-us", "/contact-us", "/view-user/**").permitAll()
@@ -55,6 +56,9 @@ public class SecurityConfig {
     http.logout(logout -> logout
         .logoutUrl("/logout")
         .permitAll());
+
+    http.csrf(csrf -> csrf
+        .ignoringRequestMatchers("/webhooks/stripe"));
 
     return http.build();
   }

@@ -62,6 +62,12 @@
                         <c:if test="${car.status.equals('DEACTIVE')}">
                           <td class="fw-semibold text-danger">${car.status}</td>
                         </c:if>
+                        <c:if test="${car.status.equals('PENDING')}">
+                          <td class="fw-semibold text-warning">${car.status} - awaiting admin approval</td>
+                        </c:if>
+                        <c:if test="${car.status.equals('RESERVED')}">
+                          <td class="fw-semibold text-warning">${car.status}</td>
+                        </c:if>
                         <c:if test="${car.status.equals('SOLD')}">
                           <td class="fw-semibold text-success">${car.status}</td>
                         </c:if>

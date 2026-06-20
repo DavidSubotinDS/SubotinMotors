@@ -81,6 +81,9 @@
                       <c:if test="${car.status.equals('DEACTIVE')}">
                         <td class="fw-semibold text-danger">${car.status}</td>
                       </c:if>
+                      <c:if test="${car.status.equals('PENDING')}">
+                        <td class="fw-semibold text-warning">${car.status}</td>
+                      </c:if>
                       <c:if test="${car.status.equals('SOLD')}">
                         <td class="fw-semibold text-success">${car.status}</td>
                       </c:if>
@@ -103,6 +106,18 @@
                                 <li>
                                   <form:form action="${pageContext.request.contextPath}/admin/activate/${car.idCar}" method="POST">
                                     <button class="dropdown-item" type="submit">Activate Car Post</button>
+                                  </form:form>
+                                </li>
+                              </c:if>
+                              <c:if test="${car.status.equals('PENDING')}">
+                                <li>
+                                  <form:form action="${pageContext.request.contextPath}/admin/activate/${car.idCar}" method="POST">
+                                    <button class="dropdown-item" type="submit">Approve Listing</button>
+                                  </form:form>
+                                </li>
+                                <li>
+                                  <form:form action="${pageContext.request.contextPath}/admin/deactivate/${car.idCar}" method="POST">
+                                    <button class="dropdown-item" type="submit">Reject Listing</button>
                                   </form:form>
                                 </li>
                               </c:if>

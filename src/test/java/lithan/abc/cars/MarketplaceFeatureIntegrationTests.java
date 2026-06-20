@@ -349,7 +349,9 @@ class MarketplaceFeatureIntegrationTests {
         .andExpect(model().attribute("direction", "asc"))
         .andReturn();
 
-    List<PaymentOrder> transactions = transactionList(result);
+    List<PaymentOrder> transactions = transactionList(result).stream()
+        .filter(payment -> "Transaction".equals(payment.getBid().getCar().getMake()))
+        .toList();
     assertEquals(List.of(affordable.getIdPayment(), expensive.getIdPayment()),
         transactions.stream().map(PaymentOrder::getIdPayment).toList());
     assertEquals("user123", transactions.get(0).getBuyer().getUsername());

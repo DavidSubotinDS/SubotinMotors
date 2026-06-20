@@ -52,6 +52,7 @@ public class AbcController {
 
     listCar.removeIf(car -> car.getUser().getProfile().getIdProfile() != idProfile);
     listCar.removeIf(car -> car.getStatus().equals("DEACTIVE"));
+    listCar.removeIf(car -> car.getStatus().equals("PENDING"));
 
     model.addAttribute("listCar", listCar);
 

@@ -143,8 +143,51 @@ public class UserCarController {
   public String cancelTestDrive(
       @PathVariable int idTestDrive,
       RedirectAttributes redirectAttributes) {
-    userCarService.cancelCurrentUserTestDrive(idTestDrive);
-    redirectAttributes.addFlashAttribute("appointmentMessage", "Test drive cancelled.");
+    try {
+      userCarService.cancelCurrentUserTestDrive(idTestDrive);
+      redirectAttributes.addFlashAttribute("appointmentMessage", "Test drive cancelled.");
+    } catch (IllegalStateException exception) {
+      redirectAttributes.addFlashAttribute("appointmentError", exception.getMessage());
+    }
+    return "redirect:/user/test-drive";
+  }
+
+  @PostMapping("/test-drives/{idTestDrive}/accept")
+  public String acceptTestDrive(
+      @PathVariable int idTestDrive,
+      RedirectAttributes redirectAttributes) {
+    try {
+      userCarService.acceptTestDriveForOwnedCar(idTestDrive);
+      redirectAttributes.addFlashAttribute("appointmentMessage", "Test-drive request accepted.");
+    } catch (IllegalStateException exception) {
+      redirectAttributes.addFlashAttribute("appointmentError", exception.getMessage());
+    }
+    return "redirect:/user/test-drive";
+  }
+
+  @PostMapping("/test-drives/{idTestDrive}/reject")
+  public String rejectTestDrive(
+      @PathVariable int idTestDrive,
+      RedirectAttributes redirectAttributes) {
+    try {
+      userCarService.rejectTestDriveForOwnedCar(idTestDrive);
+      redirectAttributes.addFlashAttribute("appointmentMessage", "Test-drive request rejected.");
+    } catch (IllegalStateException exception) {
+      redirectAttributes.addFlashAttribute("appointmentError", exception.getMessage());
+    }
+    return "redirect:/user/test-drive";
+  }
+
+  @PostMapping("/test-drives/{idTestDrive}/owner-cancel")
+  public String cancelOwnedCarTestDrive(
+      @PathVariable int idTestDrive,
+      RedirectAttributes redirectAttributes) {
+    try {
+      userCarService.cancelTestDriveForOwnedCar(idTestDrive);
+      redirectAttributes.addFlashAttribute("appointmentMessage", "Accepted test drive cancelled.");
+    } catch (IllegalStateException exception) {
+      redirectAttributes.addFlashAttribute("appointmentError", exception.getMessage());
+    }
     return "redirect:/user/test-drive";
   }
 

@@ -157,7 +157,7 @@ of truth.
 - Car listing and moderation
 - Search by make, model, year, and price
 - Bidding
-- Test-drive requests
+- Test-drive requests with seller approval, rejection, rescheduling, and cancellation
 - Stripe-hosted seller onboarding
 - Accepted-bid checkout with destination charges and platform fees
 - Signed, idempotent payment webhooks

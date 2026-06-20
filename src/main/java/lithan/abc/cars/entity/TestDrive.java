@@ -2,9 +2,10 @@ package lithan.abc.cars.entity;
 
 import java.time.LocalDate;
 
-import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -27,6 +28,10 @@ public class TestDrive {
   @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
   @Column(name = "test_drive_date", nullable = false)
   private LocalDate date;
+
+  @Enumerated(EnumType.STRING)
+  @Column(nullable = false, length = 20)
+  private TestDriveStatus status = TestDriveStatus.PENDING;
 
   @ManyToOne(fetch = FetchType.EAGER, optional = false)
   @JoinColumn(name = "id_user")
@@ -53,6 +58,34 @@ public class TestDrive {
 
   public void setDate(LocalDate date) {
     this.date = date;
+  }
+
+  public TestDriveStatus getStatus() {
+    return status;
+  }
+
+  public void setStatus(TestDriveStatus status) {
+    this.status = status;
+  }
+
+  public boolean isPending() {
+    return status == TestDriveStatus.PENDING;
+  }
+
+  public boolean isAccepted() {
+    return status == TestDriveStatus.ACCEPTED;
+  }
+
+  public boolean isRejected() {
+    return status == TestDriveStatus.REJECTED;
+  }
+
+  public boolean isReschedulable() {
+    return isPending() || isAccepted();
+  }
+
+  public boolean isCancellable() {
+    return isReschedulable();
   }
 
   public UserAccount getUser() {

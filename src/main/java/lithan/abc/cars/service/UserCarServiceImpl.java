@@ -14,6 +14,7 @@ import lithan.abc.cars.entity.Car;
 import lithan.abc.cars.entity.CarBidding;
 import lithan.abc.cars.entity.CarPicture;
 import lithan.abc.cars.entity.TestDrive;
+import lithan.abc.cars.entity.TestDriveStatus;
 import lithan.abc.cars.entity.UserAccount;
 import lithan.abc.cars.error.ResourceNotFoundException;
 import lithan.abc.cars.repository.CarBiddingRepository;
@@ -183,6 +184,7 @@ public class UserCarServiceImpl implements UserCarService {
     testDrive.setDate(date);
     testDrive.setCar(car);
     testDrive.setUser(user);
+    testDrive.setStatus(TestDriveStatus.PENDING);
     testDriveRepo.save(testDrive);
   }
 
@@ -201,6 +203,9 @@ public class UserCarServiceImpl implements UserCarService {
   public void rescheduleCurrentUserTestDrive(int testDriveId, LocalDate date) {
     validateTestDriveDate(date);
     TestDrive testDrive = getCurrentUserTestDrive(testDriveId);
+    if (!testDrive.isReschedulable()) {
+      throw new IllegalStateException("Only pending or accepted test drives can be rescheduled");
+    }
     if (!"ACTIVE".equals(testDrive.getCar().getStatus())) {
       throw new IllegalStateException("Only test drives for active cars can be rescheduled");
     }
@@ -209,13 +214,51 @@ public class UserCarServiceImpl implements UserCarService {
       throw new IllegalStateException("You already booked this car for that date");
     }
     testDrive.setDate(date);
+    testDrive.setStatus(TestDriveStatus.PENDING);
     testDriveRepo.save(testDrive);
   }
 
   @Override
   @Transactional
   public void cancelCurrentUserTestDrive(int testDriveId) {
-    testDriveRepo.delete(getCurrentUserTestDrive(testDriveId));
+    TestDrive testDrive = getCurrentUserTestDrive(testDriveId);
+    if (!testDrive.isCancellable()) {
+      throw new IllegalStateException("Only pending or accepted test drives can be cancelled");
+    }
+    testDrive.setStatus(TestDriveStatus.CANCELLED);
+    testDriveRepo.save(testDrive);
+  }
+
+  @Override
+  @Transactional
+  public void acceptTestDriveForOwnedCar(int testDriveId) {
+    decideTestDriveForOwnedCar(testDriveId, TestDriveStatus.ACCEPTED);
+  }
+
+  @Override
+  @Transactional
+  public void rejectTestDriveForOwnedCar(int testDriveId) {
+    decideTestDriveForOwnedCar(testDriveId, TestDriveStatus.REJECTED);
+  }
+
+  @Override
+  @Transactional
+  public void cancelTestDriveForOwnedCar(int testDriveId) {
+    TestDrive testDrive = getTestDriveForOwnedCar(testDriveId);
+    if (!testDrive.isAccepted()) {
+      throw new IllegalStateException("Only accepted test drives can be cancelled by the car owner");
+    }
+    testDrive.setStatus(TestDriveStatus.CANCELLED);
+    testDriveRepo.save(testDrive);
+  }
+
+  private void decideTestDriveForOwnedCar(int testDriveId, TestDriveStatus status) {
+    TestDrive testDrive = getTestDriveForOwnedCar(testDriveId);
+    if (!testDrive.isPending()) {
+      throw new IllegalStateException("Only pending test-drive requests can be accepted or rejected");
+    }
+    testDrive.setStatus(status);
+    testDriveRepo.save(testDrive);
   }
 
   private TestDrive getCurrentUserTestDrive(int testDriveId) {
@@ -223,6 +266,15 @@ public class UserCarServiceImpl implements UserCarService {
         .orElseThrow(ResourceNotFoundException::new);
     if (testDrive.getUser().getIdUser() != userService.getUserLogin().getIdUser()) {
       throw new AccessDeniedException("This test drive belongs to another user");
+    }
+    return testDrive;
+  }
+
+  private TestDrive getTestDriveForOwnedCar(int testDriveId) {
+    TestDrive testDrive = testDriveRepo.findById(testDriveId)
+        .orElseThrow(ResourceNotFoundException::new);
+    if (testDrive.getCar().getUser().getIdUser() != userService.getUserLogin().getIdUser()) {
+      throw new AccessDeniedException("This test drive is for another owner's car");
     }
     return testDrive;
   }

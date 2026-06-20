@@ -20,6 +20,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import lithan.abc.cars.entity.Car;
 import lithan.abc.cars.entity.CarBidding;
 import lithan.abc.cars.entity.PaymentOrder;
+import lithan.abc.cars.entity.PaymentWebhookEvent;
 import lithan.abc.cars.entity.UserAccount;
 import lithan.abc.cars.entity.UserProfile;
 import lithan.abc.cars.service.AdminService;
@@ -187,9 +188,12 @@ public class AdminController {
     Sort.Direction safeDirection = sortDirection(direction);
     Page<PaymentOrder> transactions = paymentService.listAllPayments(
         PageRequest.of(Math.max(page, 0), 10, Sort.by(safeDirection, safeSort)));
+    Page<PaymentWebhookEvent> webhookEvents = paymentService.listWebhookEvents(
+        PageRequest.of(0, 20, Sort.by(Sort.Direction.DESC, "processedAt")));
 
     model.addAttribute("transactionPage", transactions);
     model.addAttribute("transactions", transactions.getContent());
+    model.addAttribute("webhookEvents", webhookEvents.getContent());
     model.addAttribute("sort", safeSort);
     model.addAttribute("direction", safeDirection.name().toLowerCase());
 

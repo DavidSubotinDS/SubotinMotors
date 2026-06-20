@@ -161,3 +161,11 @@ of truth.
 - Stripe-hosted seller onboarding
 - Accepted-bid checkout with destination charges and platform fees
 - Signed, idempotent payment webhooks
+
+## CRUD and lifecycle coverage
+
+The controller/UI coverage, authorization rules, and intentional restrictions
+for each persisted business area are documented in
+[`docs/crud-coverage.md`](docs/crud-coverage.md). This includes user/profile,
+car, bid, test-drive, order/payment, payment-account, and webhook-event
+management.

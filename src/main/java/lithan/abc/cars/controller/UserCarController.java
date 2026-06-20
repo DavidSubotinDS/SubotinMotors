@@ -1,10 +1,12 @@
 package lithan.abc.cars.controller;
 
 import java.util.List;
+import java.time.LocalDate;
 
 import jakarta.validation.Valid;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
@@ -15,8 +17,10 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import lithan.abc.cars.entity.Car;
+import lithan.abc.cars.entity.CarBidding;
 import lithan.abc.cars.entity.TestDrive;
 import lithan.abc.cars.service.UserCarService;
 import lithan.abc.cars.service.UserService;
@@ -112,11 +116,54 @@ public class UserCarController {
   // List Test Drive
   @GetMapping("/test-drive")
   public String listTestDrive(Model model) {
-    List<TestDrive> listTestDrive = userCarService.listTestDriveForOwnedCars();
+    List<TestDrive> receivedTestDrives = userCarService.listTestDriveForOwnedCars();
+    List<TestDrive> bookedTestDrives = userCarService.listCurrentUserTestDrives();
 
-    model.addAttribute("listTestDrive", listTestDrive);
+    model.addAttribute("receivedTestDrives", receivedTestDrives);
+    model.addAttribute("bookedTestDrives", bookedTestDrives);
 
     return "user/list-test-drive";
+  }
+
+  @PostMapping("/test-drives/{idTestDrive}/reschedule")
+  public String rescheduleTestDrive(
+      @PathVariable int idTestDrive,
+      @RequestParam("date") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+      RedirectAttributes redirectAttributes) {
+    try {
+      userCarService.rescheduleCurrentUserTestDrive(idTestDrive, date);
+      redirectAttributes.addFlashAttribute("appointmentMessage", "Test drive rescheduled.");
+    } catch (IllegalArgumentException | IllegalStateException exception) {
+      redirectAttributes.addFlashAttribute("appointmentError", exception.getMessage());
+    }
+    return "redirect:/user/test-drive";
+  }
+
+  @PostMapping("/test-drives/{idTestDrive}/cancel")
+  public String cancelTestDrive(
+      @PathVariable int idTestDrive,
+      RedirectAttributes redirectAttributes) {
+    userCarService.cancelCurrentUserTestDrive(idTestDrive);
+    redirectAttributes.addFlashAttribute("appointmentMessage", "Test drive cancelled.");
+    return "redirect:/user/test-drive";
+  }
+
+  @GetMapping("/bids")
+  public String listBids(Model model) {
+    List<CarBidding> bids = userCarService.listCurrentUserBids();
+    model.addAttribute("bids", bids);
+    return "user/bids";
+  }
+
+  @PostMapping("/bids/{idBid}/cancel")
+  public String cancelBid(@PathVariable int idBid, RedirectAttributes redirectAttributes) {
+    try {
+      userCarService.cancelCurrentUserBid(idBid);
+      redirectAttributes.addFlashAttribute("bidMessage", "Bid cancelled.");
+    } catch (IllegalStateException exception) {
+      redirectAttributes.addFlashAttribute("bidError", exception.getMessage());
+    }
+    return "redirect:/user/bids";
   }
 
   // Upload Car Picture

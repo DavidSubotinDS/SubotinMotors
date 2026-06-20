@@ -213,6 +213,9 @@
                       <c:if test="${bid.status.equals('DENIED')}">
                         <td class="fw-semibold text-danger">${bid.status}</td>
                       </c:if>
+                      <c:if test="${bid.status.equals('CANCELLED')}">
+                        <td class="fw-semibold text-secondary">${bid.status}</td>
+                      </c:if>
                       <td>
                         <c:if test="${bid.status.equals('ONGOING')}">
                           <div class="dropdown">

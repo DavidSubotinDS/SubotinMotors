@@ -25,6 +25,9 @@
               <li>
                 <a href="<%= request.getContextPath() %>/user/test-drive"><i class="fa-regular fa-calendar-check"></i> Appointment</a>
               </li>
+              <li>
+                <a href="<%= request.getContextPath() %>/user/payments"><i class="fa-solid fa-credit-card"></i> Payments</a>
+              </li>
             </ul>
           </aside>
 
@@ -59,6 +62,22 @@
                 <p>${profile.about}</p>
               </div>
             </c:if>
+            <div class="about mt-3">
+              <h5 class="fw-semibold">Seller payouts</h5>
+              <c:choose>
+                <c:when test="${!stripeEnabled}">
+                  <p class="text-secondary mb-0">Stripe Connect is not configured in this environment.</p>
+                </c:when>
+                <c:when test="${paymentAccount != null && paymentAccount.transfersEnabled}">
+                  <p class="text-success mb-2">Your Stripe payout account is ready.</p>
+                  <a class="btn btn-outline-secondary" href="<%= request.getContextPath() %>/user/payments">View payments</a>
+                </c:when>
+                <c:otherwise>
+                  <p class="text-secondary">Connect Stripe before an administrator can accept a bid on one of your cars.</p>
+                  <a class="btn btn-primary" href="<%= request.getContextPath() %>/payments/seller/onboarding">Connect Stripe</a>
+                </c:otherwise>
+              </c:choose>
+            </div>
           </div>
         </div>
       </div>

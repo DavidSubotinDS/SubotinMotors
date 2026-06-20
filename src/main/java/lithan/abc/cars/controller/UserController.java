@@ -18,6 +18,7 @@ import lithan.abc.cars.entity.ProfilePicture;
 import lithan.abc.cars.entity.UserAccount;
 import lithan.abc.cars.entity.UserProfile;
 import lithan.abc.cars.service.UserService;
+import lithan.abc.cars.service.PaymentService;
 
 @Controller
 @RequestMapping("/user")
@@ -25,6 +26,9 @@ public class UserController {
 
   @Autowired
   private UserService userService;
+
+  @Autowired
+  private PaymentService paymentService;
 
   @GetMapping("")
   public String user() {
@@ -39,6 +43,8 @@ public class UserController {
 
     model.addAttribute("profile", profile);
     model.addAttribute("picture", picture);
+    model.addAttribute("stripeEnabled", paymentService.isStripeEnabled());
+    model.addAttribute("paymentAccount", paymentService.getCurrentSellerAccount().orElse(null));
 
     session.setAttribute("profileLog", profile);
 

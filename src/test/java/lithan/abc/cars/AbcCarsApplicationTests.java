@@ -71,6 +71,14 @@ class AbcCarsApplicationTests {
 				.andExpect(model().attributeExists("carPage", "bidPage"))
 				.andExpect(model().attribute("carSort", "price"))
 				.andExpect(model().attribute("bidSort", "car.make"));
+
+		mockMvc.perform(get("/admin/transactions")
+						.param("sort", "amountMinor")
+						.param("direction", "asc"))
+				.andExpect(status().isOk())
+				.andExpect(model().attributeExists("transactionPage", "transactions"))
+				.andExpect(model().attribute("sort", "amountMinor"))
+				.andExpect(model().attribute("direction", "asc"));
 	}
 
 	@Test

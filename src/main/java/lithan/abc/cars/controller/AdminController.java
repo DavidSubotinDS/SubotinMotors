@@ -19,9 +19,11 @@ import org.springframework.web.bind.annotation.RequestParam;
 
 import lithan.abc.cars.entity.Car;
 import lithan.abc.cars.entity.CarBidding;
+import lithan.abc.cars.entity.PaymentOrder;
 import lithan.abc.cars.entity.UserAccount;
 import lithan.abc.cars.entity.UserProfile;
 import lithan.abc.cars.service.AdminService;
+import lithan.abc.cars.service.PaymentService;
 import lithan.abc.cars.service.UserCarService;
 import lithan.abc.cars.service.UserService;
 
@@ -37,6 +39,9 @@ public class AdminController {
 
   @Autowired
   private UserService userService;
+
+  @Autowired
+  private PaymentService paymentService;
 
   @GetMapping("")
   public String admin() {
@@ -172,6 +177,25 @@ public class AdminController {
     return "redirect:/admin/car-management";
   }
 
+  @GetMapping("/transactions")
+  public String transactions(
+      @RequestParam(defaultValue = "0") int page,
+      @RequestParam(defaultValue = "paidAt") String sort,
+      @RequestParam(defaultValue = "desc") String direction,
+      Model model) {
+    String safeSort = paymentSortProperty(sort);
+    Sort.Direction safeDirection = sortDirection(direction);
+    Page<PaymentOrder> transactions = paymentService.listAllPayments(
+        PageRequest.of(Math.max(page, 0), 10, Sort.by(safeDirection, safeSort)));
+
+    model.addAttribute("transactionPage", transactions);
+    model.addAttribute("transactions", transactions.getContent());
+    model.addAttribute("sort", safeSort);
+    model.addAttribute("direction", safeDirection.name().toLowerCase());
+
+    return "admin/transactions";
+  }
+
   private Sort.Direction sortDirection(String direction) {
     return "desc".equalsIgnoreCase(direction) ? Sort.Direction.DESC : Sort.Direction.ASC;
   }
@@ -194,6 +218,14 @@ public class AdminController {
     return switch (sort) {
       case "idBid", "bidPrice", "status", "car.make", "car.year" -> sort;
       default -> "idBid";
+    };
+  }
+
+  private String paymentSortProperty(String sort) {
+    return switch (sort) {
+      case "paidAt", "createdAt", "amountMinor", "status", "bid.car.make",
+          "buyer.username", "seller.username" -> sort;
+      default -> "paidAt";
     };
   }
 }

@@ -25,6 +25,8 @@ public interface PaymentService {
 
   Page<PaymentOrder> listCurrentUserSales(Pageable pageable);
 
+  Page<PaymentOrder> listAllPayments(Pageable pageable);
+
   Optional<PaymentOrder> findCurrentBuyerPaymentBySession(String sessionId);
 
   void processWebhook(StripeWebhookEvent event);

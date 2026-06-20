@@ -176,6 +176,11 @@ public class PaymentServiceImpl implements PaymentService {
   }
 
   @Override
+  public Page<PaymentOrder> listAllPayments(Pageable pageable) {
+    return paymentRepository.findAll(pageable);
+  }
+
+  @Override
   public Optional<PaymentOrder> findCurrentBuyerPaymentBySession(String sessionId) {
     UserAccount buyer = userService.getUserLogin();
     return paymentRepository.findByCheckoutSessionId(sessionId)

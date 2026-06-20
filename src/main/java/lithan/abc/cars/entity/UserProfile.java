@@ -11,6 +11,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
 @Entity
@@ -34,7 +35,9 @@ public class UserProfile {
 
   @Column(name = "phone_number", nullable = false)
   @NotEmpty(message = "Phone number is required")
-
+  @Pattern(
+      regexp = "^(?:\\+[1-9]\\d{7,14}|\\d{8,15})$",
+      message = "Phone number must contain 8 to 15 digits, with an optional leading +")
   private String phoneNumber;
 
   @NotEmpty(message = "Address is required")

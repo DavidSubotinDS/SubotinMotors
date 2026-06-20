@@ -19,6 +19,8 @@ import lithan.abc.cars.repository.ProfilePictureRepository;
 import lithan.abc.cars.error.ResourceNotFoundException;
 import lithan.abc.cars.repository.UserProfileRepository;
 import lithan.abc.cars.repository.UserRepository;
+import lithan.abc.cars.validation.ImageUploadValidator;
+import lithan.abc.cars.validation.ImageUploadValidator.ValidatedImage;
 
 @Service
 public class UserServiceImpl implements UserService {
@@ -76,28 +78,17 @@ public class UserServiceImpl implements UserService {
   @Override
   @Transactional
   public void saveImage(MultipartFile file, UserProfile profile) throws Exception {
-      if (profile.getProfilePicture() == null) {
-        // Set Profile Picture if no profile picture
-        ProfilePicture picture = new ProfilePicture();
+    ValidatedImage image = ImageUploadValidator.validate(file);
+    ProfilePicture picture = profile.getProfilePicture();
+    if (picture == null) {
+      picture = new ProfilePicture();
+      picture.setProfile(profile);
+    }
 
-        picture.setFileName(file.getOriginalFilename());
-        picture.setFileType(file.getContentType());
-        picture.setImage(Base64.getEncoder().encodeToString(file.getBytes()));
-        picture.setProfile(profile);
-
-        profilePictureRepo.save(picture);
-
-      } else {
-        // Edit Profile Picture if profile picture exist
-        ProfilePicture picture = profile.getProfilePicture();
-
-        picture.setFileName(file.getOriginalFilename());
-        picture.setFileType(file.getContentType());
-        picture.setImage(Base64.getEncoder().encodeToString(file.getBytes()));
-        picture.setProfile(profile);
-
-        profilePictureRepo.save(picture);
-      }
+    picture.setFileName(image.fileName());
+    picture.setFileType(image.contentType());
+    picture.setImage(Base64.getEncoder().encodeToString(image.bytes()));
+    profilePictureRepo.save(picture);
   }
 
   @Override

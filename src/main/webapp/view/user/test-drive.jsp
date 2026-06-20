@@ -22,6 +22,7 @@
           <form:form action="testDriveProcess" method="POST" modelAttribute="testDrive">
             <p class="error">${message}</p>
             <label class="fs-6 form-label">Date</label>
+            <form:errors path="date" cssClass="error" />
             <form:input class="form-control" type="date" path="date" id="inputDate" />
 
             <input type="hidden" name="carId" value="${car.idCar}" />

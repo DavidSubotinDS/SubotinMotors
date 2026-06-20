@@ -11,6 +11,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import jakarta.validation.constraints.Digits;
+import jakarta.validation.constraints.Positive;
 
 @Entity
 @Table(name = "tb_car_bid")
@@ -21,6 +22,7 @@ public class CarBidding {
   private int idBid;
 
   @Digits(integer = 10, fraction = 2)
+  @Positive(message = "Bid price must be positive")
   @Column(nullable = false)
   private int bidPrice;
 

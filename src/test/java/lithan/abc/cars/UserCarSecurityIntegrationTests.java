@@ -100,6 +100,16 @@ class UserCarSecurityIntegrationTests {
   }
 
   @Test
+  @WithMockUser(username = "user123", roles = "USER")
+  void testDriveMustBeAfterToday() {
+    Car car = saveActiveCarOwnedBy("admin123", "Future", "Only");
+
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> userCarService.saveTestDrive(LocalDate.now(), car.getIdCar()));
+  }
+
+  @Test
   @WithMockUser(username = "admin123", roles = "USER")
   void ownerCanAcceptPendingTestDriveRequest() {
     UserAccount requester = userRepository.findByUsername("user123").orElseThrow();

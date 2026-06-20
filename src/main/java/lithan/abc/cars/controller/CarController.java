@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
 import lithan.abc.cars.entity.Car;
+import lithan.abc.cars.error.ResourceNotFoundException;
 import lithan.abc.cars.service.CarService;
 import lithan.abc.cars.service.UserCarService;
 
@@ -37,6 +38,9 @@ public class CarController {
   @GetMapping("/{make}/{model}/{year}/{id_car}")
   public String carDetails(@PathVariable("id_car") int id, Model model) {
     Car car = carService.getCarById(id);
+    if ("DEACTIVE".equals(car.getStatus())) {
+      throw new ResourceNotFoundException();
+    }
 
     int higestBidding = userCarService.highestBidding(id);
 

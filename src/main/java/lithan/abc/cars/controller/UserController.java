@@ -1,7 +1,7 @@
 package lithan.abc.cars.controller;
 
-import javax.servlet.http.HttpSession;
-import javax.validation.Valid;
+import jakarta.servlet.http.HttpSession;
+import jakarta.validation.Valid;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
@@ -79,8 +79,7 @@ public class UserController {
   public String uploadProfileImage(@RequestParam("imageFile") MultipartFile imageFile, Model model,
       HttpSession session) {
     String type = imageFile.getContentType();
-
-    if (type != null && (type.equals("image/jpg") || type.equals("image/jpeg") || type.equals("image/png"))) {
+    if (!imageFile.isEmpty() && ("image/jpeg".equals(type) || "image/png".equals(type))) {
       UserAccount user = userService.getUserLogin();
       UserProfile profile = user.getProfile();
 
@@ -88,13 +87,14 @@ public class UserController {
         userService.saveImage(imageFile, profile);
         session.setAttribute("profileLog", profile);
       } catch (Exception e) {
-        e.printStackTrace();
+        model.addAttribute("message", "Unable to save image");
+        return "user/upload-picture";
       }
 
       return "redirect:/user/my-profile";
     }
 
-    model.addAttribute("message", "File type not suported");
+    model.addAttribute("message", "Only JPEG and PNG images are supported");
     return "user/upload-picture";
   }
 

@@ -1,14 +1,14 @@
 package lithan.abc.cars.service;
 
-import java.util.ArrayList;
 import java.util.Base64;
-import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import lithan.abc.cars.entity.ProfilePicture;
@@ -16,6 +16,7 @@ import lithan.abc.cars.entity.Role;
 import lithan.abc.cars.entity.UserAccount;
 import lithan.abc.cars.entity.UserProfile;
 import lithan.abc.cars.repository.ProfilePictureRepository;
+import lithan.abc.cars.error.ResourceNotFoundException;
 import lithan.abc.cars.repository.UserProfileRepository;
 import lithan.abc.cars.repository.UserRepository;
 
@@ -35,36 +36,32 @@ public class UserServiceImpl implements UserService {
   private PasswordEncoder passwordEncoder;
 
   @Override
+  @Transactional
   public void saveUser(UserAccount user, UserProfile profile) {
-    UserAccount saveUser = new UserAccount();
+    if (userRepo.existsByUsernameIgnoreCase(user.getUsername())) {
+      throw new DataIntegrityViolationException("Username is already registered");
+    }
 
-    List<Role> roles = new ArrayList<>();
+    UserAccount saveUser = new UserAccount();
     Role role = new Role();
 
     saveUser.setUsername(user.getUsername());
     saveUser.setPassword(passwordEncoder.encode(user.getPassword()));
 
-    roles.add(role);
-
-    for (Role r : roles) {
-      r.setRole("ROLE_USER");
-      r.setUser(saveUser);
-    }
+    role.setRole("ROLE_USER");
+    role.setUser(saveUser);
 
     profile.setUser(saveUser);
 
     saveUser.setProfile(profile);
-    saveUser.setRoles(roles);
-    saveUser.setRole("USER");
+    saveUser.setRoles(java.util.Collections.singletonList(role));
 
     userRepo.save(saveUser);
   }
 
   @Override
   public UserAccount findByUsername(String username) {
-    UserAccount user = userRepo.findByUsername(username);
-
-    return user;
+    return userRepo.findByUsername(username).orElse(null);
   }
 
   @Override
@@ -73,15 +70,12 @@ public class UserServiceImpl implements UserService {
 
     String username = authentication.getName();
 
-    UserAccount user = userRepo.findByUsername(username);
-
-    return user;
+    return userRepo.findByUsername(username).orElseThrow(ResourceNotFoundException::new);
   }
 
   @Override
+  @Transactional
   public void saveImage(MultipartFile file, UserProfile profile) throws Exception {
-    try {
-
       if (profile.getProfilePicture() == null) {
         // Set Profile Picture if no profile picture
         ProfilePicture picture = new ProfilePicture();
@@ -104,15 +98,17 @@ public class UserServiceImpl implements UserService {
 
         profilePictureRepo.save(picture);
       }
-    } catch (Exception e) {
-      System.out.println(e.getMessage());
-    }
-
   }
 
   @Override
+  @Transactional
   public void editUserProfile(UserProfile profile) {
-    UserProfile editedProfile = userProfileRepo.findById(profile.getIdProfile()).get();
+    UserProfile currentProfile = getUserLogin().getProfile();
+    if (currentProfile.getIdProfile() != profile.getIdProfile()) {
+      throw new org.springframework.security.access.AccessDeniedException("Cannot edit another profile");
+    }
+    UserProfile editedProfile = userProfileRepo.findById(profile.getIdProfile())
+        .orElseThrow(ResourceNotFoundException::new);
 
     editedProfile.setFirstName(profile.getFirstName());
     editedProfile.setLastName(profile.getLastName());
@@ -125,9 +121,7 @@ public class UserServiceImpl implements UserService {
 
   @Override
   public UserProfile getProfile(int idProfile) {
-    UserProfile profile = userProfileRepo.findById(idProfile).get();
-
-    return profile;
+    return userProfileRepo.findById(idProfile).orElseThrow(ResourceNotFoundException::new);
   }
 
 }

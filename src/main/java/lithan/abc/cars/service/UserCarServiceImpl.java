@@ -1,10 +1,13 @@
 package lithan.abc.cars.service;
 
+import java.time.LocalDate;
 import java.util.Base64;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import lithan.abc.cars.entity.Car;
@@ -12,6 +15,7 @@ import lithan.abc.cars.entity.CarBidding;
 import lithan.abc.cars.entity.CarPicture;
 import lithan.abc.cars.entity.TestDrive;
 import lithan.abc.cars.entity.UserAccount;
+import lithan.abc.cars.error.ResourceNotFoundException;
 import lithan.abc.cars.repository.CarBiddingRepository;
 import lithan.abc.cars.repository.CarPictureRepository;
 import lithan.abc.cars.repository.CarRepository;
@@ -37,21 +41,17 @@ public class UserCarServiceImpl implements UserCarService {
 
   @Override
   public List<Car> listUserCar() {
-    List<Car> listUserCar = carRepo.findAll();
-    UserAccount user = userService.getUserLogin();
-
-    listUserCar.removeIf(car -> car.getUser() != user);
-
-    return listUserCar;
+    return carRepo.findByUser(userService.getUserLogin());
   }
 
   @Override
+  @Transactional
   public void postCar(MultipartFile file, Car car) throws Exception {
+    validateImage(file);
     UserAccount user = userService.getUserLogin();
     CarPicture picture = new CarPicture();
-    CarBidding carBidding = new CarBidding();
 
-    picture.setFileName(file.getOriginalFilename());
+    picture.setFileName(safeFileName(file));
     picture.setFileType(file.getContentType());
     picture.setImage(Base64.getEncoder().encodeToString(file.getBytes()));
     picture.setCar(car);
@@ -59,104 +59,142 @@ public class UserCarServiceImpl implements UserCarService {
     car.setCarPicture(picture);
     car.setStatus("ACTIVE");
     car.setUser(user);
-
-    carBidding.setCar(car);
-    carBidding.setUser(user);
-    carBidding.setBidPrice(0);
-    carBidding.setStatus("STARTING");
-
     carRepo.save(car);
-    carBidRepo.save(carBidding);
   }
 
   @Override
-  public void editCar(Car car) {
-    Car editedCar = carRepo.findById(car.getIdCar()).get();
-
-    editedCar.setMake(car.getMake());
-    editedCar.setModel(car.getModel());
-    editedCar.setYear(car.getYear());
-    editedCar.setPrice(car.getPrice());
-
-    carRepo.save(editedCar);
-  }
-
-  @Override
-  public void activateCarPost(int id) {
-    Car editedCar = carRepo.findById(id).get();
-
-    editedCar.setStatus("ACTIVE");
-
-    carRepo.save(editedCar);
-  }
-
-  @Override
-  public void deactivateCarPost(int id) {
-    Car editedCar = carRepo.findById(id).get();
-
-    editedCar.setStatus("DEACTIVE");
-
-    carRepo.save(editedCar);
-  }
-
-  @Override
-  public List<CarBidding> listCarBid() {
-    List<CarBidding> listCarBid = carBidRepo.findAll();
-
-    return listCarBid;
-  }
-
-  @Override
-  public Car getCarById(int id) {
-    Car car = carRepo.findById(id).get();
-
+  public Car getOwnedCarById(int id) {
+    Car car = getCarById(id);
+    if (car.getUser().getIdUser() != userService.getUserLogin().getIdUser()) {
+      throw new AccessDeniedException("You do not own this car");
+    }
     return car;
   }
 
   @Override
-  public void postCarBidding(CarBidding carBidding) {
-    carBidding.setStatus("ONGOING");
-    carBidRepo.save(carBidding);
+  @Transactional
+  public Car editOwnedCar(Car car) {
+    Car editedCar = getOwnedCarById(car.getIdCar());
+    if ("SOLD".equals(editedCar.getStatus())) {
+      throw new IllegalStateException("Sold cars cannot be edited");
+    }
+    editedCar.setMake(car.getMake());
+    editedCar.setModel(car.getModel());
+    editedCar.setYear(car.getYear());
+    editedCar.setPrice(car.getPrice());
+    return carRepo.save(editedCar);
+  }
+
+  @Override
+  @Transactional
+  public void changeOwnedCarStatus(int id, String status) {
+    Car car = getOwnedCarById(id);
+    changeStatus(car, status);
+  }
+
+  @Override
+  @Transactional
+  public void changeCarStatusByAdmin(int id, String status) {
+    changeStatus(getCarById(id), status);
+  }
+
+  private void changeStatus(Car car, String status) {
+    if ("SOLD".equals(car.getStatus())) {
+      throw new IllegalStateException("Sold cars cannot be reactivated");
+    }
+    if (!"ACTIVE".equals(status) && !"DEACTIVE".equals(status)) {
+      throw new IllegalArgumentException("Unsupported car status");
+    }
+    car.setStatus(status);
+    carRepo.save(car);
+  }
+
+  @Override
+  public Car getCarById(int id) {
+    return carRepo.findById(id).orElseThrow(ResourceNotFoundException::new);
+  }
+
+  @Override
+  @Transactional
+  public void placeBid(int carId, int bidPrice) {
+    Car car = getCarById(carId);
+    UserAccount bidder = userService.getUserLogin();
+    if (!"ACTIVE".equals(car.getStatus())) {
+      throw new IllegalStateException("Bids are only accepted on active cars");
+    }
+    if (car.getUser().getIdUser() == bidder.getIdUser()) {
+      throw new IllegalStateException("You cannot bid on your own car");
+    }
+    int minimum = Math.max(car.getPrice(), highestBidding(carId));
+    if (bidPrice <= minimum) {
+      throw new IllegalArgumentException("Bid must be greater than the listed price and current highest bid");
+    }
+
+    CarBidding bid = new CarBidding();
+    bid.setCar(car);
+    bid.setUser(bidder);
+    bid.setBidPrice(bidPrice);
+    bid.setStatus("ONGOING");
+    carBidRepo.save(bid);
   }
 
   @Override
   public int highestBidding(int idCar) {
-    int carBidding = carBidRepo.highestBid(idCar);
-
-    return carBidding;
+    Integer highestBid = carBidRepo.highestBid(idCar);
+    return highestBid == null ? 0 : highestBid;
   }
 
   @Override
-  public void saveTestDrive(String date, UserAccount user, Car car) {
-    TestDrive testDrive = new TestDrive();
+  @Transactional
+  public void saveTestDrive(LocalDate date, int carId) {
+    if (date == null || date.isBefore(LocalDate.now())) {
+      throw new IllegalArgumentException("Test drive date cannot be in the past");
+    }
+    Car car = getCarById(carId);
+    UserAccount user = userService.getUserLogin();
+    if (!"ACTIVE".equals(car.getStatus())) {
+      throw new IllegalStateException("Test drives are only available for active cars");
+    }
+    if (car.getUser().getIdUser() == user.getIdUser()) {
+      throw new IllegalStateException("You cannot book a test drive for your own car");
+    }
 
+    TestDrive testDrive = new TestDrive();
     testDrive.setDate(date);
     testDrive.setCar(car);
     testDrive.setUser(user);
-
     testDriveRepo.save(testDrive);
   }
 
   @Override
-  public List<TestDrive> listTestDrive() {
-    List<TestDrive> listTestDrive = testDriveRepo.findAll();
-
-    return listTestDrive;
+  public List<TestDrive> listTestDriveForOwnedCars() {
+    return testDriveRepo.findByCarUser(userService.getUserLogin());
   }
 
   @Override
-  public void saveUploadPicture(MultipartFile file, Car car) throws Exception {
-    try {
-      CarPicture picture = car.getCarPicture();
+  @Transactional
+  public void saveUploadPicture(MultipartFile file, int carId) throws Exception {
+    validateImage(file);
+    Car car = getOwnedCarById(carId);
+    CarPicture picture = car.getCarPicture();
+    picture.setFileName(safeFileName(file));
+    picture.setFileType(file.getContentType());
+    picture.setImage(Base64.getEncoder().encodeToString(file.getBytes()));
+    carPictureRepo.save(picture);
+  }
 
-      picture.setFileName(file.getOriginalFilename());
-      picture.setFileType(file.getContentType());
-      picture.setImage(Base64.getEncoder().encodeToString(file.getBytes()));
-      picture.setCar(car);
-
-      carPictureRepo.save(picture);
-    } catch (Exception e) {
-      System.out.println(e.getMessage());
+  private void validateImage(MultipartFile file) {
+    if (file == null || file.isEmpty()) {
+      throw new IllegalArgumentException("Image file is required");
     }
+    String type = file.getContentType();
+    if (!"image/jpeg".equals(type) && !"image/png".equals(type)) {
+      throw new IllegalArgumentException("Only JPEG and PNG images are supported");
+    }
+  }
+
+  private String safeFileName(MultipartFile file) {
+    String name = file.getOriginalFilename();
+    return name == null ? "image" : name.replace("\\", "/").substring(name.replace("\\", "/").lastIndexOf('/') + 1);
   }
 }

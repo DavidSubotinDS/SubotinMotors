@@ -68,12 +68,16 @@
                             <ul class="dropdown-menu dropdown-menu-dark">
                               <c:if test="${car.status.equals('ACTIVE')}">
                                 <li>
-                                  <a class="dropdown-item" href="<%= request.getContextPath() %>/admin/deactivate/${car.idCar}">Deactivate Car Post</a>
+                                  <form:form action="${pageContext.request.contextPath}/admin/deactivate/${car.idCar}" method="POST">
+                                    <button class="dropdown-item" type="submit">Deactivate Car Post</button>
+                                  </form:form>
                                 </li>
                               </c:if>
                               <c:if test="${car.status.equals('DEACTIVE')}">
                                 <li>
-                                  <a class="dropdown-item" href="<%= request.getContextPath() %>/admin/activate/${car.idCar}">Activate Car Post</a>
+                                  <form:form action="${pageContext.request.contextPath}/admin/activate/${car.idCar}" method="POST">
+                                    <button class="dropdown-item" type="submit">Activate Car Post</button>
+                                  </form:form>
                                 </li>
                               </c:if>
                             </ul>
@@ -129,10 +133,14 @@
                             <button class="btn btn-warning dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false"><i class="fa-regular fa-pen-to-square"></i></button>
                             <ul class="dropdown-menu dropdown-menu-dark">
                               <li>
-                                <a class="dropdown-item" href="<%= request.getContextPath() %>/admin/approve-bid/${bid.idBid}">Approve Bid</a>
+                                <form:form action="${pageContext.request.contextPath}/admin/approve-bid/${bid.idBid}" method="POST">
+                                  <button class="dropdown-item" type="submit">Approve Bid</button>
+                                </form:form>
                               </li>
                               <li>
-                                <a class="dropdown-item" href="<%= request.getContextPath() %>/admin/deny-bid/${bid.idBid}">Deny Bid</a>
+                                <form:form action="${pageContext.request.contextPath}/admin/deny-bid/${bid.idBid}" method="POST">
+                                  <button class="dropdown-item" type="submit">Deny Bid</button>
+                                </form:form>
                               </li>
                             </ul>
                           </div>

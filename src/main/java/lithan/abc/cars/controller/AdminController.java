@@ -2,8 +2,8 @@ package lithan.abc.cars.controller;
 
 import java.util.List;
 
-import javax.servlet.http.HttpSession;
-import javax.validation.Valid;
+import jakarta.servlet.http.HttpSession;
+import jakarta.validation.Valid;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
@@ -81,7 +81,7 @@ public class AdminController {
   }
 
   // Mark Admin
-  @GetMapping("/mark-admin/{idUser}")
+  @PostMapping("/mark-admin/{idUser}")
   public String markAdmin(@PathVariable("idUser") int id) {
     adminService.markAsAdmin(id);
 
@@ -101,23 +101,23 @@ public class AdminController {
   }
 
   // DEACTIVATE CAR POST
-  @GetMapping("/deactivate/{idCar}")
+  @PostMapping("/deactivate/{idCar}")
   public String deactivateCarPost(@PathVariable("idCar") int id) {
-    userCarService.deactivateCarPost(id);
+    userCarService.changeCarStatusByAdmin(id, "DEACTIVE");
 
     return "redirect:/admin/car-management";
   }
 
   // ACTIVATE CAR POST
-  @GetMapping("/activate/{idCar}")
+  @PostMapping("/activate/{idCar}")
   public String activateCarPost(@PathVariable("idCar") int id) {
-    userCarService.activateCarPost(id);
+    userCarService.changeCarStatusByAdmin(id, "ACTIVE");
 
     return "redirect:/admin/car-management";
   }
 
   // APPROVE BID CAR
-  @GetMapping("/approve-bid/{idBid}")
+  @PostMapping("/approve-bid/{idBid}")
   public String approveBidCarPost(@PathVariable("idBid") int id) {
     adminService.approveCarBid(id);
 
@@ -125,7 +125,7 @@ public class AdminController {
   }
 
   // DENY BID CAR
-  @GetMapping("/deny-bid/{idBid}")
+  @PostMapping("/deny-bid/{idBid}")
   public String denyBidCarPost(@PathVariable("idBid") int id) {
     adminService.denyCarBid(id);
 

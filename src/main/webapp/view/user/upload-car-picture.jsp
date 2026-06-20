@@ -17,6 +17,7 @@
           <!-- FORM -->
           <form action="uploadCarPicture" method="POST" enctype="multipart/form-data">
             <input type="hidden" name="${_csrf.parameterName}" value="${_csrf.token}" />
+            <input type="hidden" name="idCar" value="${idCar}" />
 
             <label class="fs-6 form-label">File</label>
             <input class="form-control" type="file" name="imageFile" />

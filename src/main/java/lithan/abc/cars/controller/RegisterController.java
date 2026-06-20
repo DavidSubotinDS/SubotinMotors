@@ -1,9 +1,10 @@
 package lithan.abc.cars.controller;
 
-import javax.servlet.http.HttpSession;
-import javax.validation.Valid;
+import jakarta.servlet.http.HttpSession;
+import jakarta.validation.Valid;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
@@ -74,7 +75,15 @@ public class RegisterController {
 
     UserAccount user = (UserAccount) session.getAttribute("registerAccount");
 
-    userService.saveUser(user, profile);
+    if (user == null) {
+      return "redirect:/register/account";
+    }
+    try {
+      userService.saveUser(user, profile);
+    } catch (DataIntegrityViolationException exception) {
+      session.removeAttribute("registerAccount");
+      return "redirect:/register/account?duplicate";
+    }
 
     return "redirect:/register/thank-you";
   }

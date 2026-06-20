@@ -1,5 +1,7 @@
 package lithan.abc.cars.repository;
 
+import java.util.List;
+
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -7,6 +9,10 @@ import org.springframework.data.repository.query.Param;
 import lithan.abc.cars.entity.CarBidding;
 
 public interface CarBiddingRepository extends JpaRepository<CarBidding, Integer> {
-  @Query(value = "SELECT MAX(bid_price) FROM tb_car_bid WHERE id_car = :id", nativeQuery = true)
-  int highestBid(@Param("id") int id);
+  @Query("SELECT MAX(b.bidPrice) FROM CarBidding b WHERE b.car.idCar = :id AND b.status = 'ONGOING'")
+  Integer highestBid(@Param("id") int id);
+
+  List<CarBidding> findByStatusNot(String status);
+
+  List<CarBidding> findByCarIdCar(int carId);
 }

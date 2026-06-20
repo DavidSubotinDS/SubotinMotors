@@ -1,4 +1,4 @@
-<%@ include file="../components/taglib.jsp" %> <%@ include file="../components/taglib.jsp" %>
+<%@ include file="../components/taglib.jsp" %>
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -84,12 +84,16 @@
                                 </li>
                                 <c:if test="${car.status.equals('ACTIVE')}">
                                   <li>
-                                    <a class="dropdown-item" href="<%= request.getContextPath() %>/user/deactivate/${car.idCar}">Deactivate Post</a>
+                                    <form:form action="${pageContext.request.contextPath}/user/deactivate/${car.idCar}" method="POST">
+                                      <button class="dropdown-item" type="submit">Deactivate Post</button>
+                                    </form:form>
                                   </li>
                                 </c:if>
                                 <c:if test="${car.status.equals('DEACTIVE')}">
                                   <li>
-                                    <a class="dropdown-item" href="<%= request.getContextPath() %>/user/activate/${car.idCar}">Activate Post</a>
+                                    <form:form action="${pageContext.request.contextPath}/user/activate/${car.idCar}" method="POST">
+                                      <button class="dropdown-item" type="submit">Activate Post</button>
+                                    </form:form>
                                   </li>
                                 </c:if>
                               </ul>

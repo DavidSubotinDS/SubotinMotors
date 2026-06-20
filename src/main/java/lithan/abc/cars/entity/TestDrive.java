@@ -1,15 +1,17 @@
 package lithan.abc.cars.entity;
 
-import javax.persistence.CascadeType;
-import javax.persistence.Column;
-import javax.persistence.Entity;
-import javax.persistence.FetchType;
-import javax.persistence.GeneratedValue;
-import javax.persistence.GenerationType;
-import javax.persistence.Id;
-import javax.persistence.JoinColumn;
-import javax.persistence.ManyToOne;
-import javax.persistence.Table;
+import java.time.LocalDate;
+
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
 
 import org.springframework.format.annotation.DateTimeFormat;
 
@@ -22,15 +24,15 @@ public class TestDrive {
   @Column(name = "id_test_drive")
   private int idTestDrive;
 
-  @DateTimeFormat(pattern = "yyyy/MM/dd")
-  @Column(nullable = false)
-  private String date;
+  @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+  @Column(name = "test_drive_date", nullable = false)
+  private LocalDate date;
 
-  @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL)
+  @ManyToOne(fetch = FetchType.EAGER, optional = false)
   @JoinColumn(name = "id_user")
   private UserAccount user;
 
-  @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL)
+  @ManyToOne(fetch = FetchType.EAGER, optional = false)
   @JoinColumn(name = "id_car")
   private Car car;
 
@@ -45,11 +47,11 @@ public class TestDrive {
     this.idTestDrive = idTestDrive;
   }
 
-  public String getDate() {
+  public LocalDate getDate() {
     return date;
   }
 
-  public void setDate(String date) {
+  public void setDate(LocalDate date) {
     this.date = date;
   }
 

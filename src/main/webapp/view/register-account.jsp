@@ -15,6 +15,9 @@
         <div class="form-wrapper small">
           <h2 class="form-header">Register</h2>
           <form:form action="accountProcess" method="POST" modelAttribute="account">
+            <c:if test="${param.duplicate != null}">
+              <p class="error">That username is already registered.</p>
+            </c:if>
             <label class="form-label fs-6">Username</label>
             <div>
               <form:errors path="username" cssClass="error" />

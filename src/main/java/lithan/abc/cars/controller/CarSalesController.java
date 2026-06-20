@@ -1,12 +1,12 @@
 package lithan.abc.cars.controller;
 
-import javax.servlet.http.HttpSession;
+import java.time.LocalDate;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -14,74 +14,63 @@ import org.springframework.web.bind.annotation.RequestParam;
 import lithan.abc.cars.entity.Car;
 import lithan.abc.cars.entity.CarBidding;
 import lithan.abc.cars.entity.TestDrive;
-import lithan.abc.cars.entity.UserAccount;
 import lithan.abc.cars.service.UserCarService;
-import lithan.abc.cars.service.UserService;
 
 @Controller
 public class CarSalesController {
 
   @Autowired
-  private UserService userService;
-
-  @Autowired
   private UserCarService userCarService;
 
-  // Car bidding
   @GetMapping("/car-bid")
-  public String postBidding(@RequestParam("id") int id, Model model, HttpSession session) {
-    Car car = userCarService.getCarById(id);
-    UserAccount user = userService.getUserLogin();
-
-    CarBidding carBidding = new CarBidding();
-    int higestBidding = userCarService.highestBidding(id);
-
-    model.addAttribute("user", user);
-    model.addAttribute("car", car);
-    model.addAttribute("carBidding", carBidding);
-    session.setAttribute("highestBidding", higestBidding);
-
+  public String postBidding(@RequestParam("id") int id, Model model) {
+    populateBidModel(id, new CarBidding(), model);
     return "user/car-bid";
   }
 
   @PostMapping("/postCarBidding")
-  public String saveCarBidding(@ModelAttribute("carBidding") CarBidding carBidding,
-      @RequestParam("highestBidding") int highestBidding, Model model, HttpSession session) {
-
-    Car car = carBidding.getCar();
-
-    if (carBidding.getBidPrice() <= highestBidding || carBidding.getBidPrice() <= car.getPrice()) {
-      int higestBidding = (int) session.getAttribute("highestBidding");
-      model.addAttribute("highestBidding", higestBidding);
-      model.addAttribute("carBidding", carBidding);
-      model.addAttribute("car", car);
-      model.addAttribute("message", "Bid Price can't lower than or equal to listed price");
+  public String saveCarBidding(@RequestParam("carId") int carId,
+      @RequestParam("bidPrice") int bidPrice, Model model) {
+    try {
+      userCarService.placeBid(carId, bidPrice);
+      Car car = userCarService.getCarById(carId);
+      return "redirect:/cars/" + car.getMake() + "/" + car.getModel() + "/" + car.getYear() + "/" + car.getIdCar();
+    } catch (IllegalArgumentException | IllegalStateException exception) {
+      CarBidding form = new CarBidding();
+      form.setBidPrice(bidPrice);
+      populateBidModel(carId, form, model);
+      model.addAttribute("message", exception.getMessage());
       return "user/car-bid";
     }
-
-    userCarService.postCarBidding(carBidding);
-    session.removeAttribute("highestBidding");
-    return "redirect:/cars/" + car.getMake() + "/" + car.getModel() + "/" + car.getYear() + "/" + car.getIdCar();
   }
 
-  // Test Drive Car
+  private void populateBidModel(int carId, CarBidding form, Model model) {
+    model.addAttribute("car", userCarService.getCarById(carId));
+    model.addAttribute("carBidding", form);
+    model.addAttribute("highestBidding", userCarService.highestBidding(carId));
+  }
+
   @GetMapping("/test-drive/{idCar}")
   public String testDrive(@PathVariable("idCar") int idCar, Model model) {
-    TestDrive testDrive = new TestDrive();
-    UserAccount user = userService.getUserLogin();
-    Car car = userCarService.getCarById(idCar);
-
-    model.addAttribute("testDrive", testDrive);
-    model.addAttribute("user", user);
-    model.addAttribute("car", car);
-
+    model.addAttribute("testDrive", new TestDrive());
+    model.addAttribute("car", userCarService.getCarById(idCar));
     return "user/test-drive";
   }
 
   @PostMapping("/test-drive/testDriveProcess")
-  public String saveTestDrive(@ModelAttribute("testDrive") TestDrive testDrive) {
-    userCarService.saveTestDrive(testDrive.getDate(), testDrive.getUser(), testDrive.getCar());
-    return "redirect:/";
+  public String saveTestDrive(@RequestParam("carId") int carId,
+      @RequestParam("date") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+      Model model) {
+    try {
+      userCarService.saveTestDrive(date, carId);
+      return "redirect:/";
+    } catch (IllegalArgumentException | IllegalStateException exception) {
+      TestDrive form = new TestDrive();
+      form.setDate(date);
+      model.addAttribute("testDrive", form);
+      model.addAttribute("car", userCarService.getCarById(carId));
+      model.addAttribute("message", exception.getMessage());
+      return "user/test-drive";
+    }
   }
-
 }

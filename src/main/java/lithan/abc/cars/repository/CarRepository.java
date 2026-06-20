@@ -2,32 +2,36 @@ package lithan.abc.cars.repository;
 
 import java.util.List;
 
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import lithan.abc.cars.entity.Car;
+import lithan.abc.cars.entity.UserAccount;
 
 public interface CarRepository extends JpaRepository<Car, Integer> {
 
-        @Query(value = "SELECT * FROM tb_car "
-                        + "WHERE make LIKE '%' :keyword '%' "
-                        + "OR model LIKE '%' :keyword '%' "
-                        + "OR year LIKE '%' :keyword '%' ", nativeQuery = true)
+        List<Car> findByStatusNot(String status);
+
+        List<Car> findByUser(UserAccount user);
+
+        @Query("SELECT c FROM Car c WHERE c.status <> 'DEACTIVE' AND "
+                        + "(LOWER(c.make) LIKE LOWER(CONCAT('%', :keyword, '%')) "
+                        + "OR LOWER(c.model) LIKE LOWER(CONCAT('%', :keyword, '%')) "
+                        + "OR c.year LIKE CONCAT('%', :keyword, '%'))")
         List<Car> searchCar(@Param("keyword") String keyword);
 
-        @Query(value = "SELECT * FROM tb_car "
-                        + "WHERE price >= :low AND price <= :high", nativeQuery = true)
+        @Query("SELECT c FROM Car c WHERE c.status <> 'DEACTIVE' AND c.price BETWEEN :low AND :high")
         List<Car> searchCarByPriceRange(@Param("low") int low, @Param("high") int high);
 
-        @Query(value = "SELECT * FROM tb_car "
-                        + "WHERE make LIKE '%' :keyword '%' "
-                        + "OR model LIKE '%' :keyword '%' "
-                        + "OR year LIKE '%' :keyword '%' "
-                        + "AND price >= :low AND price <= :high", nativeQuery = true)
+        @Query("SELECT c FROM Car c WHERE c.status <> 'DEACTIVE' AND c.price BETWEEN :low AND :high AND "
+                        + "(LOWER(c.make) LIKE LOWER(CONCAT('%', :keyword, '%')) "
+                        + "OR LOWER(c.model) LIKE LOWER(CONCAT('%', :keyword, '%')) "
+                        + "OR c.year LIKE CONCAT('%', :keyword, '%'))")
         List<Car> searchCarByKeywordAndPriceRange(@Param("keyword") String keyword, @Param("low") int low,
                         @Param("high") int high);
 
-        @Query(value = "SELECT * FROM tb_car WHERE status = 'ACTIVE' ORDER BY RAND() LIMIT 3", nativeQuery = true)
-        List<Car> featuredCars();
+        @Query("SELECT c FROM Car c WHERE c.status = 'ACTIVE' ORDER BY c.idCar DESC")
+        List<Car> featuredCars(Pageable pageable);
 }

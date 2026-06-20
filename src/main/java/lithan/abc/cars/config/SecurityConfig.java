@@ -1,5 +1,7 @@
 package lithan.abc.cars.config;
 
+import jakarta.servlet.DispatcherType;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -9,7 +11,6 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
-import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 
 @Configuration
 @EnableWebSecurity
@@ -27,17 +28,21 @@ public class SecurityConfig {
   public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
 
     // Authorize
-    http.authorizeRequests(configurer -> configurer
-        .antMatchers("/css/**", "/images/**", "/js/**").permitAll()
-        .antMatchers("/").permitAll()
-        .antMatchers("/cars/**").permitAll()
-        .antMatchers("/register/**").permitAll()
+    http.authorizeHttpRequests(configurer -> configurer
+        .dispatcherTypeMatchers(DispatcherType.FORWARD, DispatcherType.ERROR).permitAll()
+        .requestMatchers("/css/**", "/images/**", "/js/**").permitAll()
+        .requestMatchers("/actuator/health").permitAll()
+        .requestMatchers("/").permitAll()
+        .requestMatchers("/cars/**").permitAll()
+        .requestMatchers("/about-us", "/contact-us", "/view-user/**").permitAll()
+        .requestMatchers("/register/**").permitAll()
 
-        .antMatchers("/user/**").hasRole("USER")
-        .antMatchers("/car-bid/**").hasRole("USER")
-        .antMatchers("/test-drive/**").hasRole("USER")
+        .requestMatchers("/user/**").hasRole("USER")
+        .requestMatchers("/car-bid/**").hasRole("USER")
+        .requestMatchers("/test-drive/**").hasRole("USER")
 
-        .antMatchers("/admin/**").hasRole("ADMIN"));
+        .requestMatchers("/admin/**").hasRole("ADMIN")
+        .anyRequest().authenticated());
 
     // Form Login
     http.formLogin(form -> form
@@ -48,7 +53,7 @@ public class SecurityConfig {
 
     // Logout
     http.logout(logout -> logout
-        .logoutRequestMatcher(new AntPathRequestMatcher("/logout"))
+        .logoutUrl("/logout")
         .permitAll());
 
     return http.build();

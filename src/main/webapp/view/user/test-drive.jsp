@@ -20,11 +20,11 @@
           </div>
           <!-- FORM -->
           <form:form action="testDriveProcess" method="POST" modelAttribute="testDrive">
+            <p class="error">${message}</p>
             <label class="fs-6 form-label">Date</label>
             <form:input class="form-control" type="date" path="date" id="inputDate" />
 
-            <form:hidden path="user" value="${user.idUser}" />
-            <form:hidden path="car" value="${car.idCar}" />
+            <input type="hidden" name="carId" value="${car.idCar}" />
 
             <button class="btn btn-primary form-button" type="submit">Test Drive</button>
           </form:form>

@@ -59,7 +59,9 @@
                               <a class="dropdown-item" href="<%= request.getContextPath() %>/admin/edit-user?id=${user.profile.idProfile}">Edit Profile</a>
                             </li>
                             <li>
-                              <a class="dropdown-item" href="<%= request.getContextPath() %>/admin/mark-admin/${user.idUser}">Mark As Admin</a>
+                              <form:form action="${pageContext.request.contextPath}/admin/mark-admin/${user.idUser}" method="POST">
+                                <button class="dropdown-item" type="submit">Mark As Admin</button>
+                              </form:form>
                             </li>
                           </ul>
                         </div>

@@ -1,119 +1,76 @@
-# Subotin-Motors-Portal
+# Subotin Motors
 
-Veb aplikacija koja nudi tržište za kupovinu i prodaju polovnih automobila. Omogućava korisnicima da pregledaju širok izbor polovnih vozila i daju ponude za automobile za koje su zainteresovani, pružajući im potencijal da kupe vozilo po nižoj ceni.
+Subotin Motors is a Spring MVC marketplace for listing used cars, placing bids, and requesting test drives.
 
-## Pregled projekta
+## Technology
 
-**Postoje 2 tipa korisnika na ovom portalu. I oni su**
+- Java 17+
+- Spring Boot 3.5
+- Spring MVC, Security, Data JPA, and Validation
+- JSP and Bootstrap
+- Flyway database migrations
+- H2 for zero-configuration local development
+- MySQL for deployment
 
-1.  Krajni korisnici
-2.  Administratori
+## Run locally
 
-**Korisnici su u mogućnosti da obavljaju sledeće funkcije na portalu**
+The default profile uses a local H2 database. No database installation or credentials are required.
 
-1.  Registraciju na portal
-2.  Prijavu na portal
-3.  Postavljanje automobila na prodaju zajedno sa otpremanjem slike
-4.  Deaktivaciju postojećeg oglasa
-5.  Ažuriranje njihovog profila nakon prijave
-6.  Zakazivanje probne vožnje
-7.  Objavu ponudne cene
+Ensure `java -version` reports Java 17 or newer. On Windows, an older Oracle Java
+entry can appear earlier on `PATH`; point `JAVA_HOME` and `PATH` to the JDK used
+by Maven if that happens.
 
-**Administratori su u mogućnosti da obavljaju sledeće funkcije na portalu**
-
-1.  Registraciju na portal
-2.  Prijavu na portal
-3.  Pregled registrovanih korisnika
-4.  Označavanje korisnika kao administratora
-5.  Aktivaciju / Deaktivaciju oglasa
-6.  Ažuriranje njihovog profila nakon prijave
-7.  Odobreti / Odbiti termin test vožnje korisnika na osnovu licitacije
-8.  Obavljanje transakcije ukoliko je odgovarajuća cena
-
-**Korisnici i Administratori su u mogućnosti da obavljaju sledeće funkcije na portalu**
-
-1.  Posećivanje početne stranice
-2.  Pregled svih oglasa
-3.  Potraga automobila na osnovu marke, modela, godišta registracije i raspona cena
-4.  About Us Page
-5.  Contact Us Page
-
-## Korišćene tehnologije
-
-Backend : Java SE 11, MySQL 8, Spring Boot, Spring Security
-Frontend : JSP, JavaScript, Bootstrap
-
-## Kako pokrenuti
-
-1. **Import-ovati postojeći projekat u Visual Studio Code** 
-2. **Kreirati MySQL bazu podataka**
-
-```bash
-mysql> CREATE DATABASE abc_cars;
-```
-2. **Podesite 'application propreties'**
-
-```bash
-spring.datasource.username=<YOUR_DB_USERNAME>
-spring.datasource.password=<YOUR_DB_PASSWORD>
+```powershell
+.\mvnw.cmd spring-boot:run
 ```
 
-4. **Pokretanje aplikacije**
+Open <http://localhost:8080>.
 
-    U terminalu u Visual Studio Code, navigirajte do direktorijuma vašeg projekta:
+Seeded accounts:
 
-    sh
+- Admin: `admin123` / `admin123`
+- User: `user123` / `user123`
 
-```bash
-cd C:\Users\David\Subotin-Motors-Portal
-```
-    Pokrećete aplikaciju koristeći Maven:
+Local data is stored in `data/` and is ignored by Git.
 
-sh
+## Run tests
 
-```bash
-    mvn spring-boot:run
+```powershell
+.\mvnw.cmd clean test
 ```
 
-Pristup aplikaciji:
+Tests use a separate in-memory H2 database.
 
-    Otvorite web browser i idite na http://localhost:8080.
-    Prijavite se koristeći sledeće kredencijale:
-        Admin: admin123 / admin123
-        User: user123 / user123
+## Build an executable application
 
-Brisanje Browser Cache-a (po potrebi):
+```powershell
+.\mvnw.cmd clean package
+java -jar target\abc-cars-0.0.1-SNAPSHOT.war
+```
 
-    Ako imate problema sa prikazom starih podataka, obrišite keš pregledača za http://localhost:8080.
+## Use MySQL
 
+Create a restricted MySQL user and provide credentials through environment variables:
 
+```powershell
+$env:SPRING_PROFILES_ACTIVE = "mysql"
+$env:DB_URL = "jdbc:mysql://localhost:3306/abc_cars?createDatabaseIfNotExist=true&serverTimezone=UTC"
+$env:DB_USERNAME = "abc_cars"
+$env:DB_PASSWORD = "replace-me"
+.\mvnw.cmd spring-boot:run
+```
 
-## Screenshot
+Never commit database passwords. Flyway applies migrations from
+`src/main/resources/db/migration`.
 
-<p>Home Page</p>
-<img src="./images/home.png" alt="home_page" width="50%"/>
-<p>Login</p>
-<img src="./images/login.png" alt="login" width="50%"/>
-<p>Profile page</p>
-<img src="./images/profile.png" alt="profile" width="50%"/>
-<p>Cars Page</p>
-<img src="./images/cars.png" alt="cars" width="50%"/>
-<p>Car Detail Page</p>
-<img src="./images/car-detail.png" alt="car_detail" width="50%"/>
-<p>Post Car</p>
-<img src="./images/post-car.png" alt="post_car" width="50%"/>
-<p>Bid Car</p>
-<img src="./images/place-bid.png" alt="bid_car" width="50%"/>
-<p>Test Drive</p>
-<img src="./images/test-drive.png" alt="test_drive" width="50%"/>
-<p>Appointment</p>
-<img src="./images/appointment.png" alt="appointment" width="50%"/>
-<p>My Posted Car</p>
-<img src="./images/my-posted-car.png" alt="my_posted_car" width="50%"/>
-<p>About Page</p>
-<img src="./images/about.png" alt="about" width="50%"/>
-<p>Contact Page</p>
-<img src="./images/contact.png" alt="contact" width="50%"/>
-<p>Admin Pages</p>
-<img src="./images/admin.png" alt="admin" width="50%"/>
-<img src="./images/admin2.png" alt="admin" width="50%"/>
+## Current features
+
+- Registration and BCrypt authentication
+- User and administrator roles
+- Profile and image management
+- Car listing and moderation
+- Search by make, model, year, and price
+- Bidding
+- Test-drive requests
+
+Payment processing is intentionally not included yet. The next planned integration is Paddle after the application baseline is verified.

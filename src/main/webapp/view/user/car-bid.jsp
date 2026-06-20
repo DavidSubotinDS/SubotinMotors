@@ -26,11 +26,7 @@
           <!-- FORM -->
           <p class="error">${message}</p>
           <form:form action="postCarBidding" method="POST" modelAttribute="carBidding">
-            <form:hidden path="user" value="${user.idUser}" />
-
-            <form:hidden path="car" value="${car.idCar}" />
-
-            <input type="hidden" name="highestBidding" value="${highestBidding}" />
+            <input type="hidden" name="carId" value="${car.idCar}" />
 
             <label class="fs-6 form-label">Bid Price</label>
             <form:input class="form-control" type="number" path="bidPrice" cssErrorClass="error-border" />

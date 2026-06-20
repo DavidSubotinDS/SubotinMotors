@@ -60,9 +60,9 @@
 
               <li class="dropdown-divider"></li>
               <li>
-                <a class="dropdown-item" href="<%= request.getContextPath() %>/logout">
-                  <button class="nav-logout btn btn-primary">Logout</button>
-                </a>
+                <form:form action="${pageContext.request.contextPath}/logout" method="POST">
+                  <button class="dropdown-item nav-logout btn btn-primary" type="submit">Logout</button>
+                </form:form>
               </li>
             </ul>
           </li>

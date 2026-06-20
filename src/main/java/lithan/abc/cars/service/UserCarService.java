@@ -1,13 +1,12 @@
 package lithan.abc.cars.service;
 
+import java.time.LocalDate;
 import java.util.List;
 
 import org.springframework.web.multipart.MultipartFile;
 
 import lithan.abc.cars.entity.Car;
-import lithan.abc.cars.entity.CarBidding;
 import lithan.abc.cars.entity.TestDrive;
-import lithan.abc.cars.entity.UserAccount;
 
 public interface UserCarService {
 
@@ -15,23 +14,23 @@ public interface UserCarService {
 
   void postCar(MultipartFile file, Car car) throws Exception;
 
-  void editCar(Car car);
+  Car getOwnedCarById(int id);
 
-  void activateCarPost(int id);
+  Car editOwnedCar(Car car);
 
-  void deactivateCarPost(int id);
+  void changeOwnedCarStatus(int id, String status);
 
-  List<CarBidding> listCarBid();
+  void changeCarStatusByAdmin(int id, String status);
 
   Car getCarById(int id);
 
-  void postCarBidding(CarBidding carBidding);
+  void placeBid(int carId, int bidPrice);
 
   int highestBidding(int idCar);
 
-  void saveTestDrive(String date, UserAccount user, Car car);
+  void saveTestDrive(LocalDate date, int carId);
 
-  List<TestDrive> listTestDrive();
+  List<TestDrive> listTestDriveForOwnedCars();
 
-  void saveUploadPicture(MultipartFile file, Car car) throws Exception;
+  void saveUploadPicture(MultipartFile file, int carId) throws Exception;
 }

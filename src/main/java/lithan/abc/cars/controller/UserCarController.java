@@ -2,8 +2,7 @@ package lithan.abc.cars.controller;
 
 import java.util.List;
 
-import javax.servlet.http.HttpSession;
-import javax.validation.Valid;
+import jakarta.validation.Valid;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
@@ -19,7 +18,6 @@ import org.springframework.web.multipart.MultipartFile;
 
 import lithan.abc.cars.entity.Car;
 import lithan.abc.cars.entity.TestDrive;
-import lithan.abc.cars.entity.UserAccount;
 import lithan.abc.cars.service.UserCarService;
 import lithan.abc.cars.service.UserService;
 
@@ -69,8 +67,8 @@ public class UserCarController {
     try {
       userCarService.postCar(file, car);
     } catch (Exception e) {
-      e.printStackTrace();
-      System.out.println(e.getMessage());
+      model.addAttribute("fileError", e.getMessage());
+      return "user/post-car";
     }
 
     return "redirect:/user/my-posted-car";
@@ -79,18 +77,8 @@ public class UserCarController {
   // Edit Posted Car
   @GetMapping("/edit-posted-car")
   public String editPostedCar(@RequestParam("id") int id, Model model) {
-    List<Car> userCars = userCarService.listUserCar();
-
-    // Check if the user that access the link is the owned the posted car
-    for (Car car : userCars) {
-      if (car.getIdCar() == id) {
-        model.addAttribute("car", car);
-        return "user/edit-posted-car";
-      }
-    }
-
-    // If unauthorized user tried to access the edit post car
-    return "redirect:/user/my-posted-car";
+    model.addAttribute("car", userCarService.getOwnedCarById(id));
+    return "user/edit-posted-car";
   }
 
   @PostMapping("/editCarProcess")
@@ -99,24 +87,24 @@ public class UserCarController {
       return "user/edit-posted-car";
     }
 
-    userCarService.editCar(car);
+    Car savedCar = userCarService.editOwnedCar(car);
 
-    return "redirect:/cars/" + car.getMake() + "/" + car.getModel() + "/" + car.getYear() + "/" + car.getIdCar();
+    return "redirect:/cars/" + savedCar.getMake() + "/" + savedCar.getModel() + "/" + savedCar.getYear() + "/" + savedCar.getIdCar();
   }
 
   // Activate & Deactivate Posted Car
-  @GetMapping("/activate/{idCar}")
+  @PostMapping("/activate/{idCar}")
   public String activatePostedCar(@PathVariable("idCar") int id) {
 
-    userCarService.activateCarPost(id);
+    userCarService.changeOwnedCarStatus(id, "ACTIVE");
 
     return "redirect:/user/my-posted-car";
   }
 
-  @GetMapping("/deactivate/{idCar}")
+  @PostMapping("/deactivate/{idCar}")
   public String deactivatePostedCar(@PathVariable("idCar") int id) {
 
-    userCarService.deactivateCarPost(id);
+    userCarService.changeOwnedCarStatus(id, "DEACTIVE");
 
     return "redirect:/user/my-posted-car";
   }
@@ -124,10 +112,7 @@ public class UserCarController {
   // List Test Drive
   @GetMapping("/test-drive")
   public String listTestDrive(Model model) {
-    UserAccount user = userService.getUserLogin();
-    List<TestDrive> listTestDrive = userCarService.listTestDrive();
-
-    listTestDrive.removeIf(test -> test.getCar().getUser().getIdUser() != user.getIdUser());
+    List<TestDrive> listTestDrive = userCarService.listTestDriveForOwnedCars();
 
     model.addAttribute("listTestDrive", listTestDrive);
 
@@ -136,30 +121,23 @@ public class UserCarController {
 
   // Upload Car Picture
   @GetMapping("/upload-car-picture")
-  public String uploadPicture(@RequestParam("idCar") int idCar, HttpSession session) {
-    session.setAttribute("idCar", idCar);
-
+  public String uploadPicture(@RequestParam("idCar") int idCar, Model model) {
+    userCarService.getOwnedCarById(idCar);
+    model.addAttribute("idCar", idCar);
     return "user/upload-car-picture";
   }
 
   @PostMapping("/uploadCarPicture")
-  public String uploadCarImage(@RequestParam("imageFile") MultipartFile imageFile, Model model, HttpSession session) {
-    String type = imageFile.getContentType();
-
-    if (type != null && (type.equals("image/jpg") || type.equals("image/jpeg") || type.equals("image/png"))) {
-      Car car = userCarService.getCarById((int) session.getAttribute("idCar"));
-
-      try {
-        userCarService.saveUploadPicture(imageFile, car);
-      } catch (Exception e) {
-        e.printStackTrace();
-      }
-
-      return "redirect:/cars";
+  public String uploadCarImage(@RequestParam("imageFile") MultipartFile imageFile,
+      @RequestParam("idCar") int idCar, Model model) {
+    try {
+      userCarService.saveUploadPicture(imageFile, idCar);
+      return "redirect:/user/my-posted-car";
+    } catch (Exception exception) {
+      model.addAttribute("idCar", idCar);
+      model.addAttribute("message", exception.getMessage());
+      return "user/upload-car-picture";
     }
-
-    model.addAttribute("message", "File type not suported");
-    return "user/upload-car-picture";
   }
 
 }

@@ -43,5 +43,11 @@ public interface UserCarService {
 
   void cancelCurrentUserTestDrive(int testDriveId);
 
+  void acceptTestDriveForOwnedCar(int testDriveId);
+
+  void rejectTestDriveForOwnedCar(int testDriveId);
+
+  void cancelTestDriveForOwnedCar(int testDriveId);
+
   void saveUploadPicture(MultipartFile file, int carId) throws Exception;
 }

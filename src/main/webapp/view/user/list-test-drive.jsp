@@ -46,6 +46,7 @@
                     <th>Car</th>
                     <th>Seller</th>
                     <th>Date</th>
+                    <th>Status</th>
                     <th>Management</th>
                   </tr>
                 </thead>
@@ -60,21 +61,44 @@
                       <td>${test.car.user.profile.firstName} ${test.car.user.profile.lastName}</td>
                       <td>${test.date}</td>
                       <td>
-                        <div class="d-flex flex-wrap gap-2">
-                          <form:form action="${pageContext.request.contextPath}/user/test-drives/${test.idTestDrive}/reschedule" method="POST" class="d-flex gap-2">
-                            <input class="form-control form-control-sm" type="date" name="date" value="${test.date}" required />
-                            <button class="btn btn-sm btn-outline-primary" type="submit">Reschedule</button>
-                          </form:form>
-                          <form:form action="${pageContext.request.contextPath}/user/test-drives/${test.idTestDrive}/cancel" method="POST">
-                            <button class="btn btn-sm btn-outline-danger" type="submit">Cancel</button>
-                          </form:form>
-                        </div>
+                        <c:choose>
+                          <c:when test="${test.pending}">
+                            <span class="badge bg-warning text-dark">${test.status.label}</span>
+                          </c:when>
+                          <c:when test="${test.accepted}">
+                            <span class="badge bg-success">${test.status.label}</span>
+                          </c:when>
+                          <c:when test="${test.rejected}">
+                            <span class="badge bg-danger">${test.status.label}</span>
+                          </c:when>
+                          <c:otherwise>
+                            <span class="badge bg-secondary">${test.status.label}</span>
+                          </c:otherwise>
+                        </c:choose>
+                      </td>
+                      <td>
+                        <c:choose>
+                          <c:when test="${test.reschedulable}">
+                            <div class="d-flex flex-wrap gap-2">
+                              <form:form action="${pageContext.request.contextPath}/user/test-drives/${test.idTestDrive}/reschedule" method="POST" class="d-flex gap-2">
+                                <input class="form-control form-control-sm" type="date" name="date" value="${test.date}" required />
+                                <button class="btn btn-sm btn-outline-primary" type="submit">Reschedule</button>
+                              </form:form>
+                              <form:form action="${pageContext.request.contextPath}/user/test-drives/${test.idTestDrive}/cancel" method="POST">
+                                <button class="btn btn-sm btn-outline-danger" type="submit">Cancel</button>
+                              </form:form>
+                            </div>
+                          </c:when>
+                          <c:otherwise>
+                            <span class="text-secondary">No actions available</span>
+                          </c:otherwise>
+                        </c:choose>
                       </td>
                     </tr>
                   </c:forEach>
                   <c:if test="${empty bookedTestDrives}">
                     <tr>
-                      <td colspan="4" class="text-secondary">You have no test-drive bookings.</td>
+                      <td colspan="5" class="text-secondary">You have no test-drive bookings.</td>
                     </tr>
                   </c:if>
                 </tbody>
@@ -89,6 +113,8 @@
                     <th>Car</th>
                     <th>Client</th>
                     <th>Date</th>
+                    <th>Status</th>
+                    <th>Management</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -101,11 +127,49 @@
                       </td>
                       <td>${test.user.profile.firstName} ${test.user.profile.lastName}</td>
                       <td>${test.date}</td>
+                      <td>
+                        <c:choose>
+                          <c:when test="${test.pending}">
+                            <span class="badge bg-warning text-dark">${test.status.label}</span>
+                          </c:when>
+                          <c:when test="${test.accepted}">
+                            <span class="badge bg-success">${test.status.label}</span>
+                          </c:when>
+                          <c:when test="${test.rejected}">
+                            <span class="badge bg-danger">${test.status.label}</span>
+                          </c:when>
+                          <c:otherwise>
+                            <span class="badge bg-secondary">${test.status.label}</span>
+                          </c:otherwise>
+                        </c:choose>
+                      </td>
+                      <td>
+                        <c:choose>
+                          <c:when test="${test.pending}">
+                            <div class="d-flex flex-wrap gap-2">
+                              <form:form action="${pageContext.request.contextPath}/user/test-drives/${test.idTestDrive}/accept" method="POST">
+                                <button class="btn btn-sm btn-success" type="submit">Accept</button>
+                              </form:form>
+                              <form:form action="${pageContext.request.contextPath}/user/test-drives/${test.idTestDrive}/reject" method="POST">
+                                <button class="btn btn-sm btn-outline-danger" type="submit">Reject</button>
+                              </form:form>
+                            </div>
+                          </c:when>
+                          <c:when test="${test.accepted}">
+                            <form:form action="${pageContext.request.contextPath}/user/test-drives/${test.idTestDrive}/owner-cancel" method="POST">
+                              <button class="btn btn-sm btn-outline-danger" type="submit">Cancel appointment</button>
+                            </form:form>
+                          </c:when>
+                          <c:otherwise>
+                            <span class="text-secondary">Decision recorded</span>
+                          </c:otherwise>
+                        </c:choose>
+                      </td>
                     </tr>
                   </c:forEach>
                   <c:if test="${empty receivedTestDrives}">
                     <tr>
-                      <td colspan="3" class="text-secondary">No one has requested a test drive for your cars.</td>
+                      <td colspan="5" class="text-secondary">No one has requested a test drive for your cars.</td>
                     </tr>
                   </c:if>
                 </tbody>

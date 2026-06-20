@@ -21,6 +21,8 @@ import lithan.abc.cars.repository.CarBiddingRepository;
 import lithan.abc.cars.repository.CarPictureRepository;
 import lithan.abc.cars.repository.CarRepository;
 import lithan.abc.cars.repository.TestDriveRepository;
+import lithan.abc.cars.validation.ImageUploadValidator;
+import lithan.abc.cars.validation.ImageUploadValidator.ValidatedImage;
 
 @Service
 public class UserCarServiceImpl implements UserCarService {
@@ -48,13 +50,13 @@ public class UserCarServiceImpl implements UserCarService {
   @Override
   @Transactional
   public void postCar(MultipartFile file, Car car) throws Exception {
-    validateImage(file);
+    ValidatedImage image = ImageUploadValidator.validate(file);
     UserAccount user = userService.getUserLogin();
     CarPicture picture = new CarPicture();
 
-    picture.setFileName(safeFileName(file));
-    picture.setFileType(file.getContentType());
-    picture.setImage(Base64.getEncoder().encodeToString(file.getBytes()));
+    picture.setFileName(image.fileName());
+    picture.setFileType(image.contentType());
+    picture.setImage(Base64.getEncoder().encodeToString(image.bytes()));
     picture.setCar(car);
 
     car.setCarPicture(picture);
@@ -280,35 +282,20 @@ public class UserCarServiceImpl implements UserCarService {
   }
 
   private void validateTestDriveDate(LocalDate date) {
-    if (date == null || date.isBefore(LocalDate.now())) {
-      throw new IllegalArgumentException("Test drive date cannot be in the past");
+    if (date == null || !date.isAfter(LocalDate.now())) {
+      throw new IllegalArgumentException("Test drive date must be in the future");
     }
   }
 
   @Override
   @Transactional
   public void saveUploadPicture(MultipartFile file, int carId) throws Exception {
-    validateImage(file);
+    ValidatedImage image = ImageUploadValidator.validate(file);
     Car car = getOwnedCarById(carId);
     CarPicture picture = car.getCarPicture();
-    picture.setFileName(safeFileName(file));
-    picture.setFileType(file.getContentType());
-    picture.setImage(Base64.getEncoder().encodeToString(file.getBytes()));
+    picture.setFileName(image.fileName());
+    picture.setFileType(image.contentType());
+    picture.setImage(Base64.getEncoder().encodeToString(image.bytes()));
     carPictureRepo.save(picture);
-  }
-
-  private void validateImage(MultipartFile file) {
-    if (file == null || file.isEmpty()) {
-      throw new IllegalArgumentException("Image file is required");
-    }
-    String type = file.getContentType();
-    if (!"image/jpeg".equals(type) && !"image/png".equals(type)) {
-      throw new IllegalArgumentException("Only JPEG and PNG images are supported");
-    }
-  }
-
-  private String safeFileName(MultipartFile file) {
-    String name = file.getOriginalFilename();
-    return name == null ? "image" : name.replace("\\", "/").substring(name.replace("\\", "/").lastIndexOf('/') + 1);
   }
 }

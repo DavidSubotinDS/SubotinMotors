@@ -26,6 +26,9 @@
               </li>
               <li>
                 <p class="ms-1"><i class="fa-solid fa-dollar-sign"></i> Price Range</p>
+                <c:if test="${not empty searchError}">
+                  <p class="error">${searchError}</p>
+                </c:if>
                 <form action="<%= request.getContextPath() %>/cars">
                   <input class="form-control mb-3 ps-4 pe-0" type="number" name="low" required value="${low}" placeholder="Minimum price" />
                   <input class="form-control mb-3 ps-4 pe-0" type="number" name="high" required value="${high}" placeholder="Maximum price" />

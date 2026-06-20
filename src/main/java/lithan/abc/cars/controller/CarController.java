@@ -6,11 +6,15 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
+import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
+import jakarta.validation.Valid;
+import lithan.abc.cars.dto.CarSearchCriteria;
 import lithan.abc.cars.entity.Car;
 import lithan.abc.cars.error.ResourceNotFoundException;
 import lithan.abc.cars.service.CarService;
@@ -32,21 +36,27 @@ public class CarController {
       @RequestParam(defaultValue = "8") int size,
       @RequestParam(defaultValue = "idCar") String sort,
       @RequestParam(defaultValue = "desc") String direction,
-      @RequestParam(required = false) String keyword,
-      @RequestParam(required = false) Integer low,
-      @RequestParam(required = false) Integer high,
+      @Valid @ModelAttribute("search") CarSearchCriteria search,
+      BindingResult bindingResult,
       Model model) {
     String sortProperty = catalogSortProperty(sort);
     Sort.Direction sortDirection = sortDirection(direction);
-    Page<Car> carPage = carService.findCatalogCars(
-        keyword, low, high,
-        PageRequest.of(Math.max(page, 0), pageSize(size), Sort.by(sortDirection, sortProperty)));
+    PageRequest pageRequest = PageRequest.of(
+        Math.max(page, 0), pageSize(size), Sort.by(sortDirection, sortProperty));
+    Page<Car> carPage;
+    if (bindingResult.hasErrors()) {
+      carPage = Page.empty(pageRequest);
+      model.addAttribute("searchError", bindingResult.getAllErrors().get(0).getDefaultMessage());
+    } else {
+      carPage = carService.findCatalogCars(
+          search.getKeyword(), search.getLow(), search.getHigh(), pageRequest);
+    }
 
     model.addAttribute("carPage", carPage);
     model.addAttribute("listCar", carPage.getContent());
-    model.addAttribute("keyword", keyword);
-    model.addAttribute("low", low);
-    model.addAttribute("high", high);
+    model.addAttribute("keyword", search.getKeyword());
+    model.addAttribute("low", search.getLow());
+    model.addAttribute("high", search.getHigh());
     model.addAttribute("sort", sortProperty);
     model.addAttribute("direction", sortDirection.name().toLowerCase());
     return "cars";

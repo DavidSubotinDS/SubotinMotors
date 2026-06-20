@@ -84,24 +84,20 @@ public class UserController {
   @PostMapping("/uploadPicture")
   public String uploadProfileImage(@RequestParam("imageFile") MultipartFile imageFile, Model model,
       HttpSession session) {
-    String type = imageFile.getContentType();
-    if (!imageFile.isEmpty() && ("image/jpeg".equals(type) || "image/png".equals(type))) {
-      UserAccount user = userService.getUserLogin();
-      UserProfile profile = user.getProfile();
+    UserAccount user = userService.getUserLogin();
+    UserProfile profile = user.getProfile();
 
-      try {
-        userService.saveImage(imageFile, profile);
-        session.setAttribute("profileLog", profile);
-      } catch (Exception e) {
-        model.addAttribute("message", "Unable to save image");
-        return "user/upload-picture";
-      }
-
+    try {
+      userService.saveImage(imageFile, profile);
+      session.setAttribute("profileLog", profile);
       return "redirect:/user/my-profile";
+    } catch (IllegalArgumentException exception) {
+      model.addAttribute("message", exception.getMessage());
+      return "user/upload-picture";
+    } catch (Exception exception) {
+      model.addAttribute("message", "Unable to save image");
+      return "user/upload-picture";
     }
-
-    model.addAttribute("message", "Only JPEG and PNG images are supported");
-    return "user/upload-picture";
   }
 
 }

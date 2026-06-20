@@ -50,6 +50,16 @@ class AbcCarsApplicationTests {
 	}
 
 	@Test
+	void carCatalogueRejectsAnInvertedPriceRange() throws Exception {
+		mockMvc.perform(get("/cars")
+						.param("low", "50000")
+						.param("high", "1000"))
+				.andExpect(status().isOk())
+				.andExpect(model().attribute(
+						"searchError", "Minimum price cannot be greater than maximum price"));
+	}
+
+	@Test
 	@WithMockUser(username = "admin123", roles = "ADMIN")
 	void adminListsSupportIndependentPaginationAndSorting() throws Exception {
 		mockMvc.perform(get("/admin/dashboard")

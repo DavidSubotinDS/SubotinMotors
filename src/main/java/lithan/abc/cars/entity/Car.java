@@ -16,9 +16,8 @@ import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.Positive;
-import jakarta.validation.constraints.Size;
+import lithan.abc.cars.validation.ProductionYear;
 
 @Entity
 @Table(name = "tb_car")
@@ -37,8 +36,7 @@ public class Car {
   @Column(nullable = false)
   private String model;
 
-  @NotEmpty(message = "Year is required")
-  @Size(min = 4, max = 4, message = "Year must be 4 characters long")
+  @ProductionYear
   @Column(name = "production_year", nullable = false)
   private String year;
 

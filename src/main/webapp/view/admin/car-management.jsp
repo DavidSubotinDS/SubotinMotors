@@ -23,7 +23,13 @@
                 <a href="<%= request.getContextPath() %>/admin/car-management"><i class="fa-solid fa-car"></i> Car Management</a>
               </li>
               <li>
-                <a href="<%= request.getContextPath() %>/admin/transactions"><i class="fa-solid fa-receipt"></i> Transactions</a>
+                <a href="<%= request.getContextPath() %>/admin/store/parts"><i class="fa-solid fa-gears"></i> Parts Inventory</a>
+              </li>
+              <li>
+                <a href="<%= request.getContextPath() %>/admin/store/orders"><i class="fa-solid fa-box"></i> Store Orders</a>
+              </li>
+              <li>
+                <a href="<%= request.getContextPath() %>/admin/transactions"><i class="fa-solid fa-clock-rotate-left"></i> Legacy Transactions</a>
               </li>
             </ul>
           </aside>
@@ -44,6 +50,7 @@
                   <option value="year" ${carSort eq 'year' ? 'selected' : ''}>Year</option>
                   <option value="price" ${carSort eq 'price' ? 'selected' : ''}>Price</option>
                   <option value="status" ${carSort eq 'status' ? 'selected' : ''}>Status</option>
+                  <option value="auctionEndTime" ${carSort eq 'auctionEndTime' ? 'selected' : ''}>Auction end</option>
                 </select>
                 <select class="form-select" name="carDirection" aria-label="Car sort direction">
                   <option value="asc" ${carDirection eq 'asc' ? 'selected' : ''}>Ascending</option>
@@ -62,6 +69,7 @@
                     <th>Model</th>
                     <th>Year</th>
                     <th>Price</th>
+                    <th>Auction end</th>
                     <th>Status</th>
                     <th></th>
                   </tr>
@@ -75,6 +83,7 @@
                       <td>${car.model}</td>
                       <td>${car.year}</td>
                       <td>${car.price}</td>
+                      <td data-auction-end="${car.auctionEndTimeEpochMillis}"><span class="auction-countdown">${car.auctionEndTimeDisplay}</span></td>
                       <c:if test="${car.status.equals('ACTIVE')}">
                         <td class="fw-semibold text-primary">${car.status}</td>
                       </c:if>
@@ -292,5 +301,6 @@
 
     <!-- Footer -->
     <%@ include file="../components/footer.jsp" %>
+    <script src="/js/auction-timer.js"></script>
   </body>
 </html>

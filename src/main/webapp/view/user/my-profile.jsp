@@ -26,7 +26,13 @@
                 <a href="<%= request.getContextPath() %>/user/test-drive"><i class="fa-regular fa-calendar-check"></i> Appointment</a>
               </li>
               <li>
-                <a href="<%= request.getContextPath() %>/user/payments"><i class="fa-solid fa-credit-card"></i> Payments</a>
+                <a href="<%= request.getContextPath() %>/orders"><i class="fa-solid fa-box"></i> Parts Orders</a>
+              </li>
+              <li>
+                <a href="<%= request.getContextPath() %>/user/followed-auctions"><i class="fa-regular fa-star"></i> Followed Auctions</a>
+              </li>
+              <li>
+                <a href="<%= request.getContextPath() %>/user/notifications"><i class="fa-regular fa-bell"></i> Notifications</a>
               </li>
             </ul>
           </aside>
@@ -45,6 +51,7 @@
                 </div>
                 <div class="user-details pt-4">
                   <h5 class="fw-semibold">${profile.firstName} ${profile.lastName}</h5>
+                  <p class="text-secondary m-0">${email}</p>
                   <p class="text-secondary m-0">${profile.phoneNumber}</p>
                   <p class="text-secondary m-0">${profile.address}</p>
                 </div>
@@ -63,20 +70,10 @@
               </div>
             </c:if>
             <div class="about mt-3">
-              <h5 class="fw-semibold">Seller payouts</h5>
-              <c:choose>
-                <c:when test="${!stripeEnabled}">
-                  <p class="text-secondary mb-0">Stripe Connect is not configured in this environment.</p>
-                </c:when>
-                <c:when test="${paymentAccount != null && paymentAccount.transfersEnabled}">
-                  <p class="text-success mb-2">Your Stripe payout account is ready.</p>
-                  <a class="btn btn-outline-secondary" href="<%= request.getContextPath() %>/user/payments">View payments</a>
-                </c:when>
-                <c:otherwise>
-                  <p class="text-secondary">Connect Stripe before an administrator can accept a bid on one of your cars.</p>
-                  <a class="btn btn-primary" href="<%= request.getContextPath() %>/payments/seller/onboarding">Connect Stripe</a>
-                </c:otherwise>
-              </c:choose>
+              <h5 class="fw-semibold">Parts store</h5>
+              <p class="text-secondary">Buy maintenance and accessory products through the Subotin Motors sandbox checkout.</p>
+              <a class="btn btn-primary me-2" href="<%= request.getContextPath() %>/parts">Browse parts</a>
+              <a class="btn btn-outline-secondary" href="<%= request.getContextPath() %>/orders">My orders</a>
             </div>
           </div>
         </div>

@@ -206,14 +206,14 @@ public class AdminController {
 
   private String userSortProperty(String sort) {
     return switch (sort) {
-      case "idUser", "username", "profile.firstName", "profile.lastName" -> sort;
+      case "idUser", "username", "email", "profile.firstName", "profile.lastName" -> sort;
       default -> "idUser";
     };
   }
 
   private String carSortProperty(String sort) {
     return switch (sort) {
-      case "idCar", "make", "model", "year", "price", "status" -> sort;
+      case "idCar", "make", "model", "year", "price", "status", "auctionEndTime" -> sort;
       default -> "idCar";
     };
   }

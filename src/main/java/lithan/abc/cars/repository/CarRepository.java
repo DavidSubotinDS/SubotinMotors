@@ -1,5 +1,6 @@
 package lithan.abc.cars.repository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 import org.springframework.data.domain.Page;
@@ -31,4 +32,7 @@ public interface CarRepository extends JpaRepository<Car, Integer> {
 
         @Query("SELECT c FROM Car c WHERE c.status = 'ACTIVE' ORDER BY c.idCar DESC")
         List<Car> featuredCars(Pageable pageable);
+
+        List<Car> findByStatusAndAuctionEndTimeAfterAndAuctionEndTimeLessThanEqual(
+                        String status, LocalDateTime after, LocalDateTime before);
 }

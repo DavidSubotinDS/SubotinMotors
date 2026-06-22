@@ -15,14 +15,23 @@
         <div class="form-wrapper small">
           <h2 class="form-header">Register</h2>
           <form:form action="accountProcess" method="POST" modelAttribute="account">
-            <c:if test="${param.duplicate != null}">
+            <c:if test="${param.duplicate eq 'username'}">
               <p class="error">That username is already registered.</p>
+            </c:if>
+            <c:if test="${param.duplicate eq 'email'}">
+              <p class="error">That email is already registered.</p>
             </c:if>
             <label class="form-label fs-6">Username</label>
             <div>
               <form:errors path="username" cssClass="error" />
             </div>
             <form:input class="form-control" type="text" path="username" cssErrorClass="form-control error-border" />
+
+            <label class="form-label fs-6">Email</label>
+            <div>
+              <form:errors path="email" cssClass="error" />
+            </div>
+            <form:input class="form-control" type="email" path="email" cssErrorClass="form-control error-border" />
 
             <label class="form-label fs-6">Password</label>
             <div>

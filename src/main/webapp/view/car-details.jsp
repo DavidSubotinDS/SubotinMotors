@@ -53,6 +53,10 @@
               <!-- Details -->
               <div class="car-details col-12 col-sm-4">
                 <h4 class="fw-bold">${car.make} ${car.model} ${car.year}</h4>
+                <div class="auction-panel mb-3" data-auction-end="${car.auctionEndTimeEpochMillis}">
+                  <span class="auction-status badge ${car.auctionStatus eq 'ENDING_SOON' ? 'bg-warning text-dark' : car.auctionStatus eq 'ENDED' ? 'bg-secondary' : car.auctionStatus eq 'SOLD' ? 'bg-success' : 'bg-primary'}">${car.auctionStatusLabel}</span>
+                  <p class="auction-countdown fw-semibold mt-2 mb-0">${car.auctionEndTimeDisplay}</p>
+                </div>
                 <p class="text-secondary m-0">STARTING PRICE:</p>
                 <p class="text-black fs-5">$${car.price}</p>
                 <c:if test="${highestBidding != 0}">
@@ -63,13 +67,39 @@
                   <p class="text-secondary m-0">HIGHEST BID:</p>
                   <p class="text-black fs-5">$${highestBidding}</p>
                 </c:if>
+                <c:if test="${followMessage != null}">
+                  <div class="alert alert-info py-2">${followMessage}</div>
+                </c:if>
+                <security:authorize access="isAuthenticated()">
+                  <c:if test="${car.auctionOpen}">
+                    <c:choose>
+                      <c:when test="${following}">
+                        <form:form action="${pageContext.request.contextPath}/user/auctions/${car.idCar}/unfollow" method="POST" cssClass="mb-2">
+                          <button class="btn btn-outline-secondary" type="submit"><i class="fa-solid fa-star"></i> Unfollow auction</button>
+                        </form:form>
+                      </c:when>
+                      <c:otherwise>
+                        <form:form action="${pageContext.request.contextPath}/user/auctions/${car.idCar}/follow" method="POST" cssClass="mb-2">
+                          <button class="btn btn-outline-secondary" type="submit"><i class="fa-regular fa-star"></i> Follow auction</button>
+                        </form:form>
+                      </c:otherwise>
+                    </c:choose>
+                  </c:if>
+                </security:authorize>
                 <div class="car-button-actions">
-                  <a class="text-decoration-none" href="<%= request.getContextPath() %>/car-bid?id=${car.idCar}">
-                    <button class="btn btn-primary">Place Bid</button>
-                  </a>
-                  <a class="text-decoration-none" href="<%= request.getContextPath() %>/test-drive/${car.idCar}">
-                    <button class="btn btn-warning">Schedule a Test Drive</button>
-                  </a>
+                  <c:choose>
+                    <c:when test="${car.auctionOpen}">
+                      <a class="text-decoration-none" href="<%= request.getContextPath() %>/car-bid?id=${car.idCar}">
+                        <button class="btn btn-primary">Place Bid</button>
+                      </a>
+                      <a class="text-decoration-none" href="<%= request.getContextPath() %>/test-drive/${car.idCar}">
+                        <button class="btn btn-warning">Schedule a Test Drive</button>
+                      </a>
+                    </c:when>
+                    <c:otherwise>
+                      <p class="text-secondary fw-semibold">This auction is no longer accepting bids.</p>
+                    </c:otherwise>
+                  </c:choose>
                 </div>
               </div>
             </div>
@@ -80,6 +110,7 @@
 
     <!-- Footer -->
     <%@ include file="components/footer.jsp" %>
+    <script src="/js/auction-timer.js"></script>
   </body>
 </html>
 

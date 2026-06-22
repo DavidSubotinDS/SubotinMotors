@@ -15,6 +15,7 @@ import lithan.abc.cars.entity.ProfilePicture;
 import lithan.abc.cars.entity.Role;
 import lithan.abc.cars.entity.UserAccount;
 import lithan.abc.cars.entity.UserProfile;
+import lithan.abc.cars.dto.UserProfileForm;
 import lithan.abc.cars.repository.ProfilePictureRepository;
 import lithan.abc.cars.error.ResourceNotFoundException;
 import lithan.abc.cars.repository.UserProfileRepository;
@@ -43,11 +44,15 @@ public class UserServiceImpl implements UserService {
     if (userRepo.existsByUsernameIgnoreCase(user.getUsername())) {
       throw new DataIntegrityViolationException("Username is already registered");
     }
+    if (userRepo.existsByEmailIgnoreCase(user.getEmail())) {
+      throw new DataIntegrityViolationException("Email is already registered");
+    }
 
     UserAccount saveUser = new UserAccount();
     Role role = new Role();
 
     saveUser.setUsername(user.getUsername());
+    saveUser.setEmail(user.getEmail().trim().toLowerCase());
     saveUser.setPassword(passwordEncoder.encode(user.getPassword()));
 
     role.setRole("ROLE_USER");
@@ -93,20 +98,27 @@ public class UserServiceImpl implements UserService {
 
   @Override
   @Transactional
-  public void editUserProfile(UserProfile profile) {
+  public void editUserProfile(UserProfileForm profile) {
     UserProfile currentProfile = getUserLogin().getProfile();
     if (currentProfile.getIdProfile() != profile.getIdProfile()) {
       throw new org.springframework.security.access.AccessDeniedException("Cannot edit another profile");
     }
+    UserAccount user = currentProfile.getUser();
+    String normalizedEmail = profile.getEmail().trim().toLowerCase();
+    if (userRepo.existsByEmailIgnoreCaseAndIdUserNot(normalizedEmail, user.getIdUser())) {
+      throw new DataIntegrityViolationException("Email is already registered");
+    }
     UserProfile editedProfile = userProfileRepo.findById(profile.getIdProfile())
         .orElseThrow(ResourceNotFoundException::new);
 
+    user.setEmail(normalizedEmail);
     editedProfile.setFirstName(profile.getFirstName());
     editedProfile.setLastName(profile.getLastName());
     editedProfile.setPhoneNumber(profile.getPhoneNumber());
     editedProfile.setAddress(profile.getAddress());
     editedProfile.setAbout(profile.getAbout());
 
+    userRepo.save(user);
     userProfileRepo.save(editedProfile);
   }
 

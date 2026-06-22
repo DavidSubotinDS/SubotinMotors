@@ -1,6 +1,7 @@
 package lithan.abc.cars.payment;
 
 import lithan.abc.cars.entity.PaymentOrder;
+import lithan.abc.cars.entity.StoreOrder;
 import lithan.abc.cars.entity.UserAccount;
 
 public interface StripeGateway {
@@ -13,6 +14,8 @@ public interface StripeGateway {
   StripeAccountState retrieveAccountState(String accountId);
 
   StripeCheckoutResult createCheckoutSession(PaymentOrder paymentOrder, String destinationAccountId);
+
+  StripeCheckoutResult createStoreCheckoutSession(StoreOrder order);
 
   StripeWebhookEvent verifyAndParseWebhook(String payload, String signature);
 }

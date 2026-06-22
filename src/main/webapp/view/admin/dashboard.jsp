@@ -23,7 +23,13 @@
                 <a href="<%= request.getContextPath() %>/admin/car-management"><i class="fa-solid fa-car"></i> Car Management</a>
               </li>
               <li>
-                <a href="<%= request.getContextPath() %>/admin/transactions"><i class="fa-solid fa-receipt"></i> Transactions</a>
+                <a href="<%= request.getContextPath() %>/admin/store/parts"><i class="fa-solid fa-gears"></i> Parts Inventory</a>
+              </li>
+              <li>
+                <a href="<%= request.getContextPath() %>/admin/store/orders"><i class="fa-solid fa-box"></i> Store Orders</a>
+              </li>
+              <li>
+                <a href="<%= request.getContextPath() %>/admin/transactions"><i class="fa-solid fa-clock-rotate-left"></i> Legacy Transactions</a>
               </li>
             </ul>
           </aside>
@@ -40,6 +46,7 @@
                 <select class="form-select" name="userSort" aria-label="Sort users">
                   <option value="idUser" ${userSort eq 'idUser' ? 'selected' : ''}>ID</option>
                   <option value="username" ${userSort eq 'username' ? 'selected' : ''}>Username</option>
+                  <option value="email" ${userSort eq 'email' ? 'selected' : ''}>Email</option>
                   <option value="profile.firstName" ${userSort eq 'profile.firstName' ? 'selected' : ''}>First name</option>
                   <option value="profile.lastName" ${userSort eq 'profile.lastName' ? 'selected' : ''}>Last name</option>
                 </select>
@@ -58,6 +65,7 @@
                     <th>Id</th>
                     <th>First name</th>
                     <th>Last name</th>
+                    <th>Email</th>
                     <th>Phone number</th>
                     <th>Address</th>
                     <th></th>
@@ -70,6 +78,7 @@
                       <td>${user.idUser}</td>
                       <td>${user.profile.firstName}</td>
                       <td>${user.profile.lastName}</td>
+                      <td>${user.email}</td>
                       <td>${user.profile.phoneNumber}</td>
                       <td>${user.profile.address}</td>
                       <td>
@@ -132,6 +141,7 @@
                 <select class="form-select" name="adminSort" aria-label="Sort administrators">
                   <option value="idUser" ${adminSort eq 'idUser' ? 'selected' : ''}>ID</option>
                   <option value="username" ${adminSort eq 'username' ? 'selected' : ''}>Username</option>
+                  <option value="email" ${adminSort eq 'email' ? 'selected' : ''}>Email</option>
                   <option value="profile.firstName" ${adminSort eq 'profile.firstName' ? 'selected' : ''}>First name</option>
                   <option value="profile.lastName" ${adminSort eq 'profile.lastName' ? 'selected' : ''}>Last name</option>
                 </select>
@@ -150,6 +160,7 @@
                     <th>Id</th>
                     <th>First name</th>
                     <th>Last name</th>
+                    <th>Email</th>
                     <th>Phone number</th>
                     <th>Address</th>
                     <th></th>
@@ -162,6 +173,7 @@
                       <td>${admin.idUser}</td>
                       <td>${admin.profile.firstName}</td>
                       <td>${admin.profile.lastName}</td>
+                      <td>${admin.email}</td>
                       <td>${admin.profile.phoneNumber}</td>
                       <td>${admin.profile.address}</td>
                       <td>

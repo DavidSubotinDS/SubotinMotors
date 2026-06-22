@@ -10,16 +10,22 @@ import lithan.abc.cars.payment.StripeGateway;
 import lithan.abc.cars.payment.PaymentProviderException;
 import lithan.abc.cars.payment.StripeWebhookEvent;
 import lithan.abc.cars.service.PaymentService;
+import lithan.abc.cars.service.StoreOrderService;
 
 @RestController
 public class StripeWebhookController {
 
   private final StripeGateway stripeGateway;
   private final PaymentService paymentService;
+  private final StoreOrderService storeOrderService;
 
-  public StripeWebhookController(StripeGateway stripeGateway, PaymentService paymentService) {
+  public StripeWebhookController(
+      StripeGateway stripeGateway,
+      PaymentService paymentService,
+      StoreOrderService storeOrderService) {
     this.stripeGateway = stripeGateway;
     this.paymentService = paymentService;
+    this.storeOrderService = storeOrderService;
   }
 
   @PostMapping("/webhooks/stripe")
@@ -28,7 +34,9 @@ public class StripeWebhookController {
       @RequestHeader("Stripe-Signature") String signature) {
     try {
       StripeWebhookEvent event = stripeGateway.verifyAndParseWebhook(payload, signature);
-      paymentService.processWebhook(event);
+      if (!storeOrderService.processWebhook(event)) {
+        paymentService.processWebhook(event);
+      }
       return ResponseEntity.ok().build();
     } catch (PaymentProviderException exception) {
       return ResponseEntity.badRequest().build();

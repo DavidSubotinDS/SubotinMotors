@@ -82,6 +82,7 @@ class MarketplaceFeatureIntegrationTests {
     MvcResult accountResult = mockMvc.perform(post("/register/accountProcess")
             .with(csrf())
             .param("username", "newdriver")
+            .param("email", "newdriver@example.com")
             .param("password", "secret123"))
         .andExpect(status().is3xxRedirection())
         .andExpect(redirectedUrl("/register/profile"))
@@ -104,6 +105,7 @@ class MarketplaceFeatureIntegrationTests {
 
     UserAccount registered = userRepository.findByUsername("newdriver").orElseThrow();
     assertTrue(passwordEncoder.matches("secret123", registered.getPassword()));
+    assertEquals("newdriver@example.com", registered.getEmail());
     assertEquals("New", registered.getProfile().getFirstName());
     assertEquals("Driver", registered.getProfile().getLastName());
     assertEquals(List.of("ROLE_USER"),
@@ -117,6 +119,7 @@ class MarketplaceFeatureIntegrationTests {
     MvcResult accountResult = mockMvc.perform(post("/register/accountProcess")
             .with(csrf())
             .param("username", "USER123")
+            .param("email", "duplicate-username@example.com")
             .param("password", "secret123"))
         .andExpect(status().is3xxRedirection())
         .andExpect(redirectedUrl("/register/profile"))
@@ -133,10 +136,39 @@ class MarketplaceFeatureIntegrationTests {
             .param("phoneNumber", "0612345678")
             .param("address", "Belgrade"))
         .andExpect(status().is3xxRedirection())
-        .andExpect(redirectedUrl("/register/account?duplicate"));
+        .andExpect(redirectedUrl("/register/account?duplicate=username"));
 
     assertEquals(accountCount, userRepository.count());
     assertNull(session.getAttribute("registerAccount"));
+  }
+
+  @Test
+  void duplicateEmailIsRejectedCaseInsensitively() throws Exception {
+    long accountCount = userRepository.count();
+
+    MvcResult accountResult = mockMvc.perform(post("/register/accountProcess")
+            .with(csrf())
+            .param("username", "emailtestuser")
+            .param("email", "USER123@SUBOTINMOTORS.LOCAL")
+            .param("password", "secret123"))
+        .andExpect(status().is3xxRedirection())
+        .andExpect(redirectedUrl("/register/profile"))
+        .andReturn();
+
+    MockHttpSession session = (MockHttpSession) accountResult.getRequest().getSession(false);
+    assertNotNull(session);
+
+    mockMvc.perform(post("/register/profileProcess")
+            .session(session)
+            .with(csrf())
+            .param("firstName", "Duplicate")
+            .param("lastName", "Email")
+            .param("phoneNumber", "0612345678")
+            .param("address", "Belgrade"))
+        .andExpect(status().is3xxRedirection())
+        .andExpect(redirectedUrl("/register/account?duplicate=email"));
+
+    assertEquals(accountCount, userRepository.count());
   }
 
   @Test
@@ -208,10 +240,11 @@ class MarketplaceFeatureIntegrationTests {
     MvcResult result = mockMvc.perform(post("/register/accountProcess")
             .with(csrf())
             .param("username", "ab")
+            .param("email", "invalid")
             .param("password", "123"))
         .andExpect(status().isOk())
         .andExpect(view().name("register-account"))
-        .andExpect(model().attributeHasFieldErrors("account", "username", "password"))
+        .andExpect(model().attributeHasFieldErrors("account", "username", "email", "password"))
         .andReturn();
 
     assertNull(result.getRequest().getSession().getAttribute("registerAccount"));

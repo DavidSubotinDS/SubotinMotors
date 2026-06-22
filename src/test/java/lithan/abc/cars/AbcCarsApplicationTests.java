@@ -50,6 +50,18 @@ class AbcCarsApplicationTests {
 	}
 
 	@Test
+	void partsCatalogueIsPublicAndSearchable() throws Exception {
+		mockMvc.perform(get("/parts")
+						.param("keyword", "filter")
+						.param("category", "Filters")
+						.param("sort", "priceMinor")
+						.param("direction", "asc"))
+				.andExpect(status().isOk())
+				.andExpect(model().attributeExists("partPage", "parts", "categories"))
+				.andExpect(model().attribute("sort", "priceMinor"));
+	}
+
+	@Test
 	void carCatalogueRejectsAnInvertedPriceRange() throws Exception {
 		mockMvc.perform(get("/cars")
 						.param("low", "50000")
@@ -106,15 +118,13 @@ class AbcCarsApplicationTests {
 	@Test
 	@WithMockUser(username = "user123", roles = "USER")
 	void paymentListsSupportIndependentPaginationAndSorting() throws Exception {
-		mockMvc.perform(get("/user/payments")
-						.param("purchaseSort", "status")
-						.param("purchaseDirection", "asc")
-						.param("saleSort", "amountMinor")
-						.param("saleDirection", "desc"))
+		mockMvc.perform(get("/user/payments"))
+				.andExpect(status().is3xxRedirection())
+				.andExpect(redirectedUrl("/orders"));
+
+		mockMvc.perform(get("/orders"))
 				.andExpect(status().isOk())
-				.andExpect(model().attributeExists("purchasePage", "salePage"))
-				.andExpect(model().attribute("purchaseSort", "status"))
-				.andExpect(model().attribute("saleSort", "amountMinor"));
+				.andExpect(model().attributeExists("orderPage", "orders"));
 	}
 
 	@Test

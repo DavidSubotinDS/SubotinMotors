@@ -44,6 +44,7 @@
                   <tr>
                     <th>Car</th>
                     <th>Bid</th>
+                    <th>Auction</th>
                     <th>Status</th>
                     <th></th>
                   </tr>
@@ -57,6 +58,9 @@
                         </a>
                       </td>
                       <td>${bid.bidPrice}</td>
+                      <td data-auction-end="${bid.car.auctionEndTimeEpochMillis}">
+                        <span class="auction-countdown small">${bid.car.auctionEndTimeDisplay}</span>
+                      </td>
                       <td>${bid.status}</td>
                       <td>
                         <c:if test="${bid.status eq 'ONGOING'}">
@@ -69,7 +73,7 @@
                   </c:forEach>
                   <c:if test="${empty bids}">
                     <tr>
-                      <td colspan="4" class="text-secondary">You have not placed any bids.</td>
+                      <td colspan="5" class="text-secondary">You have not placed any bids.</td>
                     </tr>
                   </c:if>
                 </tbody>
@@ -81,5 +85,6 @@
     </main>
 
     <%@ include file="../components/footer.jsp" %>
+    <script src="/js/auction-timer.js"></script>
   </body>
 </html>

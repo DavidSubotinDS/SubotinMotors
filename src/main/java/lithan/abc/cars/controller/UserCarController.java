@@ -2,6 +2,7 @@ package lithan.abc.cars.controller;
 
 import java.util.List;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 import jakarta.validation.Valid;
 
@@ -59,6 +60,7 @@ public class UserCarController {
   public String postCarProcess(@Valid @ModelAttribute("car") Car car, BindingResult bindingResult,
       @RequestParam("imageFile") MultipartFile file, Model model) {
 
+    validateAuctionEndTime(car, bindingResult);
     if (bindingResult.hasErrors()) {
       return "user/post-car";
     }
@@ -87,6 +89,7 @@ public class UserCarController {
 
   @PostMapping("/editCarProcess")
   public String saveEditCar(@Valid @ModelAttribute("car") Car car, BindingResult bindingResult) {
+    validateAuctionEndTime(car, bindingResult);
     if (bindingResult.hasErrors()) {
       return "user/edit-posted-car";
     }
@@ -227,6 +230,16 @@ public class UserCarController {
       model.addAttribute("idCar", idCar);
       model.addAttribute("message", exception.getMessage());
       return "user/upload-car-picture";
+    }
+  }
+
+  private void validateAuctionEndTime(Car car, BindingResult bindingResult) {
+    if (car.getAuctionEndTime() == null
+        || !car.getAuctionEndTime().isAfter(LocalDateTime.now())) {
+      bindingResult.rejectValue(
+          "auctionEndTime",
+          "future",
+          "Auction end date and time must be in the future");
     }
   }
 

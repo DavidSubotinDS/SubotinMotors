@@ -36,9 +36,6 @@ public class AdminServiceImpl implements AdminService {
   @Autowired
   private RoleRepository roleRepo;
 
-  @Autowired
-  private PaymentService paymentService;
-
   @Override
   @Transactional
   public void editUser(UserProfile profile) {
@@ -94,7 +91,18 @@ public class AdminServiceImpl implements AdminService {
   @Override
   @Transactional
   public void approveCarBid(int idBid) {
-    paymentService.acceptBidForPayment(idBid);
+    CarBidding acceptedBid = carBidRepo.findById(idBid).orElseThrow(ResourceNotFoundException::new);
+    Car car = acceptedBid.getCar();
+    if (!"ONGOING".equals(acceptedBid.getStatus()) || !"ACTIVE".equals(car.getStatus())) {
+      throw new IllegalStateException("Only ongoing bids on active cars can be accepted");
+    }
+    acceptedBid.setStatus("ACCEPTED");
+    car.setStatus("SOLD");
+    carBidRepo.findByCarIdCar(car.getIdCar()).stream()
+        .filter(other -> other.getIdBid() != acceptedBid.getIdBid() && "ONGOING".equals(other.getStatus()))
+        .forEach(other -> other.setStatus("DENIED"));
+    carBidRepo.save(acceptedBid);
+    carRepo.save(car);
   }
 
   @Override

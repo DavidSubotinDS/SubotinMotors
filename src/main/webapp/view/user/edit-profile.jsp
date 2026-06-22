@@ -18,6 +18,12 @@
           <form:form action="editProfileProcess" method="POST" modelAttribute="profile">
             <form:hidden path="idProfile" />
 
+            <label class="fs-6 form-label">Email</label>
+            <div>
+              <form:errors path="email" cssClass="error" />
+            </div>
+            <form:input class="form-control" type="email" path="email" cssErrorClass="form-control error-border" />
+
             <label class="fs-6 form-label">First name</label>
             <div>
               <form:errors path="firstName" cssClass="error" />

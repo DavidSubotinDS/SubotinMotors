@@ -15,6 +15,12 @@ class StripePropertiesTests {
     properties.setSecretKey("sk_test_school_project");
 
     assertDoesNotThrow(properties::validate);
+
+    properties.setSecretKey("rk_test_school_project");
+    assertDoesNotThrow(properties::validate);
+
+    properties.setSecretKey("rkcs_test_school_project");
+    assertDoesNotThrow(properties::validate);
   }
 
   @Test

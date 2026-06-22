@@ -12,6 +12,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
+import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.Size;
 
@@ -28,6 +29,12 @@ public class UserAccount {
   @Size(min = 3, max = 15, message = "Username must be between 3 and 15 characters long")
   @Column(nullable = false)
   private String username;
+
+  @NotEmpty(message = "Email is required")
+  @Email(message = "Enter a valid email address")
+  @Size(max = 254, message = "Email must not exceed 254 characters")
+  @Column(nullable = false, unique = true, length = 254)
+  private String email;
 
   @NotEmpty(message = "Password is required")
   @Size(min = 6, message = "Password must be greater or equal to 6")
@@ -68,6 +75,14 @@ public class UserAccount {
 
   public void setUsername(String username) {
     this.username = username;
+  }
+
+  public String getEmail() {
+    return email;
+  }
+
+  public void setEmail(String email) {
+    this.email = email;
   }
 
   public String getPassword() {

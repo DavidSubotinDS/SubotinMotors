@@ -13,6 +13,7 @@ import lithan.abc.cars.entity.UserAccount;
 import lithan.abc.cars.repository.CarBiddingRepository;
 import lithan.abc.cars.repository.CarRepository;
 import lithan.abc.cars.repository.PaymentOrderRepository;
+import lithan.abc.cars.repository.CarPartRepository;
 import lithan.abc.cars.repository.UserRepository;
 
 @SpringBootTest
@@ -30,6 +31,9 @@ class DemoSeedDataIntegrationTests {
 
   @Autowired
   private PaymentOrderRepository paymentRepository;
+
+  @Autowired
+  private CarPartRepository partRepository;
 
   @Test
   void demoPersonasHaveDistinctMarketplaceHistories() {
@@ -68,5 +72,13 @@ class DemoSeedDataIntegrationTests {
         .anyMatch(bid -> "ONGOING".equals(bid.getStatus())));
     assertTrue(bidRepository.findAll().stream()
         .anyMatch(bid -> "ACCEPTED_PENDING_PAYMENT".equals(bid.getStatus())));
+  }
+
+  @Test
+  void demoPartsCatalogIsReadyForStoreCheckout() {
+    assertTrue(partRepository.count() >= 10);
+    assertTrue(partRepository.findActiveCategories().size() >= 5);
+    assertTrue(partRepository.findAll().stream().allMatch(part -> part.getPriceMinor() > 0));
+    assertTrue(partRepository.findAll().stream().allMatch(part -> part.getStockQuantity() >= 0));
   }
 }

@@ -25,6 +25,11 @@
                 <p>You have been successfully logged out</p>
               </div>
             </c:if>
+            <c:if test="${param.reset != null}">
+              <div class="alert alert-success">
+                Your password was reset. You can log in now.
+              </div>
+            </c:if>
             <label class="form-label fs-6">Username</label>
             <form:input id="username" class="form-control" type="text" path="username" />
 
@@ -34,6 +39,9 @@
             <button class="btn btn-primary mt-2 form-button" type="submit">Login</button>
 
             <div class="mt-3 text-center">
+              <a href="<%= request.getContextPath() %>/forgot-password" class="text-decoration-none">Forgot password?</a>
+            </div>
+            <div class="mt-2 text-center">
               <a href="<%= request.getContextPath() %>/register" class="text-decoration-none">Create an account</a>
             </div>
           </form:form>

@@ -13,7 +13,13 @@ public interface UserRepository extends JpaRepository<UserAccount, Integer> {
 
   Optional<UserAccount> findByUsername(String username);
 
+  Optional<UserAccount> findByUsernameIgnoreCaseOrEmailIgnoreCase(String username, String email);
+
   boolean existsByUsernameIgnoreCase(String username);
+
+  boolean existsByEmailIgnoreCase(String email);
+
+  boolean existsByEmailIgnoreCaseAndIdUserNot(String email, int idUser);
 
   @Query("SELECT u FROM UserAccount u WHERE NOT EXISTS "
       + "(SELECT r FROM Role r WHERE r.user = u AND r.role = 'ROLE_ADMIN')")

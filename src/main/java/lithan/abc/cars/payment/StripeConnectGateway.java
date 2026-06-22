@@ -20,6 +20,8 @@ import com.stripe.param.v2.core.AccountRetrieveParams;
 import lithan.abc.cars.config.StripeProperties;
 import lithan.abc.cars.entity.Car;
 import lithan.abc.cars.entity.PaymentOrder;
+import lithan.abc.cars.entity.StoreOrder;
+import lithan.abc.cars.entity.StoreOrderItem;
 import lithan.abc.cars.entity.UserAccount;
 
 @Component
@@ -166,6 +168,43 @@ public class StripeConnectGateway implements StripeGateway {
       return new StripeCheckoutResult(session.getId(), session.getUrl());
     } catch (StripeException exception) {
       throw new PaymentProviderException("Unable to create Stripe checkout", exception);
+    }
+  }
+
+  @Override
+  public StripeCheckoutResult createStoreCheckoutSession(StoreOrder order) {
+    try {
+      SessionCreateParams.Builder builder = SessionCreateParams.builder()
+          .setMode(SessionCreateParams.Mode.PAYMENT)
+          .setClientReferenceId("store-order-" + order.getIdOrder())
+          .setCustomerEmail(order.getUser().getEmail())
+          .setSuccessUrl(properties.getBaseUrl() + "/store/checkout/success?session_id={CHECKOUT_SESSION_ID}")
+          .setCancelUrl(properties.getBaseUrl() + "/cart?checkoutCanceled")
+          .addPaymentMethodType(SessionCreateParams.PaymentMethodType.CARD)
+          .putMetadata("store_order_id", Integer.toString(order.getIdOrder()));
+
+      for (StoreOrderItem item : order.getItems()) {
+        SessionCreateParams.LineItem.PriceData.ProductData productData =
+            SessionCreateParams.LineItem.PriceData.ProductData.builder()
+                .setName(item.getPartName())
+                .setDescription("SKU " + item.getSku())
+                .build();
+        SessionCreateParams.LineItem.PriceData priceData =
+            SessionCreateParams.LineItem.PriceData.builder()
+                .setCurrency(order.getCurrency())
+                .setUnitAmount(item.getUnitPriceMinor())
+                .setProductData(productData)
+                .build();
+        builder.addLineItem(SessionCreateParams.LineItem.builder()
+            .setQuantity((long) item.getQuantity())
+            .setPriceData(priceData)
+            .build());
+      }
+
+      Session session = stripeClient.checkout().sessions().create(builder.build());
+      return new StripeCheckoutResult(session.getId(), session.getUrl());
+    } catch (StripeException exception) {
+      throw new PaymentProviderException("Unable to create Stripe store checkout", exception);
     }
   }
 

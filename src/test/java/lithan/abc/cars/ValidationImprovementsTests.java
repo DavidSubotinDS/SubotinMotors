@@ -25,6 +25,7 @@ import lithan.abc.cars.dto.TestDriveRequest;
 import lithan.abc.cars.entity.Car;
 import lithan.abc.cars.entity.CarBidding;
 import lithan.abc.cars.entity.UserProfile;
+import lithan.abc.cars.entity.UserAccount;
 import lithan.abc.cars.validation.ImageUploadValidator;
 
 class ValidationImprovementsTests {
@@ -69,6 +70,17 @@ class ValidationImprovementsTests {
 
     profile.setPhoneNumber("123-ABC");
     assertFalse(validator.validateProperty(profile, "phoneNumber").isEmpty());
+  }
+
+  @Test
+  void accountEmailMustBePresentAndValid() {
+    UserAccount user = new UserAccount();
+
+    user.setEmail("not-an-email");
+    assertFalse(validator.validateProperty(user, "email").isEmpty());
+
+    user.setEmail("driver@example.com");
+    assertTrue(validator.validateProperty(user, "email").isEmpty());
   }
 
   @Test

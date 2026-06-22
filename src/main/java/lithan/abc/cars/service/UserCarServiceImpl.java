@@ -1,6 +1,7 @@
 package lithan.abc.cars.service;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.Base64;
 import java.util.List;
 
@@ -50,6 +51,7 @@ public class UserCarServiceImpl implements UserCarService {
   @Override
   @Transactional
   public void postCar(MultipartFile file, Car car) throws Exception {
+    requireFutureAuctionEnd(car);
     ValidatedImage image = ImageUploadValidator.validate(file);
     UserAccount user = userService.getUserLogin();
     CarPicture picture = new CarPicture();
@@ -77,6 +79,7 @@ public class UserCarServiceImpl implements UserCarService {
   @Override
   @Transactional
   public Car editOwnedCar(Car car) {
+    requireFutureAuctionEnd(car);
     Car editedCar = getOwnedCarById(car.getIdCar());
     if ("SOLD".equals(editedCar.getStatus())) {
       throw new IllegalStateException("Sold cars cannot be edited");
@@ -85,6 +88,7 @@ public class UserCarServiceImpl implements UserCarService {
     editedCar.setModel(car.getModel());
     editedCar.setYear(car.getYear());
     editedCar.setPrice(car.getPrice());
+    editedCar.setAuctionEndTime(car.getAuctionEndTime());
     return carRepo.save(editedCar);
   }
 
@@ -127,6 +131,9 @@ public class UserCarServiceImpl implements UserCarService {
     UserAccount bidder = userService.getUserLogin();
     if (!"ACTIVE".equals(car.getStatus())) {
       throw new IllegalStateException("Bids are only accepted on active cars");
+    }
+    if (!car.isAuctionOpen()) {
+      throw new IllegalStateException("This auction has ended");
     }
     if (car.getUser().getIdUser() == bidder.getIdUser()) {
       throw new IllegalStateException("You cannot bid on your own car");
@@ -175,7 +182,7 @@ public class UserCarServiceImpl implements UserCarService {
     validateTestDriveDate(date);
     Car car = getCarById(carId);
     UserAccount user = userService.getUserLogin();
-    if (!"ACTIVE".equals(car.getStatus())) {
+    if (!car.isAuctionOpen()) {
       throw new IllegalStateException("Test drives are only available for active cars");
     }
     if (car.getUser().getIdUser() == user.getIdUser()) {
@@ -300,5 +307,13 @@ public class UserCarServiceImpl implements UserCarService {
     picture.setFileType(image.contentType());
     picture.setImage(Base64.getEncoder().encodeToString(image.bytes()));
     carPictureRepo.save(picture);
+  }
+
+  private void requireFutureAuctionEnd(Car car) {
+    if (car.getAuctionEndTime() == null
+        || !car.getAuctionEndTime().isAfter(LocalDateTime.now())) {
+      throw new IllegalArgumentException(
+          "Auction end date and time must be in the future");
+    }
   }
 }

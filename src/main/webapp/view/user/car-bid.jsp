@@ -14,6 +14,10 @@
       <div class="container d-flex justify-content-center">
         <div class="form-wrapper small">
           <h2 class="form-header">Place Bid</h2>
+          <div data-auction-end="${car.auctionEndTimeEpochMillis}">
+            <span class="badge ${car.auctionStatus eq 'ENDING_SOON' ? 'bg-warning text-dark' : 'bg-primary'}">${car.auctionStatusLabel}</span>
+            <p class="auction-countdown fw-semibold mt-2">${car.auctionEndTimeDisplay}</p>
+          </div>
           <c:if test="${highestBidding == 0}">
             <p class="text-secondary fs-5 m-0">STARTING PRICE:</p>
             <p class="fs-5 m-0">$${car.price}</p>
@@ -25,6 +29,7 @@
           </c:if>
           <!-- FORM -->
           <p class="error">${message}</p>
+          <c:if test="${car.auctionOpen}">
           <form:form action="postCarBidding" method="POST" modelAttribute="carBidding">
             <input type="hidden" name="carId" value="${car.idCar}" />
 
@@ -34,11 +39,16 @@
 
             <button class="btn btn-primary form-button" type="submit">Place Bid</button>
           </form:form>
+          </c:if>
+          <c:if test="${!car.auctionOpen}">
+            <div class="alert alert-secondary">This auction has ended and no longer accepts bids.</div>
+          </c:if>
         </div>
       </div>
     </main>
 
     <!-- Footer -->
     <%@ include file="../components/footer.jsp" %>
+    <script src="/js/auction-timer.js"></script>
   </body>
 </html>

@@ -4,6 +4,7 @@ import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
@@ -17,8 +18,8 @@ import org.springframework.web.multipart.MultipartFile;
 import lithan.abc.cars.entity.ProfilePicture;
 import lithan.abc.cars.entity.UserAccount;
 import lithan.abc.cars.entity.UserProfile;
+import lithan.abc.cars.dto.UserProfileForm;
 import lithan.abc.cars.service.UserService;
-import lithan.abc.cars.service.PaymentService;
 
 @Controller
 @RequestMapping("/user")
@@ -26,9 +27,6 @@ public class UserController {
 
   @Autowired
   private UserService userService;
-
-  @Autowired
-  private PaymentService paymentService;
 
   @GetMapping("")
   public String user() {
@@ -42,10 +40,8 @@ public class UserController {
     ProfilePicture picture = profile.getProfilePicture();
 
     model.addAttribute("profile", profile);
+    model.addAttribute("email", user.getEmail());
     model.addAttribute("picture", picture);
-    model.addAttribute("stripeEnabled", paymentService.isStripeEnabled());
-    model.addAttribute("paymentAccount", paymentService.getCurrentSellerAccount().orElse(null));
-
     session.setAttribute("profileLog", profile);
 
     return "user/my-profile";
@@ -55,22 +51,26 @@ public class UserController {
   @GetMapping("/edit-profile")
   public String editProfile(Model model) {
     UserAccount user = userService.getUserLogin();
-    UserProfile profile = user.getProfile();
 
-    model.addAttribute("profile", profile);
+    model.addAttribute("profile", UserProfileForm.from(user));
     return "user/edit-profile";
   }
 
   @PostMapping("/editProfileProcess")
-  public String saveEditProfile(@Valid @ModelAttribute("profile") UserProfile profile, BindingResult bindingResult,
+  public String saveEditProfile(@Valid @ModelAttribute("profile") UserProfileForm profile, BindingResult bindingResult,
       HttpSession session) {
     if (bindingResult.hasErrors()) {
       return "user/edit-profile";
     }
 
-    userService.editUserProfile(profile);
+    try {
+      userService.editUserProfile(profile);
+    } catch (DataIntegrityViolationException exception) {
+      bindingResult.rejectValue("email", "duplicate", "That email is already registered");
+      return "user/edit-profile";
+    }
 
-    session.setAttribute("profileLog", profile);
+    session.setAttribute("profileLog", userService.getUserLogin().getProfile());
 
     return "redirect:/user/my-profile";
   }

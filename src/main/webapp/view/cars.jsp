@@ -74,6 +74,7 @@
                   <option value="model" ${sort eq 'model' ? 'selected' : ''}>Model</option>
                   <option value="year" ${sort eq 'year' ? 'selected' : ''}>Year</option>
                   <option value="price" ${sort eq 'price' ? 'selected' : ''}>Price</option>
+                  <option value="auctionEndTime" ${sort eq 'auctionEndTime' ? 'selected' : ''}>Auction end time</option>
                 </select>
               </div>
               <div class="col-sm-4 col-lg-3">
@@ -93,11 +94,13 @@
                 <c:forEach items="${listCar}" var="car">
                   <c:if test="${car.status.equals('ACTIVE')}">
                     <div class="col-12 col-md-6 col-md-4 col-lg-3 mb-3">
-                      <div class="card">
+                      <div class="card auction-card" data-auction-end="${car.auctionEndTimeEpochMillis}">
                         <img class="card-img-top" src="data:${car.carPicture.fileType};base64,${car.carPicture.image}" alt="${car.make}" />
                         <div class="card-body">
                           <p class="car-details fw-bold">${car.make} ${car.model} ${car.year}</p>
                           <p class="car-price">$${car.price}</p>
+                          <span class="auction-status badge ${car.auctionStatus eq 'ENDING_SOON' ? 'bg-warning text-dark' : car.auctionStatus eq 'ENDED' ? 'bg-secondary' : 'bg-success'}">${car.auctionStatusLabel}</span>
+                          <p class="auction-countdown small fw-semibold mt-2 mb-1">${car.auctionEndTimeDisplay}</p>
                           <a href="<%= request.getContextPath() %>/cars/${car.make}/${car.model}/${car.year}/${car.idCar}">
                             <button class="btn btn-primary">Car Details</button>
                           </a>
@@ -149,5 +152,6 @@
 
     <!-- Footer -->
     <%@ include file="components/footer.jsp" %>
+    <script src="/js/auction-timer.js"></script>
   </body>
 </html>

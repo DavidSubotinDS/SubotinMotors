@@ -1,5 +1,4 @@
 <%@ include file="../components/taglib.jsp" %>
-<%@ taglib prefix="fmt" uri="jakarta.tags.fmt" %>
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -20,15 +19,21 @@
               <li>
                 <a href="<%= request.getContextPath() %>/admin/car-management"><i class="fa-solid fa-car"></i> Car Management</a>
               </li>
+              <li>
+                <a href="<%= request.getContextPath() %>/admin/store/parts"><i class="fa-solid fa-gears"></i> Parts Inventory</a>
+              </li>
+              <li>
+                <a href="<%= request.getContextPath() %>/admin/store/orders"><i class="fa-solid fa-box"></i> Store Orders</a>
+              </li>
               <li class="active-page">
-                <a href="<%= request.getContextPath() %>/admin/transactions"><i class="fa-solid fa-receipt"></i> Transactions</a>
+                <a href="<%= request.getContextPath() %>/admin/transactions"><i class="fa-solid fa-clock-rotate-left"></i> Legacy Transactions</a>
               </li>
             </ul>
           </aside>
 
           <div class="content-wrapper">
             <div class="d-flex flex-wrap justify-content-between align-items-end gap-3 mb-3">
-              <h2 class="fw-bold mb-0 flex-grow-1">Transactions</h2>
+              <h2 class="fw-bold mb-0 flex-grow-1">Legacy auction transactions</h2>
               <form action="${pageContext.request.contextPath}/admin/transactions" class="d-flex gap-2">
                 <select class="form-select" name="sort" aria-label="Sort transactions">
                   <option value="paidAt" ${sort eq 'paidAt' ? 'selected' : ''}>Payment date</option>

@@ -43,6 +43,7 @@
                       <th>Model</th>
                       <th>Year</th>
                       <th>Price</th>
+                      <th>Auction</th>
                       <th>Status</th>
                       <th></th>
                     </tr>
@@ -56,8 +57,11 @@
                         <td>${car.model}</td>
                         <td>${car.year}</td>
                         <td>$${car.price}</td>
+                        <td data-auction-end="${car.auctionEndTimeEpochMillis}">
+                          <span class="auction-countdown small">${car.auctionEndTimeDisplay}</span>
+                        </td>
                         <c:if test="${car.status.equals('ACTIVE')}">
-                          <td class="fw-semibold text-primary">${car.status}</td>
+                          <td class="fw-semibold text-primary">${car.auctionStatusLabel}</td>
                         </c:if>
                         <c:if test="${car.status.equals('DEACTIVE')}">
                           <td class="fw-semibold text-danger">${car.status}</td>
@@ -125,5 +129,6 @@
 
     <!-- Footer -->
     <%@ include file="../components/footer.jsp" %>
+    <script src="/js/auction-timer.js"></script>
   </body>
 </html>

@@ -13,6 +13,9 @@
           <a class="nav-link" href="<%= request.getContextPath() %>/cars">Cars</a>
         </li>
         <li class="nav-item me-0 me-lg-3">
+          <a class="nav-link" href="<%= request.getContextPath() %>/parts">Car Parts</a>
+        </li>
+        <li class="nav-item me-0 me-lg-3">
           <a class="nav-link" href="<%= request.getContextPath() %>/user/post-car">Sell a Car</a>
         </li>
       </ul>
@@ -27,6 +30,12 @@
 
       <!-- User Menu -->
       <security:authorize access="isAuthenticated()">
+        <a class="btn btn-outline-secondary me-3 position-relative" href="<%= request.getContextPath() %>/cart" aria-label="Shopping cart">
+          <i class="fa-solid fa-cart-shopping"></i>
+          <c:if test="${cartItemCount > 0}">
+            <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">${cartItemCount}</span>
+          </c:if>
+        </a>
         <ul class="navbar-nav fw-semibold">
           <li class="nav-item dropdown">
             <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
@@ -52,10 +61,21 @@
                 <a class="dropdown-item" href="<%= request.getContextPath() %>/user/bids"><i class="fa-solid fa-gavel"></i> My Bids</a>
               </li>
               <li>
+                <a class="dropdown-item" href="<%= request.getContextPath() %>/user/followed-auctions"><i class="fa-regular fa-star"></i> Followed Auctions</a>
+              </li>
+              <li>
+                <a class="dropdown-item" href="<%= request.getContextPath() %>/user/notifications">
+                  <i class="fa-regular fa-bell"></i> Notifications
+                  <c:if test="${unreadNotificationCount > 0}">
+                    <span class="badge bg-danger">${unreadNotificationCount}</span>
+                  </c:if>
+                </a>
+              </li>
+              <li>
                 <a class="dropdown-item" href="<%= request.getContextPath() %>/user/test-drive"><i class="fa-regular fa-calendar-check"></i> Appointment</a>
               </li>
               <li>
-                <a class="dropdown-item" href="<%= request.getContextPath() %>/user/payments"><i class="fa-solid fa-receipt"></i> Payments</a>
+                <a class="dropdown-item" href="<%= request.getContextPath() %>/orders"><i class="fa-solid fa-box"></i> Parts Orders</a>
               </li>
               <!-- Admin Dashboard -->
               <security:authorize access="hasRole('ADMIN')">

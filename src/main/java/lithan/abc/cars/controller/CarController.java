@@ -19,6 +19,7 @@ import lithan.abc.cars.entity.Car;
 import lithan.abc.cars.error.ResourceNotFoundException;
 import lithan.abc.cars.service.CarService;
 import lithan.abc.cars.service.UserCarService;
+import lithan.abc.cars.service.AuctionFollowService;
 
 @Controller
 @RequestMapping("/cars")
@@ -29,6 +30,9 @@ public class CarController {
 
   @Autowired
   private UserCarService userCarService;
+
+  @Autowired
+  private AuctionFollowService auctionFollowService;
 
   @GetMapping("")
   public String carPage(
@@ -77,6 +81,7 @@ public class CarController {
 
     model.addAttribute("car", car);
     model.addAttribute("highestBidding", higestBidding);
+    model.addAttribute("following", auctionFollowService.isFollowingCurrentUser(car));
 
     return "car-details";
   }
@@ -91,7 +96,7 @@ public class CarController {
 
   private String catalogSortProperty(String sort) {
     return switch (sort) {
-      case "make", "model", "year", "price", "idCar" -> sort;
+      case "make", "model", "year", "price", "idCar", "auctionEndTime", "status" -> sort;
       default -> "idCar";
     };
   }

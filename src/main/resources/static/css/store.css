@@ -1,0 +1,79 @@
+.store-hero {
+  background: linear-gradient(135deg, #10243e, #1f5f82);
+  border-radius: 1.25rem;
+  color: white;
+  overflow: hidden;
+}
+
+.store-hero,
+.store-hero h1,
+.store-hero p,
+.store-hero span,
+.store-hero i {
+  color: #fff !important;
+}
+
+.part-card {
+  border: 1px solid #e7ebef;
+  border-radius: 1rem;
+  height: 100%;
+  overflow: hidden;
+  transition: transform 160ms ease, box-shadow 160ms ease;
+}
+
+.part-card:hover {
+  box-shadow: 0 0.9rem 2rem rgba(16, 36, 62, 0.12);
+  transform: translateY(-3px);
+}
+
+.part-visual {
+  align-items: center;
+  background: linear-gradient(145deg, #eef4f8, #dce8ef);
+  color: #1f5f82;
+  display: flex;
+  font-size: 4rem;
+  height: 180px;
+  justify-content: center;
+}
+
+.part-visual img {
+  height: 100%;
+  object-fit: cover;
+  width: 100%;
+}
+
+.store-price {
+  color: #10243e;
+  font-size: 1.35rem;
+  font-weight: 700;
+}
+
+.store-summary {
+  background: #f6f8fa;
+  border-radius: 1rem;
+  position: sticky;
+  top: 6rem;
+}
+
+.order-status {
+  border-radius: 999px;
+  display: inline-block;
+  font-size: 0.8rem;
+  font-weight: 700;
+  padding: 0.35rem 0.7rem;
+}
+
+.order-status-paid {
+  background: #d1e7dd;
+  color: #0f5132;
+}
+
+.order-status-pending {
+  background: #fff3cd;
+  color: #664d03;
+}
+
+.order-status-failed {
+  background: #f8d7da;
+  color: #842029;
+}

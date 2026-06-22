@@ -82,7 +82,10 @@ public class RegisterController {
       userService.saveUser(user, profile);
     } catch (DataIntegrityViolationException exception) {
       session.removeAttribute("registerAccount");
-      return "redirect:/register/account?duplicate";
+      String duplicate = exception.getMessage() != null
+          && exception.getMessage().toLowerCase().contains("email")
+              ? "email" : "username";
+      return "redirect:/register/account?duplicate=" + duplicate;
     }
 
     return "redirect:/register/thank-you";

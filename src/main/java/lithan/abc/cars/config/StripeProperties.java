@@ -69,9 +69,11 @@ public class StripeProperties {
     if (secretKey == null || secretKey.isBlank()) {
       throw new IllegalStateException("STRIPE_SECRET_KEY is required when Stripe is enabled");
     }
-    if (!secretKey.startsWith("sk_test_")) {
+    if (!secretKey.startsWith("sk_test_")
+        && !secretKey.startsWith("rk_test_")
+        && !secretKey.startsWith("rkcs_test_")) {
       throw new IllegalStateException(
-          "This educational project is sandbox-only and requires a Stripe sk_test_ secret key");
+          "This educational project accepts only Stripe sandbox credentials");
     }
     if (webhookSecret == null || webhookSecret.isBlank()) {
       throw new IllegalStateException("STRIPE_WEBHOOK_SECRET is required when Stripe is enabled");

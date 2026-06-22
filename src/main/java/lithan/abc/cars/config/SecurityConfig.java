@@ -35,12 +35,15 @@ public class SecurityConfig {
         .requestMatchers("/webhooks/stripe").permitAll()
         .requestMatchers("/").permitAll()
         .requestMatchers("/cars/**").permitAll()
+        .requestMatchers("/parts/**").permitAll()
         .requestMatchers("/about-us", "/contact-us", "/view-user/**").permitAll()
         .requestMatchers("/register/**").permitAll()
+        .requestMatchers("/forgot-password", "/reset-password").permitAll()
 
         .requestMatchers("/user/**").hasRole("USER")
         .requestMatchers("/car-bid/**").hasRole("USER")
         .requestMatchers("/test-drive/**").hasRole("USER")
+        .requestMatchers("/cart/**", "/store/**", "/orders/**").hasRole("USER")
 
         .requestMatchers("/admin/**").hasRole("ADMIN")
         .anyRequest().authenticated());

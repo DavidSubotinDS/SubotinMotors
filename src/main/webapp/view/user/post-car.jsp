@@ -40,6 +40,12 @@
             </div>
             <form:input class="form-control" type="number" path="price" cssErrorClass="form-control error-border" />
 
+            <label class="form-label">Auction ends</label>
+            <div>
+              <form:errors path="auctionEndTime" cssClass="error" />
+            </div>
+            <form:input class="form-control" type="datetime-local" path="auctionEndTime" cssErrorClass="form-control error-border" />
+
             <label class="form-label">Car Picture</label>
             <div>
               <span class="error">${fileError}</span>

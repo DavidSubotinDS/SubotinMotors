@@ -42,6 +42,12 @@
             </div>
             <form:input class="form-control" type="number" path="price" cssErrorClass="form-control error-border" />
 
+            <label class="form-label">Auction ends</label>
+            <div>
+              <form:errors path="auctionEndTime" cssClass="error" />
+            </div>
+            <form:input class="form-control" type="datetime-local" path="auctionEndTime" cssErrorClass="form-control error-border" />
+
             <button class="btn btn-primary form-button mt-3" type="submit">Save Edit</button>
           </form:form>
         </div>

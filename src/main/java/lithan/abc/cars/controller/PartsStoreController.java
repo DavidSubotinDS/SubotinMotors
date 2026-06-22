@@ -13,8 +13,10 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import lithan.abc.cars.entity.CarPart;
 import lithan.abc.cars.entity.StoreOrder;
+import lithan.abc.cars.dto.ListingCommentForm;
 import lithan.abc.cars.service.CarPartService;
 import lithan.abc.cars.service.CartService;
+import lithan.abc.cars.service.ListingCommentService;
 import lithan.abc.cars.service.StoreOrderService;
 
 @Controller
@@ -23,14 +25,17 @@ public class PartsStoreController {
   private final CarPartService partService;
   private final CartService cartService;
   private final StoreOrderService orderService;
+  private final ListingCommentService commentService;
 
   public PartsStoreController(
       CarPartService partService,
       CartService cartService,
-      StoreOrderService orderService) {
+      StoreOrderService orderService,
+      ListingCommentService commentService) {
     this.partService = partService;
     this.cartService = cartService;
     this.orderService = orderService;
+    this.commentService = commentService;
   }
 
   @GetMapping("/parts")
@@ -59,7 +64,10 @@ public class PartsStoreController {
 
   @GetMapping("/parts/{idPart}")
   public String partDetails(@PathVariable int idPart, Model model) {
-    model.addAttribute("part", partService.getActivePart(idPart));
+    CarPart part = partService.getActivePart(idPart);
+    model.addAttribute("part", part);
+    model.addAttribute("comments", commentService.commentsForPart(part));
+    model.addAttribute("commentForm", new ListingCommentForm());
     return "store/part-details";
   }
 

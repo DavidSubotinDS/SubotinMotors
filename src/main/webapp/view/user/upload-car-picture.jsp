@@ -4,15 +4,20 @@
   <head>
     <%@ include file="../components/header.jsp" %>
     <link rel="stylesheet" href="/css/form.css" />
+    <link rel="stylesheet" href="/css/user.css" />
   </head>
   <body>
     <!-- Navbar -->
     <%@ include file="../components/navbar.jsp" %>
 
     <!-- Main -->
-    <main>
-      <div class="container d-flex justify-content-center">
-        <div class="form-wrapper small">
+    <main class="account-main">
+      <div class="container py-4 py-lg-5">
+        <div class="account-shell">
+          <c:set var="accountNavActive" value="listings" />
+          <%@ include file="../components/user-sidebar.jsp" %>
+          <div class="account-content">
+            <div class="form-wrapper small">
           <h2 class="form-header">Upload Picture</h2>
           <!-- FORM -->
           <form action="uploadCarPicture" method="POST" enctype="multipart/form-data">
@@ -26,6 +31,8 @@
 
             <button class="btn btn-primary form-button mt-3" type="submit">Upload</button>
           </form>
+            </div>
+          </div>
         </div>
       </div>
     </main>

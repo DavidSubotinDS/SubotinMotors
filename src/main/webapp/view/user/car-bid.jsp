@@ -4,15 +4,20 @@
   <head>
     <%@ include file="../components/header.jsp" %>
     <link rel="stylesheet" href="/css/form.css" />
+    <link rel="stylesheet" href="/css/user.css" />
   </head>
   <body>
     <!-- Navbar -->
     <%@ include file="../components/navbar.jsp" %>
 
     <!-- Main -->
-    <main>
-      <div class="container d-flex justify-content-center">
-        <div class="form-wrapper small">
+    <main class="account-main">
+      <div class="container py-4 py-lg-5">
+        <div class="account-shell">
+          <c:set var="accountNavActive" value="bids" />
+          <%@ include file="../components/user-sidebar.jsp" %>
+          <div class="account-content">
+            <div class="form-wrapper small">
           <h2 class="form-header">Place Bid</h2>
           <div data-auction-end="${car.auctionEndTimeEpochMillis}">
             <span class="badge ${car.auctionStatus eq 'ENDING_SOON' ? 'bg-warning text-dark' : 'bg-primary'}">${car.auctionStatusLabel}</span>
@@ -43,6 +48,8 @@
           <c:if test="${!car.auctionOpen}">
             <div class="alert alert-secondary">This auction has ended and no longer accepts bids.</div>
           </c:if>
+            </div>
+          </div>
         </div>
       </div>
     </main>

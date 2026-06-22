@@ -4,6 +4,7 @@
   <head>
     <%@ include file="components/header.jsp" %>
     <link rel="stylesheet" href="/css/cars.css" />
+    <link rel="stylesheet" href="/css/discussion.css" />
   </head>
   <body>
     <!-- Navbar -->
@@ -105,6 +106,11 @@
             </div>
           </div>
         </div>
+        <c:set var="commentTitle" value="Questions and answers" />
+        <c:set var="commentSubtitle" value="Ask about condition, history, included equipment, or arranging a viewing. Seller and administrator replies are clearly marked." />
+        <c:set var="commentPlaceholder" value="Ask the seller something about this car..." />
+        <c:set var="commentAction" value="${pageContext.request.contextPath}/cars/${car.idCar}/comments" />
+        <%@ include file="components/listing-comments.jsp" %>
       </div>
     </main>
 

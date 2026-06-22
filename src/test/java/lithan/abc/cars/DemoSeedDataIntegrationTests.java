@@ -14,6 +14,7 @@ import lithan.abc.cars.repository.CarBiddingRepository;
 import lithan.abc.cars.repository.CarRepository;
 import lithan.abc.cars.repository.PaymentOrderRepository;
 import lithan.abc.cars.repository.CarPartRepository;
+import lithan.abc.cars.repository.ListingCommentRepository;
 import lithan.abc.cars.repository.UserRepository;
 
 @SpringBootTest
@@ -34,6 +35,9 @@ class DemoSeedDataIntegrationTests {
 
   @Autowired
   private CarPartRepository partRepository;
+
+  @Autowired
+  private ListingCommentRepository commentRepository;
 
   @Test
   void demoPersonasHaveDistinctMarketplaceHistories() {
@@ -80,5 +84,15 @@ class DemoSeedDataIntegrationTests {
     assertTrue(partRepository.findActiveCategories().size() >= 5);
     assertTrue(partRepository.findAll().stream().allMatch(part -> part.getPriceMinor() > 0));
     assertTrue(partRepository.findAll().stream().allMatch(part -> part.getStockQuantity() >= 0));
+  }
+
+  @Test
+  void demoDiscussionsIncludeAuctionAndStoreConversations() {
+    assertTrue(commentRepository.findAll().stream().anyMatch(comment -> comment.getCar() != null));
+    assertTrue(commentRepository.findAll().stream().anyMatch(comment -> comment.getPart() != null));
+    assertTrue(commentRepository.findAll().stream()
+        .anyMatch(comment -> "admin123".equals(comment.getAuthor().getUsername())));
+    assertTrue(commentRepository.findAll().stream()
+        .anyMatch(comment -> "demo_seller".equals(comment.getAuthor().getUsername())));
   }
 }

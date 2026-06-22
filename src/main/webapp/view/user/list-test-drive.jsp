@@ -8,27 +8,13 @@
   <body>
     <%@ include file="../components/navbar.jsp" %>
 
-    <main>
-      <div class="container pt-5">
-        <div class="d-flex">
-          <aside class="sidebar-user pe-md-3">
-            <ul>
-              <li>
-                <a href="<%= request.getContextPath() %>/user"><i class="fa-solid fa-user"></i> Profile</a>
-              </li>
-              <li>
-                <a href="<%= request.getContextPath() %>/user/my-posted-car"><i class="fa-solid fa-car"></i> My Posted Car</a>
-              </li>
-              <li>
-                <a href="<%= request.getContextPath() %>/user/bids"><i class="fa-solid fa-gavel"></i> My Bids</a>
-              </li>
-              <li class="active-page">
-                <a href="<%= request.getContextPath() %>/user/test-drive"><i class="fa-regular fa-calendar-check"></i> Appointments</a>
-              </li>
-            </ul>
-          </aside>
+    <main class="account-main">
+      <div class="container py-4 py-lg-5">
+        <div class="account-shell">
+          <c:set var="accountNavActive" value="appointments" />
+          <%@ include file="../components/user-sidebar.jsp" %>
 
-          <div class="content-wrapper">
+          <div class="content-wrapper account-content-surface">
             <h2 class="fw-bold mb-3">Test Drives</h2>
 
             <c:if test="${appointmentMessage != null}">

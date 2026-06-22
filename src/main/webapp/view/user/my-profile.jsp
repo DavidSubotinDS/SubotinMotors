@@ -10,35 +10,13 @@
     <%@ include file="../components/navbar.jsp" %>
 
     <!-- Main -->
-    <main>
-      <div class="container pt-5">
-        <div class="d-flex">
-          <!-- Sidebar -->
-          <aside class="sidebar-user pe-md-3">
-            <ul>
-              <li class="active-page">
-                <a href="<%= request.getContextPath() %>/user"><i class="fa-solid fa-user"></i> Profile</a>
-              </li>
-              <li>
-                <a href="<%= request.getContextPath() %>/user/my-posted-car"><i class="fa-solid fa-car"></i> My Posted Car</a>
-              </li>
-              <li>
-                <a href="<%= request.getContextPath() %>/user/test-drive"><i class="fa-regular fa-calendar-check"></i> Appointment</a>
-              </li>
-              <li>
-                <a href="<%= request.getContextPath() %>/orders"><i class="fa-solid fa-box"></i> Parts Orders</a>
-              </li>
-              <li>
-                <a href="<%= request.getContextPath() %>/user/followed-auctions"><i class="fa-regular fa-star"></i> Followed Auctions</a>
-              </li>
-              <li>
-                <a href="<%= request.getContextPath() %>/user/notifications"><i class="fa-regular fa-bell"></i> Notifications</a>
-              </li>
-            </ul>
-          </aside>
+    <main class="account-main">
+      <div class="container py-4 py-lg-5">
+        <div class="account-shell">
+          <c:set var="accountNavActive" value="profile" />
+          <%@ include file="../components/user-sidebar.jsp" %>
 
-          <!-- Content -->
-          <div class="content-wrapper">
+          <div class="content-wrapper account-content-surface">
             <div class="user d-flex justify-content-between">
               <div class="d-flex flex-column flex-md-row">
                 <div class="user-image me-4" onclick="location.href='<%= request.getContextPath() %>/user/upload-picture'; ">

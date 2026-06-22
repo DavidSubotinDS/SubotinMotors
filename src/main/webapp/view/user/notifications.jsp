@@ -7,17 +7,12 @@
   </head>
   <body>
     <%@ include file="../components/navbar.jsp" %>
-    <main>
-      <div class="container pt-5">
-        <div class="d-flex">
-          <aside class="sidebar-user pe-md-3">
-            <ul>
-              <li><a href="<%= request.getContextPath() %>/user"><i class="fa-solid fa-user"></i> Profile</a></li>
-              <li><a href="<%= request.getContextPath() %>/user/followed-auctions"><i class="fa-regular fa-star"></i> Followed Auctions</a></li>
-              <li class="active-page"><a href="<%= request.getContextPath() %>/user/notifications"><i class="fa-regular fa-bell"></i> Notifications</a></li>
-            </ul>
-          </aside>
-          <div class="content-wrapper">
+    <main class="account-main">
+      <div class="container py-4 py-lg-5">
+        <div class="account-shell">
+          <c:set var="accountNavActive" value="notifications" />
+          <%@ include file="../components/user-sidebar.jsp" %>
+          <div class="content-wrapper account-content-surface">
             <div class="d-flex justify-content-between align-items-center">
               <h2 class="fw-bold mb-3">Notifications</h2>
               <c:if test="${unreadNotificationCount > 0}">

@@ -15,11 +15,13 @@ import org.springframework.web.bind.annotation.RequestParam;
 
 import jakarta.validation.Valid;
 import lithan.abc.cars.dto.CarSearchCriteria;
+import lithan.abc.cars.dto.ListingCommentForm;
 import lithan.abc.cars.entity.Car;
 import lithan.abc.cars.error.ResourceNotFoundException;
 import lithan.abc.cars.service.CarService;
 import lithan.abc.cars.service.UserCarService;
 import lithan.abc.cars.service.AuctionFollowService;
+import lithan.abc.cars.service.ListingCommentService;
 
 @Controller
 @RequestMapping("/cars")
@@ -33,6 +35,9 @@ public class CarController {
 
   @Autowired
   private AuctionFollowService auctionFollowService;
+
+  @Autowired
+  private ListingCommentService listingCommentService;
 
   @GetMapping("")
   public String carPage(
@@ -82,6 +87,8 @@ public class CarController {
     model.addAttribute("car", car);
     model.addAttribute("highestBidding", higestBidding);
     model.addAttribute("following", auctionFollowService.isFollowingCurrentUser(car));
+    model.addAttribute("comments", listingCommentService.commentsForCar(car));
+    model.addAttribute("commentForm", new ListingCommentForm());
 
     return "car-details";
   }

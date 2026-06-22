@@ -4,12 +4,13 @@
   <head>
     <%@ include file="../components/header.jsp" %>
     <link rel="stylesheet" href="/css/store.css" />
+    <link rel="stylesheet" href="/css/discussion.css" />
   </head>
   <body>
     <%@ include file="../components/navbar.jsp" %>
     <main class="container py-5">
       <a class="text-decoration-none" href="${pageContext.request.contextPath}/parts">&larr; Back to parts</a>
-      <div class="row g-5 mt-1 align-items-center">
+      <div class="row g-4 mt-1 align-items-center">
         <div class="col-lg-6">
           <div class="part-visual rounded-4" style="height: 420px">
             <c:choose>
@@ -41,6 +42,11 @@
           </security:authorize>
         </div>
       </div>
+      <c:set var="commentTitle" value="Product questions" />
+      <c:set var="commentSubtitle" value="Ask about compatibility, installation, specifications, or delivery. Replies from the store team are highlighted." />
+      <c:set var="commentPlaceholder" value="Ask a question about this car part..." />
+      <c:set var="commentAction" value="${pageContext.request.contextPath}/parts/${part.idPart}/comments" />
+      <%@ include file="../components/listing-comments.jsp" %>
     </main>
     <%@ include file="../components/footer.jsp" %>
   </body>

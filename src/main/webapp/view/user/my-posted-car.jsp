@@ -10,26 +10,13 @@
     <%@ include file="../components/navbar.jsp" %>
 
     <!-- Main -->
-    <main>
-      <div class="container pt-5">
-        <div class="d-flex">
-          <!-- Sidebar -->
-          <aside class="sidebar-user pe-md-3">
-            <ul>
-              <li>
-                <a href="<%= request.getContextPath() %>/user"><i class="fa-solid fa-user"></i> Profile</a>
-              </li>
-              <li class="active-page">
-                <a href="<%= request.getContextPath() %>/user/my-posted-car"><i class="fa-solid fa-car"></i> My Posted Car</a>
-              </li>
-              <li>
-                <a href="<%= request.getContextPath() %>/user/test-drive"><i class="fa-regular fa-calendar-check"></i> Appointment</a>
-              </li>
-            </ul>
-          </aside>
+    <main class="account-main">
+      <div class="container py-4 py-lg-5">
+        <div class="account-shell">
+          <c:set var="accountNavActive" value="listings" />
+          <%@ include file="../components/user-sidebar.jsp" %>
 
-          <!-- Content -->
-          <div class="content-wrapper">
+          <div class="content-wrapper account-content-surface">
             <h2 class="fw-bold mb-3">Posted Cars</h2>
             <!-- Table -->
             <c:if test="${!userCar.isEmpty()}">

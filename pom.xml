@@ -8,12 +8,12 @@
 		<version>3.5.15</version>
 		<relativePath /> <!-- lookup parent from repository -->
 	</parent>
-	<groupId>lithan.abc.cars</groupId>
-	<artifactId>abc-cars</artifactId>
+	<groupId>lithan.autostrada.auctions</groupId>
+	<artifactId>autostrada-auctions</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
 	<packaging>war</packaging>
-	<name>abc-cars</name>
-	<description>ABC Cars Sales Portal</description>
+	<name>autostrada-auctions</name>
+	<description>Autostrada Auctions Sales Portal</description>
 	<properties>
 		<java.version>17</java.version>
 	</properties>

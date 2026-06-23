@@ -12,7 +12,7 @@
       <section class="store-hero p-4 p-md-5 mb-4">
         <div class="row align-items-center">
           <div class="col-lg-8">
-            <span class="text-uppercase fw-semibold">Subotin Parts</span>
+            <span class="text-uppercase fw-semibold">Autostrada Parts</span>
             <h1 class="display-5 fw-bold mt-2">Everything your car needs</h1>
             <p class="lead mb-0">Shop maintenance, safety and performance parts through secure sandbox checkout.</p>
           </div>

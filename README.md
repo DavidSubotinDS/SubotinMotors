@@ -1,6 +1,6 @@
-# Subotin Motors
+# Autostrada Auctions
 
-Subotin Motors is a Spring MVC marketplace for listing used cars, placing bids,
+Autostrada Auctions is a Spring MVC marketplace for listing used cars, placing bids,
 requesting test drives, and purchasing car parts.
 
 ## Technology
@@ -41,7 +41,7 @@ The demo data includes active auctions, listings with no bids yet, listings
 awaiting administrator approval, inactive/reserved/sold cars, bid and payment
 history, test-drive requests in each lifecycle state, followed auctions, and an
 unread ending-soon notification. Seeded email addresses use the pattern
-`username@subotinmotors.local`.
+`username@autostradaauctions.local`.
 
 Local data is stored in `data/` and is ignored by Git.
 
@@ -57,7 +57,7 @@ Tests use a separate in-memory H2 database.
 
 ```powershell
 .\mvnw.cmd clean package
-java -jar target\abc-cars-0.0.1-SNAPSHOT.war
+java -jar target\autostrada-auctions-0.0.1-SNAPSHOT.war
 ```
 
 ## Use MySQL
@@ -66,8 +66,8 @@ Create a restricted MySQL user and provide credentials through environment varia
 
 ```powershell
 $env:SPRING_PROFILES_ACTIVE = "mysql"
-$env:DB_URL = "jdbc:mysql://localhost:3306/abc_cars?createDatabaseIfNotExist=true&serverTimezone=UTC"
-$env:DB_USERNAME = "abc_cars"
+$env:DB_URL = "jdbc:mysql://localhost:3306/autostrada_auctions?createDatabaseIfNotExist=true&serverTimezone=UTC"
+$env:DB_USERNAME = "autostrada_auctions"
 $env:DB_PASSWORD = "replace-me"
 .\mvnw.cmd spring-boot:run
 ```

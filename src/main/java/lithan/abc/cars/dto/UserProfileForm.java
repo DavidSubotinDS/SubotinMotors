@@ -1,6 +1,7 @@
 package lithan.abc.cars.dto;
 
 import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
@@ -30,8 +31,19 @@ public class UserProfileForm {
       message = "Phone number must contain 8 to 15 digits, with an optional leading +")
   private String phoneNumber;
 
-  @NotEmpty(message = "Address is required")
   private String address;
+
+  @Size(max = 255, message = "Street address must not exceed 255 characters")
+  private String streetAddress;
+
+  @Size(max = 120, message = "City must not exceed 120 characters")
+  private String city;
+
+  @Size(max = 30, message = "Postal code must not exceed 30 characters")
+  private String postalCode;
+
+  @Size(max = 120, message = "Country must not exceed 120 characters")
+  private String country;
 
   @Size(max = 1000, message = "About must not exceed 1000 characters")
   private String about;
@@ -45,6 +57,10 @@ public class UserProfileForm {
     form.setLastName(profile.getLastName());
     form.setPhoneNumber(profile.getPhoneNumber());
     form.setAddress(profile.getAddress());
+    form.setStreetAddress(profile.getStreetAddress());
+    form.setCity(profile.getCity());
+    form.setPostalCode(profile.getPostalCode());
+    form.setCountry(profile.getCountry());
     form.setAbout(profile.getAbout());
     return form;
   }
@@ -95,6 +111,52 @@ public class UserProfileForm {
 
   public void setAddress(String address) {
     this.address = address;
+  }
+
+  public String getStreetAddress() {
+    return streetAddress;
+  }
+
+  public void setStreetAddress(String streetAddress) {
+    this.streetAddress = streetAddress;
+  }
+
+  public String getCity() {
+    return city;
+  }
+
+  public void setCity(String city) {
+    this.city = city;
+  }
+
+  public String getPostalCode() {
+    return postalCode;
+  }
+
+  public void setPostalCode(String postalCode) {
+    this.postalCode = postalCode;
+  }
+
+  public String getCountry() {
+    return country;
+  }
+
+  public void setCountry(String country) {
+    this.country = country;
+  }
+
+  @AssertTrue(message = "Complete all shipping address fields or leave all of them blank")
+  public boolean isPhysicalAddressConsistent() {
+    int completed = 0;
+    completed += hasText(streetAddress) ? 1 : 0;
+    completed += hasText(city) ? 1 : 0;
+    completed += hasText(postalCode) ? 1 : 0;
+    completed += hasText(country) ? 1 : 0;
+    return completed == 0 || completed == 4;
+  }
+
+  private boolean hasText(String value) {
+    return value != null && !value.isBlank();
   }
 
   public String getAbout() {

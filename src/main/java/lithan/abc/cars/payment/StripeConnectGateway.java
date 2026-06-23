@@ -20,6 +20,7 @@ import com.stripe.param.v2.core.AccountRetrieveParams;
 import lithan.abc.cars.config.StripeProperties;
 import lithan.abc.cars.entity.Car;
 import lithan.abc.cars.entity.PaymentOrder;
+import lithan.abc.cars.entity.ListingDeposit;
 import lithan.abc.cars.entity.StoreOrder;
 import lithan.abc.cars.entity.StoreOrderItem;
 import lithan.abc.cars.entity.UserAccount;
@@ -205,6 +206,49 @@ public class StripeConnectGateway implements StripeGateway {
       return new StripeCheckoutResult(session.getId(), session.getUrl());
     } catch (StripeException exception) {
       throw new PaymentProviderException("Unable to create Stripe store checkout", exception);
+    }
+  }
+
+  @Override
+  public StripeCheckoutResult createListingDepositCheckoutSession(ListingDeposit deposit) {
+    try {
+      SessionCreateParams.LineItem.PriceData.ProductData productData =
+          SessionCreateParams.LineItem.PriceData.ProductData.builder()
+              .setName("Reservation deposit: " + deposit.getListing().getTitle())
+              .setDescription(
+                  deposit.getListing().getMake() + " "
+                      + deposit.getListing().getModel() + " ("
+                      + deposit.getListing().getYear() + ")")
+              .build();
+      SessionCreateParams.LineItem.PriceData priceData =
+          SessionCreateParams.LineItem.PriceData.builder()
+              .setCurrency(deposit.getCurrency())
+              .setUnitAmount(deposit.getAmountMinor())
+              .setProductData(productData)
+              .build();
+      SessionCreateParams params = SessionCreateParams.builder()
+          .setMode(SessionCreateParams.Mode.PAYMENT)
+          .setClientReferenceId("listing-deposit-" + deposit.getIdDeposit())
+          .setCustomerEmail(deposit.getBuyer().getEmail())
+          .setSuccessUrl(
+              properties.getBaseUrl()
+                  + "/listing-deposits/success?session_id={CHECKOUT_SESSION_ID}")
+          .setCancelUrl(
+              properties.getBaseUrl()
+                  + "/listings/" + deposit.getListing().getIdListing() + "?depositCanceled")
+          .addPaymentMethodType(SessionCreateParams.PaymentMethodType.CARD)
+          .addLineItem(SessionCreateParams.LineItem.builder()
+              .setQuantity(1L)
+              .setPriceData(priceData)
+              .build())
+          .putMetadata("listing_deposit_id", Integer.toString(deposit.getIdDeposit()))
+          .putMetadata("listing_id", Integer.toString(deposit.getListing().getIdListing()))
+          .build();
+
+      Session session = stripeClient.checkout().sessions().create(params);
+      return new StripeCheckoutResult(session.getId(), session.getUrl());
+    } catch (StripeException exception) {
+      throw new PaymentProviderException("Unable to create listing deposit checkout", exception);
     }
   }
 

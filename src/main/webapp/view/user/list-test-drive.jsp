@@ -161,6 +161,72 @@
                 </tbody>
               </table>
             </div>
+
+            <hr class="my-5" />
+            <h2 class="fw-bold mb-3">Fixed-price listing test rides</h2>
+            <h3 class="h5 mt-4">My listing bookings</h3>
+            <div class="table-responsive-md mb-5">
+              <table class="table table-striped align-middle">
+                <thead><tr><th>Listing</th><th>Seller</th><th>Date and time</th><th>Status</th><th>Management</th></tr></thead>
+                <tbody>
+                  <c:forEach items="${listingTestRides}" var="test">
+                    <tr>
+                      <td><a href="${pageContext.request.contextPath}/listings/${test.listing.idListing}">${test.listing.title}</a></td>
+                      <td>${test.listing.seller.profile.firstName} ${test.listing.seller.profile.lastName}</td>
+                      <td>${test.scheduledAt}</td>
+                      <td><span class="badge ${test.pending ? 'bg-warning text-dark' : test.accepted ? 'bg-success' : test.rejected ? 'bg-danger' : 'bg-secondary'}">${test.status.label}</span></td>
+                      <td>
+                        <c:choose>
+                          <c:when test="${test.reschedulable}">
+                            <div class="d-flex flex-wrap gap-2">
+                              <form:form action="${pageContext.request.contextPath}/user/listing-test-rides/${test.idTestRide}/reschedule" method="POST" class="d-flex gap-2">
+                                <input class="form-control form-control-sm" type="datetime-local" name="scheduledAt" value="${test.scheduledAt}" required />
+                                <button class="btn btn-sm btn-outline-primary" type="submit">Reschedule</button>
+                              </form:form>
+                              <form:form action="${pageContext.request.contextPath}/user/listing-test-rides/${test.idTestRide}/cancel" method="POST"><button class="btn btn-sm btn-outline-danger" type="submit">Cancel</button></form:form>
+                            </div>
+                          </c:when>
+                          <c:otherwise><span class="text-secondary">No actions available</span></c:otherwise>
+                        </c:choose>
+                      </td>
+                    </tr>
+                  </c:forEach>
+                  <c:if test="${empty listingTestRides}"><tr><td colspan="5" class="text-secondary">You have no fixed-price listing test rides.</td></tr></c:if>
+                </tbody>
+              </table>
+            </div>
+
+            <h3 class="h5">Requests for my fixed-price listings</h3>
+            <div class="table-responsive-md">
+              <table class="table table-striped align-middle">
+                <thead><tr><th>Listing</th><th>Interested user</th><th>Date and time</th><th>Status</th><th>Management</th></tr></thead>
+                <tbody>
+                  <c:forEach items="${listingTestRideRequests}" var="test">
+                    <tr>
+                      <td><a href="${pageContext.request.contextPath}/listings/${test.listing.idListing}">${test.listing.title}</a></td>
+                      <td>${test.user.profile.firstName} ${test.user.profile.lastName}</td>
+                      <td>${test.scheduledAt}</td>
+                      <td><span class="badge ${test.pending ? 'bg-warning text-dark' : test.accepted ? 'bg-success' : test.rejected ? 'bg-danger' : 'bg-secondary'}">${test.status.label}</span></td>
+                      <td>
+                        <c:choose>
+                          <c:when test="${test.pending}">
+                            <div class="d-flex gap-2">
+                              <form:form action="${pageContext.request.contextPath}/user/listing-test-rides/${test.idTestRide}/accept" method="POST"><button class="btn btn-sm btn-success" type="submit">Accept</button></form:form>
+                              <form:form action="${pageContext.request.contextPath}/user/listing-test-rides/${test.idTestRide}/reject" method="POST"><button class="btn btn-sm btn-outline-danger" type="submit">Reject</button></form:form>
+                            </div>
+                          </c:when>
+                          <c:when test="${test.accepted}">
+                            <form:form action="${pageContext.request.contextPath}/user/listing-test-rides/${test.idTestRide}/owner-cancel" method="POST"><button class="btn btn-sm btn-outline-danger" type="submit">Cancel appointment</button></form:form>
+                          </c:when>
+                          <c:otherwise><span class="text-secondary">Decision recorded</span></c:otherwise>
+                        </c:choose>
+                      </td>
+                    </tr>
+                  </c:forEach>
+                  <c:if test="${empty listingTestRideRequests}"><tr><td colspan="5" class="text-secondary">No test-ride requests for your fixed-price listings.</td></tr></c:if>
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       </div>

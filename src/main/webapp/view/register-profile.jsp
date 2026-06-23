@@ -34,11 +34,26 @@
             </div>
             <form:input class="form-control" type="text" path="phoneNumber" cssErrorClass="form-control error-border" />
 
-            <label class="form-label fs-6">Address</label>
-            <div>
-              <form:errors path="address" cssClass="error" />
-            </div>
-            <form:input class="form-control" type="text" path="address" cssErrorClass="form-control error-border" />
+            <hr />
+            <h3 class="h5">Shipping address <span class="text-secondary fw-normal">(optional)</span></h3>
+            <p class="small text-secondary">You can skip this during registration. A complete address is required only when ordering physical car parts.</p>
+            <form:errors path="physicalAddressConsistent" cssClass="error d-block mb-2" />
+
+            <label class="form-label fs-6">Street address</label>
+            <form:errors path="streetAddress" cssClass="error d-block" />
+            <form:input class="form-control" type="text" path="streetAddress" cssErrorClass="form-control error-border" />
+
+            <label class="form-label fs-6">City</label>
+            <form:errors path="city" cssClass="error d-block" />
+            <form:input class="form-control" type="text" path="city" cssErrorClass="form-control error-border" />
+
+            <label class="form-label fs-6">Postal code</label>
+            <form:errors path="postalCode" cssClass="error d-block" />
+            <form:input class="form-control" type="text" path="postalCode" cssErrorClass="form-control error-border" />
+
+            <label class="form-label fs-6">Country</label>
+            <form:errors path="country" cssClass="error d-block" />
+            <form:input class="form-control" type="text" path="country" cssErrorClass="form-control error-border" />
 
             <label class="form-label fs-6">About</label>
             <form:input class="form-control" type="text" path="about" />

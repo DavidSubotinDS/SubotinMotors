@@ -21,9 +21,22 @@
             <div class="jumbotron-text">
               <h2 class="fw-bolder m-0">Affordable</h2>
               <h2 class="fw-bolder">and Like New</h2>
-              <p>Timed auctions, test drives and verified listings</p>
+              <p>Timed auctions, fixed-price listings, test rides and reservations</p>
             </div>
             <a class="btn-search btn btn-outline-light text-uppercase mt-3" href="<%= request.getContextPath() %>/cars">Search Cars</a>
+          </div>
+        </div>
+      </div>
+
+      <div class="container mt-4">
+        <div class="row align-items-center bg-light rounded-4 p-4 p-md-5">
+          <div class="col-md-8">
+            <span class="text-uppercase text-primary fw-semibold">Fixed-price marketplace</span>
+            <h2 class="fw-bold mt-2">Browse cars without an auction</h2>
+            <p class="text-secondary mb-md-0">Contact third-party sellers through test-ride requests and reserve a listed car with a separate deposit.</p>
+          </div>
+          <div class="col-md-4 text-md-end">
+            <a class="btn btn-primary" href="<%= request.getContextPath() %>/listings">Browse listings</a>
           </div>
         </div>
       </div>
@@ -69,7 +82,7 @@
           <h3 class="fw-bold">Sell Your Car For The Best Price</h3>
           <c:choose>
             <c:when test="${not empty sessionScope.SPRING_SECURITY_CONTEXT}">
-              <a class="btn btn-outline-light mb-3 mt-2" href="<%= request.getContextPath() %>/user/post-car">Sell Car Now</a>
+              <a class="btn btn-outline-light mb-3 mt-2" href="<%= request.getContextPath() %>/user/listings/new">List Car Now</a>
             </c:when>
             <c:otherwise>
               <a class="btn btn-outline-light mb-3 mt-2" href="<%= request.getContextPath() %>/login">Sell Car Now</a>

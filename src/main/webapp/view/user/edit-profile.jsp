@@ -19,9 +19,17 @@
           <div class="account-content">
             <div class="form-wrapper medium">
           <h2 class="form-header">Edit Profile</h2>
+          <c:if test="${addressRequired or not empty addressError}">
+            <div class="alert alert-warning">
+              ${not empty addressError ? addressError : 'Add a complete physical address before checking out car parts.'}
+            </div>
+          </c:if>
           <!-- FORM -->
           <form:form action="editProfileProcess" method="POST" modelAttribute="profile">
             <form:hidden path="idProfile" />
+            <c:if test="${addressRequired or param.checkoutReturn != null}">
+              <input type="hidden" name="checkoutReturn" value="true" />
+            </c:if>
 
             <label class="fs-6 form-label">Email</label>
             <div>
@@ -47,16 +55,31 @@
             </div>
             <form:input class="form-control" type="text" path="phoneNumber" cssErrorClass="form-control error-border" />
 
-            <label class="fs-6 form-label">Address</label>
-            <div>
-              <form:errors path="address" cssClass="error" />
-            </div>
-            <form:input class="form-control" type="text" path="address" cssErrorClass="form-control error-border" />
+            <hr />
+            <h3 class="h5">Shipping address</h3>
+            <p class="small text-secondary">Optional for general account use; required for physical car-parts delivery.</p>
+            <form:errors path="physicalAddressConsistent" cssClass="error d-block mb-2" />
+
+            <label class="fs-6 form-label">Street address</label>
+            <form:errors path="streetAddress" cssClass="error d-block" />
+            <form:input class="form-control" type="text" path="streetAddress" cssErrorClass="form-control error-border" />
+
+            <label class="fs-6 form-label">City</label>
+            <form:errors path="city" cssClass="error d-block" />
+            <form:input class="form-control" type="text" path="city" cssErrorClass="form-control error-border" />
+
+            <label class="fs-6 form-label">Postal code</label>
+            <form:errors path="postalCode" cssClass="error d-block" />
+            <form:input class="form-control" type="text" path="postalCode" cssErrorClass="form-control error-border" />
+
+            <label class="fs-6 form-label">Country</label>
+            <form:errors path="country" cssClass="error d-block" />
+            <form:input class="form-control" type="text" path="country" cssErrorClass="form-control error-border" />
 
             <label class="fs-6 form-label">About</label>
             <form:input class="form-control" type="text" path="about" />
 
-            <button class="btn btn-primary form-button mt-3" type="submit">Save Edit</button>
+            <button class="btn btn-primary form-button mt-3" type="submit">${addressRequired ? 'Save address and return to cart' : 'Save Edit'}</button>
           </form:form>
             </div>
           </div>

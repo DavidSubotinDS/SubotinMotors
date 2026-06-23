@@ -10,6 +10,7 @@
     <main class="container py-5">
       <h1 class="fw-bold mb-4">Shopping cart</h1>
       <c:if test="${not empty storeMessage}"><div class="alert alert-success">${storeMessage}</div></c:if>
+      <c:if test="${param.addressUpdated != null}"><div class="alert alert-success">Shipping address saved. You can now continue checkout.</div></c:if>
       <c:if test="${param.checkoutCanceled != null}"><div class="alert alert-warning">Checkout was cancelled. Your reserved order remains visible in order history.</div></c:if>
 
       <c:choose>
@@ -55,8 +56,12 @@
                   <span>Total</span>
                   <strong><fmt:formatNumber value="${cartTotalMinor / 100.0}" minFractionDigits="2" maxFractionDigits="2" /> EUR</strong>
                 </div>
-                <p class="small text-secondary">Delivery uses the address saved in your profile. No real payment is processed in sandbox mode.</p>
+                <p class="small text-secondary">Delivery uses the structured physical address saved in your profile.</p>
                 <c:choose>
+                  <c:when test="${not hasShippingAddress}">
+                    <div class="alert alert-warning small">A complete street address, city, postal code, and country are required before checkout.</div>
+                    <a class="btn btn-warning w-100" href="${pageContext.request.contextPath}/user/edit-profile?addressRequired">Add shipping address</a>
+                  </c:when>
                   <c:when test="${stripeEnabled}">
                     <form:form action="${pageContext.request.contextPath}/store/checkout" method="POST">
                       <button class="btn btn-success w-100" type="submit"><i class="fa-brands fa-stripe me-2"></i>Secure checkout</button>

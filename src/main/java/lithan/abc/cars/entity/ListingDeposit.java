@@ -1,5 +1,6 @@
 package lithan.abc.cars.entity;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 
 import jakarta.persistence.Column;
@@ -10,45 +11,34 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
-import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 
 @Entity
-@Table(name = "tb_payment_order")
-public class PaymentOrder {
+@Table(name = "tb_listing_deposit")
+public class ListingDeposit {
 
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
-  @Column(name = "id_payment")
-  private int idPayment;
+  @Column(name = "id_deposit")
+  private int idDeposit;
 
-  @OneToOne(fetch = FetchType.EAGER, optional = false)
-  @JoinColumn(name = "id_bid", nullable = false, unique = true)
-  private CarBidding bid;
+  @ManyToOne(fetch = FetchType.EAGER, optional = false)
+  @JoinColumn(name = "id_listing", nullable = false)
+  private CarListing listing;
 
   @ManyToOne(fetch = FetchType.EAGER, optional = false)
   @JoinColumn(name = "id_buyer", nullable = false)
   private UserAccount buyer;
 
-  @ManyToOne(fetch = FetchType.EAGER, optional = false)
-  @JoinColumn(name = "id_seller", nullable = false)
-  private UserAccount seller;
-
   @Column(name = "amount_minor", nullable = false)
   private long amountMinor;
-
-  @Column(name = "platform_fee_minor", nullable = false)
-  private long platformFeeMinor;
 
   @Column(nullable = false, length = 3)
   private String currency;
 
   @Column(nullable = false, length = 30)
   private String status;
-
-  @Column(nullable = false, length = 30)
-  private String purpose = "AUCTION_PURCHASE";
 
   @Column(name = "checkout_session_id", unique = true)
   private String checkoutSessionId;
@@ -71,16 +61,16 @@ public class PaymentOrder {
   @Version
   private long version;
 
-  public int getIdPayment() {
-    return idPayment;
+  public int getIdDeposit() {
+    return idDeposit;
   }
 
-  public CarBidding getBid() {
-    return bid;
+  public CarListing getListing() {
+    return listing;
   }
 
-  public void setBid(CarBidding bid) {
-    this.bid = bid;
+  public void setListing(CarListing listing) {
+    this.listing = listing;
   }
 
   public UserAccount getBuyer() {
@@ -91,14 +81,6 @@ public class PaymentOrder {
     this.buyer = buyer;
   }
 
-  public UserAccount getSeller() {
-    return seller;
-  }
-
-  public void setSeller(UserAccount seller) {
-    this.seller = seller;
-  }
-
   public long getAmountMinor() {
     return amountMinor;
   }
@@ -107,12 +89,8 @@ public class PaymentOrder {
     this.amountMinor = amountMinor;
   }
 
-  public long getPlatformFeeMinor() {
-    return platformFeeMinor;
-  }
-
-  public void setPlatformFeeMinor(long platformFeeMinor) {
-    this.platformFeeMinor = platformFeeMinor;
+  public BigDecimal getAmount() {
+    return BigDecimal.valueOf(amountMinor, 2);
   }
 
   public String getCurrency() {
@@ -129,14 +107,6 @@ public class PaymentOrder {
 
   public void setStatus(String status) {
     this.status = status;
-  }
-
-  public String getPurpose() {
-    return purpose;
-  }
-
-  public void setPurpose(String purpose) {
-    this.purpose = purpose;
   }
 
   public String getCheckoutSessionId() {

@@ -4,6 +4,8 @@
   <c:when test="${accountNavActive eq 'followed'}"><c:set var="accountNavLabel" value="Followed auctions" /></c:when>
   <c:when test="${accountNavActive eq 'appointments'}"><c:set var="accountNavLabel" value="Appointments" /></c:when>
   <c:when test="${accountNavActive eq 'listings'}"><c:set var="accountNavLabel" value="My listings" /></c:when>
+  <c:when test="${accountNavActive eq 'fixedListings'}"><c:set var="accountNavLabel" value="Car listings" /></c:when>
+  <c:when test="${accountNavActive eq 'deposits'}"><c:set var="accountNavLabel" value="Reservation deposits" /></c:when>
   <c:when test="${accountNavActive eq 'sell'}"><c:set var="accountNavLabel" value="Sell a car" /></c:when>
   <c:when test="${accountNavActive eq 'orders'}"><c:set var="accountNavLabel" value="Parts orders" /></c:when>
   <c:when test="${accountNavActive eq 'notifications'}"><c:set var="accountNavLabel" value="Notifications" /></c:when>
@@ -80,17 +82,33 @@
         </a>
         <a class="account-nav-link" href="${pageContext.request.contextPath}/cars">
           <span class="account-nav-icon"><i class="fa-solid fa-magnifying-glass"></i></span>
-          <span>Browse cars</span>
+          <span>Browse auctions</span>
+        </a>
+        <a class="account-nav-link" href="${pageContext.request.contextPath}/listings">
+          <span class="account-nav-icon"><i class="fa-solid fa-tags"></i></span>
+          <span>Browse car listings</span>
+        </a>
+        <a class="account-nav-link ${accountNavActive eq 'deposits' ? 'active' : ''}" href="${pageContext.request.contextPath}/user/listing-deposits" ${accountNavActive eq 'deposits' ? 'aria-current="page"' : ''}>
+          <span class="account-nav-icon"><i class="fa-solid fa-receipt"></i></span>
+          <span>Reservation deposits</span>
         </a>
 
         <p class="account-nav-heading">Selling</p>
         <a class="account-nav-link ${accountNavActive eq 'listings' ? 'active' : ''}" href="${pageContext.request.contextPath}/user/my-posted-car" ${accountNavActive eq 'listings' ? 'aria-current="page"' : ''}>
           <span class="account-nav-icon"><i class="fa-solid fa-car"></i></span>
-          <span>My listings</span>
+          <span>My auctions</span>
         </a>
         <a class="account-nav-link ${accountNavActive eq 'sell' ? 'active' : ''}" href="${pageContext.request.contextPath}/user/post-car" ${accountNavActive eq 'sell' ? 'aria-current="page"' : ''}>
           <span class="account-nav-icon"><i class="fa-solid fa-circle-plus"></i></span>
-          <span>Sell a car</span>
+          <span>Post an auction</span>
+        </a>
+        <a class="account-nav-link ${accountNavActive eq 'fixedListings' ? 'active' : ''}" href="${pageContext.request.contextPath}/user/listings" ${accountNavActive eq 'fixedListings' ? 'aria-current="page"' : ''}>
+          <span class="account-nav-icon"><i class="fa-solid fa-tag"></i></span>
+          <span>My car listings</span>
+        </a>
+        <a class="account-nav-link ${accountNavActive eq 'fixedListings' ? 'active' : ''}" href="${pageContext.request.contextPath}/user/listings/new">
+          <span class="account-nav-icon"><i class="fa-solid fa-circle-plus"></i></span>
+          <span>List a car</span>
         </a>
 
         <p class="account-nav-heading">Parts store</p>

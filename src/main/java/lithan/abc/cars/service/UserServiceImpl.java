@@ -58,6 +58,7 @@ public class UserServiceImpl implements UserService {
     role.setRole("ROLE_USER");
     role.setUser(saveUser);
 
+    normalizeAddress(profile);
     profile.setUser(saveUser);
 
     saveUser.setProfile(profile);
@@ -116,6 +117,10 @@ public class UserServiceImpl implements UserService {
     editedProfile.setLastName(profile.getLastName());
     editedProfile.setPhoneNumber(profile.getPhoneNumber());
     editedProfile.setAddress(profile.getAddress());
+    editedProfile.setStreetAddress(trimToNull(profile.getStreetAddress()));
+    editedProfile.setCity(trimToNull(profile.getCity()));
+    editedProfile.setPostalCode(trimToNull(profile.getPostalCode()));
+    editedProfile.setCountry(trimToNull(profile.getCountry()));
     editedProfile.setAbout(profile.getAbout());
 
     userRepo.save(user);
@@ -125,6 +130,18 @@ public class UserServiceImpl implements UserService {
   @Override
   public UserProfile getProfile(int idProfile) {
     return userProfileRepo.findById(idProfile).orElseThrow(ResourceNotFoundException::new);
+  }
+
+  private void normalizeAddress(UserProfile profile) {
+    profile.setAddress(trimToNull(profile.getAddress()));
+    profile.setStreetAddress(trimToNull(profile.getStreetAddress()));
+    profile.setCity(trimToNull(profile.getCity()));
+    profile.setPostalCode(trimToNull(profile.getPostalCode()));
+    profile.setCountry(trimToNull(profile.getCountry()));
+  }
+
+  private String trimToNull(String value) {
+    return value == null || value.isBlank() ? null : value.trim();
   }
 
 }

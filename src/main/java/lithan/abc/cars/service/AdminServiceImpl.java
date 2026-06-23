@@ -46,6 +46,10 @@ public class AdminServiceImpl implements AdminService {
     editedProfile.setLastName(profile.getLastName());
     editedProfile.setPhoneNumber(profile.getPhoneNumber());
     editedProfile.setAddress(profile.getAddress());
+    editedProfile.setStreetAddress(profile.getStreetAddress());
+    editedProfile.setCity(profile.getCity());
+    editedProfile.setPostalCode(profile.getPostalCode());
+    editedProfile.setCountry(profile.getCountry());
     editedProfile.setAbout(profile.getAbout());
 
     userProfileRepo.save(editedProfile);

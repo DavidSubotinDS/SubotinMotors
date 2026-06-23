@@ -18,6 +18,8 @@ import lithan.abc.cars.service.CarPartService;
 import lithan.abc.cars.service.CartService;
 import lithan.abc.cars.service.ListingCommentService;
 import lithan.abc.cars.service.StoreOrderService;
+import lithan.abc.cars.service.UserService;
+import lithan.abc.cars.error.MissingShippingAddressException;
 
 @Controller
 public class PartsStoreController {
@@ -26,16 +28,19 @@ public class PartsStoreController {
   private final CartService cartService;
   private final StoreOrderService orderService;
   private final ListingCommentService commentService;
+  private final UserService userService;
 
   public PartsStoreController(
       CarPartService partService,
       CartService cartService,
       StoreOrderService orderService,
-      ListingCommentService commentService) {
+      ListingCommentService commentService,
+      UserService userService) {
     this.partService = partService;
     this.cartService = cartService;
     this.orderService = orderService;
     this.commentService = commentService;
+    this.userService = userService;
   }
 
   @GetMapping("/parts")
@@ -86,6 +91,9 @@ public class PartsStoreController {
     model.addAttribute("cartItems", cartService.items());
     model.addAttribute("cartTotalMinor", cartService.totalMinor());
     model.addAttribute("stripeEnabled", orderService.isStripeEnabled());
+    model.addAttribute(
+        "hasShippingAddress",
+        userService.getUserLogin().getProfile().hasCompleteShippingAddress());
     return "store/cart";
   }
 
@@ -109,8 +117,13 @@ public class PartsStoreController {
   }
 
   @PostMapping("/store/checkout")
-  public String checkout() {
-    return "redirect:" + orderService.startCheckout();
+  public String checkout(RedirectAttributes redirectAttributes) {
+    try {
+      return "redirect:" + orderService.startCheckout();
+    } catch (MissingShippingAddressException exception) {
+      redirectAttributes.addFlashAttribute("addressError", exception.getMessage());
+      return "redirect:/user/edit-profile?addressRequired";
+    }
   }
 
   @GetMapping("/store/checkout/success")

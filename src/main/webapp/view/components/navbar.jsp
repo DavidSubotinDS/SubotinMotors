@@ -10,13 +10,16 @@
           <a class="nav-link" href="<%= request.getContextPath() %>/">Home</a>
         </li>
         <li class="nav-item me-0 me-lg-3">
-          <a class="nav-link" href="<%= request.getContextPath() %>/cars">Cars</a>
+          <a class="nav-link" href="<%= request.getContextPath() %>/cars">Auctions</a>
+        </li>
+        <li class="nav-item me-0 me-lg-3">
+          <a class="nav-link" href="<%= request.getContextPath() %>/listings">Cars for Sale</a>
         </li>
         <li class="nav-item me-0 me-lg-3">
           <a class="nav-link" href="<%= request.getContextPath() %>/parts">Car Parts</a>
         </li>
         <li class="nav-item me-0 me-lg-3">
-          <a class="nav-link" href="<%= request.getContextPath() %>/user/post-car">Sell a Car</a>
+          <a class="nav-link" href="<%= request.getContextPath() %>/user/listings/new">List a Car</a>
         </li>
       </ul>
 
@@ -56,6 +59,12 @@
               </li>
               <li>
                 <a class="dropdown-item" href="<%= request.getContextPath() %>/user/my-posted-car"><i class="fa-solid fa-car"></i> My Posted Car</a>
+              </li>
+              <li>
+                <a class="dropdown-item" href="<%= request.getContextPath() %>/user/listings"><i class="fa-solid fa-tag"></i> My Car Listings</a>
+              </li>
+              <li>
+                <a class="dropdown-item" href="<%= request.getContextPath() %>/user/listing-deposits"><i class="fa-solid fa-receipt"></i> Reservation Deposits</a>
               </li>
               <li>
                 <a class="dropdown-item" href="<%= request.getContextPath() %>/user/bids"><i class="fa-solid fa-gavel"></i> My Bids</a>

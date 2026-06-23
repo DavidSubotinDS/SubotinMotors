@@ -25,7 +25,7 @@
             <div class="user-details pt-3">
               <h5 class="fw-semibold">${profile.firstName} ${profile.lastName}</h5>
               <p class="text-secondary m-0">${profile.phoneNumber}</p>
-              <p class="text-secondary m-0">${profile.address}</p>
+              <p class="text-secondary m-0">${profile.displayLocation}</p>
             </div>
           </div>
           <div class="car-post row">

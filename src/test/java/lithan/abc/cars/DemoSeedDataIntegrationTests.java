@@ -11,10 +11,13 @@ import org.springframework.transaction.annotation.Transactional;
 
 import lithan.abc.cars.entity.UserAccount;
 import lithan.abc.cars.repository.CarBiddingRepository;
+import lithan.abc.cars.repository.CarListingRepository;
 import lithan.abc.cars.repository.CarRepository;
 import lithan.abc.cars.repository.PaymentOrderRepository;
 import lithan.abc.cars.repository.CarPartRepository;
 import lithan.abc.cars.repository.ListingCommentRepository;
+import lithan.abc.cars.repository.ListingDepositRepository;
+import lithan.abc.cars.repository.ListingTestRideRepository;
 import lithan.abc.cars.repository.UserRepository;
 
 @SpringBootTest
@@ -28,6 +31,9 @@ class DemoSeedDataIntegrationTests {
   private CarRepository carRepository;
 
   @Autowired
+  private CarListingRepository carListingRepository;
+
+  @Autowired
   private CarBiddingRepository bidRepository;
 
   @Autowired
@@ -38,6 +44,12 @@ class DemoSeedDataIntegrationTests {
 
   @Autowired
   private ListingCommentRepository commentRepository;
+
+  @Autowired
+  private ListingTestRideRepository listingTestRideRepository;
+
+  @Autowired
+  private ListingDepositRepository listingDepositRepository;
 
   @Test
   void demoPersonasHaveDistinctMarketplaceHistories() {
@@ -76,6 +88,61 @@ class DemoSeedDataIntegrationTests {
         .anyMatch(bid -> "ONGOING".equals(bid.getStatus())));
     assertTrue(bidRepository.findAll().stream()
         .anyMatch(bid -> "ACCEPTED_PENDING_PAYMENT".equals(bid.getStatus())));
+  }
+
+  @Test
+  void fixedPriceDemoListingsHaveDedicatedSellerAccounts() {
+    long listingDemoUsers = userRepository.findAll().stream()
+        .filter(user -> user.getUsername().startsWith("demo_list_"))
+        .peek(user -> assertTrue(user.getProfile().hasCompleteShippingAddress()))
+        .count();
+
+    assertEquals(24, listingDemoUsers);
+    assertEquals(24, carListingRepository.findAll().stream()
+        .filter(listing -> listing.getSeller().getUsername().startsWith("demo_list_"))
+        .count());
+    assertEquals(24, carListingRepository.findAll().stream()
+        .filter(listing -> listing.getSeller().getUsername().startsWith("demo_list_"))
+        .map(listing -> listing.getSeller().getUsername())
+        .distinct()
+        .count());
+    assertTrue(carListingRepository.findAll().stream()
+        .filter(listing -> listing.getSeller().getUsername().startsWith("demo_list_"))
+        .allMatch(listing -> listing.getPicture() != null));
+    assertTrue(carListingRepository.findAll().stream()
+        .anyMatch(listing -> "ACTIVE".equals(listing.getStatus().name())));
+    assertTrue(carListingRepository.findAll().stream()
+        .anyMatch(listing -> "RESERVED".equals(listing.getStatus().name())));
+    assertTrue(carListingRepository.findAll().stream()
+        .anyMatch(listing -> "SOLD".equals(listing.getStatus().name())));
+    assertTrue(carListingRepository.findAll().stream()
+        .anyMatch(listing -> "INACTIVE".equals(listing.getStatus().name())));
+  }
+
+  @Test
+  void fixedPriceDemoListingsIncludeReservationAndTestRideExamples() {
+    assertTrue(listingTestRideRepository.findAll().stream()
+        .anyMatch(ride -> ride.getListing().getSeller().getUsername().startsWith("demo_list_")
+            && "PENDING".equals(ride.getStatus().name())));
+    assertTrue(listingTestRideRepository.findAll().stream()
+        .anyMatch(ride -> ride.getListing().getSeller().getUsername().startsWith("demo_list_")
+            && "ACCEPTED".equals(ride.getStatus().name())));
+    assertTrue(listingTestRideRepository.findAll().stream()
+        .anyMatch(ride -> ride.getListing().getSeller().getUsername().startsWith("demo_list_")
+            && "REJECTED".equals(ride.getStatus().name())));
+    assertTrue(listingTestRideRepository.findAll().stream()
+        .anyMatch(ride -> ride.getListing().getSeller().getUsername().startsWith("demo_list_")
+            && "CANCELLED".equals(ride.getStatus().name())));
+
+    assertTrue(listingDepositRepository.findAll().stream()
+        .anyMatch(deposit -> deposit.getListing().getSeller().getUsername().startsWith("demo_list_")
+            && "PENDING_CHECKOUT".equals(deposit.getStatus())));
+    assertTrue(listingDepositRepository.findAll().stream()
+        .anyMatch(deposit -> deposit.getListing().getSeller().getUsername().startsWith("demo_list_")
+            && "PAID".equals(deposit.getStatus())));
+    assertTrue(listingDepositRepository.findAll().stream()
+        .anyMatch(deposit -> deposit.getListing().getSeller().getUsername().startsWith("demo_list_")
+            && "EXPIRED".equals(deposit.getStatus())));
   }
 
   @Test

@@ -1,0 +1,88 @@
+.listing-hero {
+  background: linear-gradient(135deg, #10243e, #2f6f8f);
+  border-radius: 1.25rem;
+  color: white;
+}
+
+.listing-hero * {
+  color: inherit;
+}
+
+.listing-card,
+.listing-panel {
+  background: #fff;
+  border: 1px solid #e5e9ed;
+  border-radius: 1rem;
+  overflow: hidden;
+}
+
+.listing-card {
+  height: 100%;
+  transition: box-shadow 160ms ease, transform 160ms ease;
+}
+
+.listing-card:hover {
+  box-shadow: 0 0.9rem 2rem rgba(16, 36, 62, 0.12);
+  transform: translateY(-3px);
+}
+
+.listing-card > img,
+.listing-detail-image > img {
+  display: block;
+  height: 240px;
+  object-fit: cover;
+  width: 100%;
+}
+
+.listing-detail-image > img {
+  border-radius: 1rem;
+  height: min(62vw, 520px);
+}
+
+.listing-placeholder {
+  align-items: center;
+  background: linear-gradient(145deg, #eef4f8, #dce8ef);
+  color: #1f5f82;
+  display: flex;
+  font-size: 5rem;
+  height: 240px;
+  justify-content: center;
+}
+
+.listing-price {
+  color: #10243e;
+  font-size: 1.45rem;
+  font-weight: 800;
+}
+
+.listing-specs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  font-size: 0.85rem;
+}
+
+.listing-panel {
+  padding: 1.5rem;
+}
+
+.listing-actions {
+  position: sticky;
+  top: 5.5rem;
+}
+
+.listing-description {
+  white-space: pre-line;
+}
+
+.listing-form-wrapper {
+  margin-top: 0 !important;
+  max-width: 840px;
+  width: 100% !important;
+}
+
+@media (max-width: 991px) {
+  .listing-actions {
+    position: static;
+  }
+}

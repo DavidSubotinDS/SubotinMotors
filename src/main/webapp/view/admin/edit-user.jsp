@@ -36,11 +36,15 @@
             </div>
             <form:input class="form-control" type="text" path="phoneNumber" cssErrorClass="form-control error-border" />
 
-            <label class="form-label">Address</label>
-            <div>
-              <form:errors path="address" cssClass="error" />
-            </div>
-            <form:input class="form-control" type="text" path="address" cssErrorClass="form-control error-border" />
+            <form:errors path="physicalAddressConsistent" cssClass="error d-block mb-2" />
+            <label class="form-label">Street address</label>
+            <form:input class="form-control" type="text" path="streetAddress" />
+            <label class="form-label">City</label>
+            <form:input class="form-control" type="text" path="city" />
+            <label class="form-label">Postal code</label>
+            <form:input class="form-control" type="text" path="postalCode" />
+            <label class="form-label">Country</label>
+            <form:input class="form-control" type="text" path="country" />
 
             <label class="form-label">About</label>
             <form:input class="form-control" type="text" path="about" />

@@ -61,7 +61,7 @@
             </c:if>
             <div class="about mt-3">
               <h5 class="fw-semibold">Parts store</h5>
-              <p class="text-secondary">Buy maintenance and accessory products through the Subotin Motors sandbox checkout.</p>
+              <p class="text-secondary">Buy maintenance and accessory products through the Autostrada Auctions sandbox checkout.</p>
               <a class="btn btn-primary me-2" href="<%= request.getContextPath() %>/parts">Browse parts</a>
               <a class="btn btn-outline-secondary" href="<%= request.getContextPath() %>/orders">My orders</a>
             </div>

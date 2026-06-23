@@ -67,7 +67,7 @@
       <div class="container mt-4">
         <div class="row align-items-center bg-light rounded-4 p-4 p-md-5">
           <div class="col-md-8">
-            <span class="text-uppercase text-primary fw-semibold">Subotin Parts</span>
+            <span class="text-uppercase text-primary fw-semibold">Autostrada Parts</span>
             <h2 class="fw-bold mt-2">Maintain your car with confidence</h2>
             <p class="text-secondary mb-md-0">Browse filters, brakes, batteries, lighting, fluids and roadside accessories, then purchase the complete cart through secure sandbox checkout.</p>
           </div>

@@ -69,7 +69,7 @@ $eventNames = @(
   "checkout.session.expired"
 ) -join ","
 
-$logPrefix = Join-Path $env:TEMP "subotin-stripe-$PID"
+$logPrefix = Join-Path $env:TEMP "autostrada-stripe-$PID"
 $listenerOutput = "$logPrefix-output.log"
 $listenerError = "$logPrefix-error.log"
 $listenerArguments = @(
@@ -100,7 +100,7 @@ Write-Host ""
 Write-Host "Stripe sandbox is ready."
 Write-Host "Webhook forwarding: http://localhost:$Port/webhooks/stripe"
 Write-Host "Listener logs: $listenerOutput and $listenerError"
-Write-Host "Starting Subotin Motors..."
+Write-Host "Starting Autostrada Auctions..."
 Write-Host ""
 
 try {

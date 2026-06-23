@@ -80,7 +80,7 @@
                       <td>${user.profile.lastName}</td>
                       <td>${user.email}</td>
                       <td>${user.profile.phoneNumber}</td>
-                      <td>${user.profile.address}</td>
+                      <td>${user.profile.formattedShippingAddress}</td>
                       <td>
                         <div class="dropdown">
                           <button class="btn btn-warning dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false"><i class="fa-regular fa-pen-to-square"></i></button>
@@ -175,7 +175,7 @@
                       <td>${admin.profile.lastName}</td>
                       <td>${admin.email}</td>
                       <td>${admin.profile.phoneNumber}</td>
-                      <td>${admin.profile.address}</td>
+                      <td>${admin.profile.formattedShippingAddress}</td>
                       <td>
                         <div class="dropdown">
                           <button class="btn btn-warning dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false"><i class="fa-regular fa-pen-to-square"></i></button>

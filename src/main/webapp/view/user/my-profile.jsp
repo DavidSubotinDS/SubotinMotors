@@ -31,7 +31,7 @@
                   <h5 class="fw-semibold">${profile.firstName} ${profile.lastName}</h5>
                   <p class="text-secondary m-0">${email}</p>
                   <p class="text-secondary m-0">${profile.phoneNumber}</p>
-                  <p class="text-secondary m-0">${profile.address}</p>
+                  <p class="text-secondary m-0">${profile.displayLocation}</p>
                 </div>
               </div>
               <div class="pt-4">
@@ -39,6 +39,18 @@
                   <button class="btn btn-outline-secondary">Edit Profile</button>
                 </a>
               </div>
+            </div>
+            <div class="about mt-3">
+              <h5 class="fw-semibold">Shipping address</h5>
+              <c:choose>
+                <c:when test="${profile.completeShippingAddress}">
+                  <p class="text-secondary">${profile.formattedShippingAddress}</p>
+                </c:when>
+                <c:otherwise>
+                  <p class="text-secondary">No complete shipping address is saved. You will be prompted before car-parts checkout.</p>
+                  <a class="btn btn-outline-primary" href="<%= request.getContextPath() %>/user/edit-profile">Add shipping address</a>
+                </c:otherwise>
+              </c:choose>
             </div>
             <!-- About -->
             <c:if test="${profile.about != null}">

@@ -57,6 +57,7 @@
                 <thead>
                   <tr>
                     <th>Car purchased</th>
+                    <th>Purpose</th>
                     <th>Buyer</th>
                     <th>Seller</th>
                     <th>Amount</th>
@@ -74,6 +75,7 @@
                         <br />
                         <small class="text-secondary">${payment.bid.car.year} · Car #${payment.bid.car.idCar}</small>
                       </td>
+                      <td><span class="badge bg-secondary">${payment.purpose}</span></td>
                       <td>
                         ${payment.buyer.profile.firstName} ${payment.buyer.profile.lastName}
                         <br />
@@ -126,7 +128,7 @@
                   </c:forEach>
                   <c:if test="${empty transactions}">
                     <tr>
-                      <td colspan="8" class="text-center text-secondary py-4">No transactions recorded yet.</td>
+                      <td colspan="9" class="text-center text-secondary py-4">No transactions recorded yet.</td>
                     </tr>
                   </c:if>
                 </tbody>

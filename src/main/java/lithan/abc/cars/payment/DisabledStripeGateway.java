@@ -4,6 +4,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 import lithan.abc.cars.entity.PaymentOrder;
+import lithan.abc.cars.entity.ListingDeposit;
 import lithan.abc.cars.entity.StoreOrder;
 import lithan.abc.cars.entity.UserAccount;
 
@@ -42,6 +43,11 @@ public class DisabledStripeGateway implements StripeGateway {
 
   @Override
   public StripeCheckoutResult createStoreCheckoutSession(StoreOrder order) {
+    throw disabled();
+  }
+
+  @Override
+  public StripeCheckoutResult createListingDepositCheckoutSession(ListingDeposit deposit) {
     throw disabled();
   }
 

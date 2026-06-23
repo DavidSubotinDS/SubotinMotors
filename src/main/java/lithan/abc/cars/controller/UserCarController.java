@@ -25,6 +25,7 @@ import lithan.abc.cars.entity.CarBidding;
 import lithan.abc.cars.entity.TestDrive;
 import lithan.abc.cars.service.UserCarService;
 import lithan.abc.cars.service.UserService;
+import lithan.abc.cars.service.CarListingService;
 
 @Controller
 @RequestMapping("/user")
@@ -35,6 +36,9 @@ public class UserCarController {
 
   @Autowired
   private UserService userService;
+
+  @Autowired
+  private CarListingService carListingService;
 
   // User Posted Car
   @GetMapping("/my-posted-car")
@@ -124,8 +128,65 @@ public class UserCarController {
 
     model.addAttribute("receivedTestDrives", receivedTestDrives);
     model.addAttribute("bookedTestDrives", bookedTestDrives);
+    model.addAttribute(
+        "listingTestRideRequests",
+        carListingService.testRideRequestsForCurrentSeller());
+    model.addAttribute(
+        "listingTestRides",
+        carListingService.currentUserTestRides());
 
     return "user/list-test-drive";
+  }
+
+  @PostMapping("/listing-test-rides/{idTestRide}/reschedule")
+  public String rescheduleListingTestRide(
+      @PathVariable int idTestRide,
+      @RequestParam("scheduledAt")
+      @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime scheduledAt,
+      RedirectAttributes redirectAttributes) {
+    try {
+      carListingService.rescheduleCurrentUserTestRide(idTestRide, scheduledAt);
+      redirectAttributes.addFlashAttribute("appointmentMessage", "Test ride rescheduled.");
+    } catch (IllegalArgumentException | IllegalStateException exception) {
+      redirectAttributes.addFlashAttribute("appointmentError", exception.getMessage());
+    }
+    return "redirect:/user/test-drive";
+  }
+
+  @PostMapping("/listing-test-rides/{idTestRide}/cancel")
+  public String cancelListingTestRide(
+      @PathVariable int idTestRide,
+      RedirectAttributes redirectAttributes) {
+    carListingService.cancelCurrentUserTestRide(idTestRide);
+    redirectAttributes.addFlashAttribute("appointmentMessage", "Test ride cancelled.");
+    return "redirect:/user/test-drive";
+  }
+
+  @PostMapping("/listing-test-rides/{idTestRide}/accept")
+  public String acceptListingTestRide(
+      @PathVariable int idTestRide,
+      RedirectAttributes redirectAttributes) {
+    carListingService.acceptTestRideForOwnedListing(idTestRide);
+    redirectAttributes.addFlashAttribute("appointmentMessage", "Test ride request accepted.");
+    return "redirect:/user/test-drive";
+  }
+
+  @PostMapping("/listing-test-rides/{idTestRide}/reject")
+  public String rejectListingTestRide(
+      @PathVariable int idTestRide,
+      RedirectAttributes redirectAttributes) {
+    carListingService.rejectTestRideForOwnedListing(idTestRide);
+    redirectAttributes.addFlashAttribute("appointmentMessage", "Test ride request rejected.");
+    return "redirect:/user/test-drive";
+  }
+
+  @PostMapping("/listing-test-rides/{idTestRide}/owner-cancel")
+  public String cancelOwnedListingTestRide(
+      @PathVariable int idTestRide,
+      RedirectAttributes redirectAttributes) {
+    carListingService.cancelTestRideForOwnedListing(idTestRide);
+    redirectAttributes.addFlashAttribute("appointmentMessage", "Accepted test ride cancelled.");
+    return "redirect:/user/test-drive";
   }
 
   @PostMapping("/test-drives/{idTestDrive}/reschedule")

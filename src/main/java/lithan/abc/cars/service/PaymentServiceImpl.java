@@ -122,6 +122,7 @@ public class PaymentServiceImpl implements PaymentService {
     payment.setPlatformFeeMinor(feeMinor);
     payment.setCurrency(properties.getCurrency().toLowerCase());
     payment.setStatus("PENDING_CHECKOUT");
+    payment.setPurpose("AUCTION_PURCHASE");
     payment.setCreatedAt(now);
     payment.setUpdatedAt(now);
 

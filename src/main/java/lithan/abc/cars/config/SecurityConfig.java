@@ -36,6 +36,8 @@ public class SecurityConfig {
         .requestMatchers("/webhooks/stripe").permitAll()
         .requestMatchers("/").permitAll()
         .requestMatchers(HttpMethod.POST, "/cars/*/comments", "/parts/*/comments").hasRole("USER")
+        .requestMatchers(HttpMethod.GET, "/listings", "/listings/**").permitAll()
+        .requestMatchers(HttpMethod.POST, "/listings/**").hasRole("USER")
         .requestMatchers("/cars/**").permitAll()
         .requestMatchers("/parts/**").permitAll()
         .requestMatchers("/about-us", "/contact-us", "/view-user/**").permitAll()
@@ -43,6 +45,7 @@ public class SecurityConfig {
         .requestMatchers("/forgot-password", "/reset-password").permitAll()
 
         .requestMatchers("/user/**").hasRole("USER")
+        .requestMatchers("/listing-deposits/**").hasRole("USER")
         .requestMatchers("/car-bid/**").hasRole("USER")
         .requestMatchers("/test-drive/**").hasRole("USER")
         .requestMatchers("/cart/**", "/store/**", "/orders/**").hasRole("USER")

@@ -14,6 +14,7 @@ import lithan.abc.cars.entity.StoreOrder;
 import lithan.abc.cars.entity.StoreOrderItem;
 import lithan.abc.cars.entity.UserAccount;
 import lithan.abc.cars.error.ResourceNotFoundException;
+import lithan.abc.cars.error.MissingShippingAddressException;
 import lithan.abc.cars.payment.StripeCheckoutResult;
 import lithan.abc.cars.payment.StripeGateway;
 import lithan.abc.cars.payment.StripeWebhookEvent;
@@ -59,6 +60,9 @@ public class StoreOrderServiceImpl implements StoreOrderService {
       throw new IllegalStateException("Stripe sandbox checkout is not currently enabled");
     }
     UserAccount user = userService.getUserLogin();
+    if (user.getProfile() == null || !user.getProfile().hasCompleteShippingAddress()) {
+      throw new MissingShippingAddressException();
+    }
     List<CartItem> cart = cartItemRepository.findByUserOrderByCreatedAtAsc(user);
     if (cart.isEmpty()) {
       throw new IllegalStateException("Your cart is empty");
@@ -70,7 +74,11 @@ public class StoreOrderServiceImpl implements StoreOrderService {
     order.setCurrency(stripeProperties.getCurrency().toLowerCase());
     order.setStatus("CREATING_CHECKOUT");
     order.setShippingName(user.getProfile().getFirstName() + " " + user.getProfile().getLastName());
-    order.setShippingAddress(user.getProfile().getAddress());
+    order.setShippingAddress(user.getProfile().getFormattedShippingAddress());
+    order.setShippingStreetAddress(user.getProfile().getStreetAddress().trim());
+    order.setShippingCity(user.getProfile().getCity().trim());
+    order.setShippingPostalCode(user.getProfile().getPostalCode().trim());
+    order.setShippingCountry(user.getProfile().getCountry().trim());
     order.setCreatedAt(now);
     order.setUpdatedAt(now);
 

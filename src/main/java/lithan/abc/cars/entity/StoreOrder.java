@@ -45,6 +45,18 @@ public class StoreOrder {
   @Column(name = "shipping_address", nullable = false, length = 500)
   private String shippingAddress;
 
+  @Column(name = "shipping_street_address", length = 255)
+  private String shippingStreetAddress;
+
+  @Column(name = "shipping_city", length = 120)
+  private String shippingCity;
+
+  @Column(name = "shipping_postal_code", length = 30)
+  private String shippingPostalCode;
+
+  @Column(name = "shipping_country", length = 120)
+  private String shippingCountry;
+
   @Column(name = "checkout_session_id", unique = true)
   private String checkoutSessionId;
 
@@ -119,6 +131,38 @@ public class StoreOrder {
 
   public void setShippingAddress(String shippingAddress) {
     this.shippingAddress = shippingAddress;
+  }
+
+  public String getShippingStreetAddress() {
+    return shippingStreetAddress;
+  }
+
+  public void setShippingStreetAddress(String shippingStreetAddress) {
+    this.shippingStreetAddress = shippingStreetAddress;
+  }
+
+  public String getShippingCity() {
+    return shippingCity;
+  }
+
+  public void setShippingCity(String shippingCity) {
+    this.shippingCity = shippingCity;
+  }
+
+  public String getShippingPostalCode() {
+    return shippingPostalCode;
+  }
+
+  public void setShippingPostalCode(String shippingPostalCode) {
+    this.shippingPostalCode = shippingPostalCode;
+  }
+
+  public String getShippingCountry() {
+    return shippingCountry;
+  }
+
+  public void setShippingCountry(String shippingCountry) {
+    this.shippingCountry = shippingCountry;
   }
 
   public String getCheckoutSessionId() {

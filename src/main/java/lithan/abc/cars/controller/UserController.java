@@ -49,15 +49,19 @@ public class UserController {
 
   // Edit Profile
   @GetMapping("/edit-profile")
-  public String editProfile(Model model) {
+  public String editProfile(
+      @RequestParam(name = "addressRequired", required = false) String addressRequired,
+      Model model) {
     UserAccount user = userService.getUserLogin();
 
     model.addAttribute("profile", UserProfileForm.from(user));
+    model.addAttribute("addressRequired", addressRequired != null);
     return "user/edit-profile";
   }
 
   @PostMapping("/editProfileProcess")
   public String saveEditProfile(@Valid @ModelAttribute("profile") UserProfileForm profile, BindingResult bindingResult,
+      @RequestParam(name = "checkoutReturn", defaultValue = "false") boolean checkoutReturn,
       HttpSession session) {
     if (bindingResult.hasErrors()) {
       return "user/edit-profile";
@@ -72,7 +76,7 @@ public class UserController {
 
     session.setAttribute("profileLog", userService.getUserLogin().getProfile());
 
-    return "redirect:/user/my-profile";
+    return checkoutReturn ? "redirect:/cart?addressUpdated" : "redirect:/user/my-profile";
   }
 
   // Upload Profile Picture

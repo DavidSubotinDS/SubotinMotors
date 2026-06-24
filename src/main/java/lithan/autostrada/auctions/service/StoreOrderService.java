@@ -15,6 +15,8 @@ public interface StoreOrderService {
 
   Page<StoreOrder> allOrders(Pageable pageable);
 
+  StoreOrder adminOrder(int idOrder);
+
   StoreOrder currentUserOrder(int idOrder);
 
   StoreOrder currentUserOrderBySession(String sessionId);

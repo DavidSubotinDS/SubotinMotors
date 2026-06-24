@@ -111,6 +111,12 @@ public class StoreAdminController {
     return "admin/store-orders";
   }
 
+  @GetMapping("/orders/{idOrder}")
+  public String orderDetails(@PathVariable int idOrder, Model model) {
+    model.addAttribute("order", orderService.adminOrder(idOrder));
+    return "admin/store-order-details";
+  }
+
   private Sort.Direction sortDirection(String direction) {
     return "desc".equalsIgnoreCase(direction) ? Sort.Direction.DESC : Sort.Direction.ASC;
   }

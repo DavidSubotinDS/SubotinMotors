@@ -24,7 +24,7 @@
             <h2 class="fw-bold mb-3">Store orders</h2>
             <div class="table-responsive">
               <table class="table table-striped align-middle">
-                <thead><tr><th>Order</th><th>Customer</th><th>Created</th><th>Items</th><th>Total</th><th>Status</th><th>Stripe ID</th></tr></thead>
+                <thead><tr><th>Order</th><th>Customer</th><th>Created</th><th>Items</th><th>Total</th><th>Status</th><th>Stripe ID</th><th></th></tr></thead>
                 <tbody>
                   <c:forEach items="${orders}" var="order">
                     <tr>
@@ -35,9 +35,10 @@
                       <td><fmt:formatNumber value="${order.totalMinor / 100.0}" minFractionDigits="2" maxFractionDigits="2" /> ${order.currency.toUpperCase()}</td>
                       <td><span class="order-status ${order.status eq 'PAID' ? 'order-status-paid' : (order.status eq 'PAYMENT_FAILED' || order.status eq 'EXPIRED' ? 'order-status-failed' : 'order-status-pending')}">${order.status}</span></td>
                       <td><small>${empty order.paymentIntentId ? order.checkoutSessionId : order.paymentIntentId}</small></td>
+                      <td><a class="btn btn-sm btn-outline-primary" href="${pageContext.request.contextPath}/admin/store/orders/${order.idOrder}">Details</a></td>
                     </tr>
                   </c:forEach>
-                  <c:if test="${empty orders}"><tr><td colspan="7" class="text-center py-5">No store orders yet.</td></tr></c:if>
+                  <c:if test="${empty orders}"><tr><td colspan="8" class="text-center py-5">No store orders yet.</td></tr></c:if>
                 </tbody>
               </table>
             </div>

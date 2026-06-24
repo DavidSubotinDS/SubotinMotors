@@ -1,5 +1,9 @@
 # Projektna dokumentacija: Autostrada Auctions
 
+> Napomena, 24. jun 2026: repozitorijum je reorganizovan u `back/` za Spring
+> Boot backend i `front/` za React frontend. Delovi koji opisuju JSP prikaze
+> odnose se na privremeni legacy interfejs koji se zamenjuje React aplikacijom.
+
 Predmet: Eksploatacija, održavanje i nadogradnja informacionih sistema  
 Student: David Subotin IT-40/2022  
 GitHub repozitorijum: https://github.com/DavidSubotinDS/SubotinMotors  
@@ -32,7 +36,7 @@ Aplikacija je proverena u odnosu na obaveštenje o predaji projektne dokumentaci
 | Projektna dokumentacija | Ispunjeno ovim dokumentom | Dokumentacija opisuje realni sistem, tehnologije, slučajeve upotrebe, model domena, bazu podataka, arhitekturu, bezbednost, validaciju, testiranje i lokalno pokretanje. |
 | Link do GitHub repozitorijuma | Ispunjeno | Link do repozitorijuma naveden je na početku dokumenta i u posebnom poglavlju. |
 | Zahtevi projektne specifikacije | Ispunjeno prema dokazima iz repozitorijuma | Izvorni kod i dokument `docs/crud-coverage.md` pokrivaju CRUD i životne cikluse, autorizaciju po ulogama, moderaciju, validaciju, obradu plaćanja i očuvanje istorije. |
-| Kvalitet i provera | Ispunjeno | Komanda `.\mvnw.cmd test` izvršena je uspešno: 75 testova, 0 neuspešnih testova i 0 grešaka. |
+| Kvalitet i provera | Ispunjeno | Backend testovi su pokrenuti iz direktorijuma `back/`: 81 test, 0 neuspešnih testova i 0 grešaka. |
 | Smernice za dokumentaciju | Ispunjeno | Dokument koristi formalan stil, strukturirane naslove, zvanične reference i ne oslanja se na nepouzdane izvore. |
 
 ## 1. Opis realnog sistema
@@ -61,7 +65,7 @@ Za realizaciju aplikacije korišćen je tehnološki stek zasnovan na Java i Spri
 
 ### 2.1 Prezentacioni sloj
 
-Korisnički interfejs realizovan je pomoću JSP stranica, JSTL tagova, Spring Security tagova, Bootstrap biblioteke, prilagođenih CSS datoteka i manjih JavaScript modula. JSP prikazi nalaze se u direktorijumu `src/main/webapp/view`, dok se statički resursi nalaze u `src/main/resources/static`.
+Novi ciljni korisnički interfejs nalazi se u React aplikaciji u direktorijumu `front/`. JSP stranice, JSTL tagovi, Spring Security tagovi, Bootstrap biblioteka, prilagođene CSS datoteke i manji JavaScript moduli ostaju u direktorijumu `back/src/main/webapp/view` i `back/src/main/resources/static` kao privremeni legacy sloj dok se funkcionalnosti premeštaju u React.
 
 Bootstrap se koristi za osnovnu responzivnost i dosledan prikaz elemenata interfejsa. Prilagođene CSS datoteke dodatno oblikuju stranice za početnu stranu, katalog automobila, detalje automobila, administratorski panel, prodavnicu auto-delova, korisnički profil i forme. JavaScript se koristi za elemente kao što su odbrojavanje trajanja aukcija, pregled slika uz komentare i interakcije pri zakazivanju test-vožnje.
 
@@ -73,7 +77,7 @@ Kontroleri obrađuju javne, korisničke i administratorske rute. Servisi sadrže
 
 ### 2.3 Baza podataka i migracije
 
-Za lokalni razvoj i testiranje koristi se H2 baza podataka, dok je za okruženje slično produkcionom dostupan MySQL profil. Struktura baze se razvija kroz Flyway SQL migracije koje se nalaze u direktorijumu `src/main/resources/db/migration`.
+Za lokalni razvoj i testiranje koristi se H2 baza podataka, dok je za okruženje slično produkcionom dostupan MySQL profil. Struktura baze se razvija kroz Flyway SQL migracije koje se nalaze u direktorijumu `back/src/main/resources/db/migration`.
 
 Za mapiranje objekata na relacione tabele koristi se Spring Data JPA, odnosno Hibernate kao JPA implementacija. Ovakav pristup omogućava rad sa entitetima u aplikativnom kodu, dok Flyway obezbeđuje kontrolisano verzionisanje šeme baze podataka.
 
@@ -366,6 +370,7 @@ Dokumentovani demonstracioni nalozi su:
 Za lokalno pokretanje potreban je Java 17 ili novija verzija. Aplikacija se pokreće komandom:
 
 ```powershell
+cd back
 .\mvnw.cmd spring-boot:run
 ```
 
@@ -378,12 +383,14 @@ http://localhost:8080
 Za pokretanje testova koristi se:
 
 ```powershell
+cd back
 .\mvnw.cmd test
 ```
 
 Za pakovanje aplikacije koristi se:
 
 ```powershell
+cd back
 .\mvnw.cmd clean package
 ```
 
@@ -396,13 +403,14 @@ Projekat sadrži automatizovane testove za najvažnije tokove rada i poslovna pr
 Kompletan Maven skup testova izvršen je uspešno:
 
 ```powershell
+cd back
 .\mvnw.cmd test
 ```
 
 Rezultat izvršavanja:
 
 ```text
-Tests run: 75, Failures: 0, Errors: 0, Skipped: 0
+Tests run: 81, Failures: 0, Errors: 0, Skipped: 0
 BUILD SUCCESS
 ```
 

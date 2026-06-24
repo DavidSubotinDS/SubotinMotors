@@ -1,5 +1,10 @@
 # Autostrada Auctions Project Documentation
 
+> Update note, 24 June 2026: the repository has been reorganized into
+> `back/` for the Spring Boot backend and `front/` for the React frontend.
+> Sections that describe JSP views document the legacy compatibility UI that is
+> being replaced by React.
+
 Student: David Subotin IT-40/2022  
 GitHub repository: https://github.com/DavidSubotinDS/SubotinMotors  
 Project type: Spring Boot web marketplace  
@@ -15,14 +20,14 @@ The application was reviewed against the submission notice and the attached writ
 | Project documentation | Fulfilled by this file | This documentation describes the goal, architecture, actors, workflows, security rules, validation, testing, and local execution process. |
 | GitHub link in the documentation | Fulfilled | The repository link is listed at the beginning of the document. |
 | Project specification requirements | Fulfilled according to repository evidence | The implemented source code and existing `docs/crud-coverage.md` cover CRUD/lifecycle behavior, role authorization, moderation, validation, payment processing, and retained audit history. |
-| Quality and verification | Fulfilled | `.\mvnw.cmd test` was executed successfully with 75 tests, 0 failures, and 0 errors. |
+| Quality and verification | Fulfilled | The backend test suite was executed from `back/` successfully with 81 tests, 0 failures, and 0 errors. |
 | Documentation guidelines | Fulfilled | The document uses formal wording, structured headings, references to official sources, and avoids unreliable sources such as Wikipedia. |
 
 ## 1. Introduction
 
 Autostrada Auctions is a web application for buying, selling, and managing vehicles and car parts. The system combines an auction marketplace with a conventional car-parts store. It supports public browsing, authenticated user actions, administrator moderation, test-drive management, payment tracking, and realistic demonstration data.
 
-The application is implemented as a Spring Boot project with JSP views and a layered backend. It is intended for local development, demonstration, and project defense. The default configuration uses an embedded H2 database, while a MySQL profile is available for deployment-like environments.
+The backend is implemented as a Spring Boot project with a layered architecture. React now lives in a separate `front/` folder as the target frontend, while JSP views remain in `back/` as legacy compatibility during migration. The default configuration uses an embedded H2 database, while a MySQL profile is available for deployment-like environments.
 
 ## 2. Project Objectives
 
@@ -177,7 +182,7 @@ Payment security is handled by accepting completed store payments only from veri
 
 The default local database is H2, which makes the project easy to run without installing a separate database server. The application also provides a MySQL profile through environment variables.
 
-Flyway applies migrations from `src/main/resources/db/migration`. The demo data includes administrator and user accounts, active auctions, pending approvals, inactive and sold vehicles, bid history, test-drive examples, followed auctions, notifications, fixed-price listings, store products, orders, and discussions.
+Flyway applies migrations from `back/src/main/resources/db/migration`. The demo data includes administrator and user accounts, active auctions, pending approvals, inactive and sold vehicles, bid history, test-drive examples, followed auctions, notifications, fixed-price listings, store products, orders, and discussions.
 
 Seeded accounts documented in the repository include:
 
@@ -193,13 +198,14 @@ Seeded accounts documented in the repository include:
 The project contains automated tests for the most important workflows and rules. The full Maven test suite was executed successfully:
 
 ```powershell
+cd back
 .\mvnw.cmd test
 ```
 
 Result:
 
 ```text
-Tests run: 75, Failures: 0, Errors: 0, Skipped: 0
+Tests run: 81, Failures: 0, Errors: 0, Skipped: 0
 BUILD SUCCESS
 ```
 
@@ -210,6 +216,7 @@ The test suite covers registration, duplicate usernames and emails, search, pagi
 Java 17 or newer is required. The application can be started locally with:
 
 ```powershell
+cd back
 .\mvnw.cmd spring-boot:run
 ```
 
@@ -222,6 +229,7 @@ http://localhost:8080
 The project can be packaged with:
 
 ```powershell
+cd back
 .\mvnw.cmd clean package
 ```
 

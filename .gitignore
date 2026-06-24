@@ -1,6 +1,7 @@
 HELP.md
 target/
 !.mvn/wrapper/maven-wrapper.jar
+!back/.mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/
 !**/src/test/**/target/
 
@@ -34,3 +35,10 @@ build/
 
 ### Local application data ###
 data/
+back/data/
+
+### Frontend ###
+front/node_modules/
+front/dist/
+front/coverage/
+front/.vite/

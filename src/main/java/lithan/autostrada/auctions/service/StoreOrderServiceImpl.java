@@ -128,6 +128,11 @@ public class StoreOrderServiceImpl implements StoreOrderService {
   }
 
   @Override
+  public StoreOrder adminOrder(int idOrder) {
+    return orderRepository.findById(idOrder).orElseThrow(ResourceNotFoundException::new);
+  }
+
+  @Override
   public StoreOrder currentUserOrder(int idOrder) {
     return orderRepository.findByIdOrderAndUser(idOrder, userService.getUserLogin())
         .orElseThrow(ResourceNotFoundException::new);

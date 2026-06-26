@@ -1,29 +1,45 @@
 import { NavLink } from 'react-router-dom';
-import { Car, Gauge, Gavel, LayoutDashboard, Package, ShieldCheck, UserRound } from 'lucide-react';
-
-import { backendUrl } from '../../config.js';
+import {
+  Bell,
+  CalendarClock,
+  Car,
+  CreditCard,
+  Gavel,
+  LayoutDashboard,
+  Package,
+  ShieldCheck,
+  ShoppingCart,
+  UserRound,
+} from 'lucide-react';
 
 const primaryItems = [
   { to: '/', label: 'Overview', icon: LayoutDashboard },
   { to: '/auctions', label: 'Auctions', icon: Gavel },
   { to: '/listings', label: 'Fixed price', icon: Car },
-  { to: '/store', label: 'Parts store', icon: Package },
-  { to: '/legacy', label: 'JSP status', icon: Gauge },
+  { to: '/parts', label: 'Parts store', icon: Package },
 ];
 
 export default function DashboardSidebar({ session }) {
   const roles = new Set(session.roles ?? []);
   const userLinks = session.authenticated
     ? [
-        { href: backendUrl('/user/my-profile'), label: 'My profile', icon: UserRound },
-        { href: backendUrl('/user/followed-auctions'), label: 'Watchlist', icon: Gavel },
-        { href: backendUrl('/orders'), label: 'Orders', icon: Package },
+        { to: '/user/profile', label: 'My profile', icon: UserRound },
+        { to: '/user/auctions', label: 'My auctions', icon: Gavel },
+        { to: '/user/listings', label: 'My listings', icon: Car },
+        { to: '/user/followed-auctions', label: 'Watchlist', icon: Bell },
+        { to: '/user/appointments', label: 'Appointments', icon: CalendarClock },
+        { to: '/user/bids', label: 'Bids', icon: CreditCard },
+        { to: '/cart', label: 'Cart', icon: ShoppingCart },
+        { to: '/orders', label: 'Orders', icon: Package },
       ]
     : [];
   const adminLinks = roles.has('ROLE_ADMIN')
     ? [
-        { href: backendUrl('/admin/dashboard'), label: 'Admin dashboard', icon: ShieldCheck },
-        { href: backendUrl('/admin/store/orders'), label: 'Store orders', icon: Package },
+        { to: '/admin/users', label: 'Users', icon: ShieldCheck },
+        { to: '/admin/cars', label: 'Auction admin', icon: Gavel },
+        { to: '/admin/transactions', label: 'Transactions', icon: CreditCard },
+        { to: '/admin/store/parts', label: 'Store parts', icon: Package },
+        { to: '/admin/store/orders', label: 'Store orders', icon: ShoppingCart },
       ]
     : [];
 
@@ -51,10 +67,10 @@ export default function DashboardSidebar({ session }) {
       {userLinks.length > 0 && (
         <SidebarGroup title="Account">
           {userLinks.map((item) => (
-            <a key={item.href} className="sidebar-link" href={item.href}>
+            <NavLink key={item.to} className="sidebar-link" to={item.to}>
               <item.icon aria-hidden="true" size={18} />
               {item.label}
-            </a>
+            </NavLink>
           ))}
         </SidebarGroup>
       )}
@@ -62,10 +78,10 @@ export default function DashboardSidebar({ session }) {
       {adminLinks.length > 0 && (
         <SidebarGroup title="Admin">
           {adminLinks.map((item) => (
-            <a key={item.href} className="sidebar-link" href={item.href}>
+            <NavLink key={item.to} className="sidebar-link" to={item.to}>
               <item.icon aria-hidden="true" size={18} />
               {item.label}
-            </a>
+            </NavLink>
           ))}
         </SidebarGroup>
       )}

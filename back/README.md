@@ -1,7 +1,8 @@
 # Autostrada Auctions Backend
 
-This folder contains the Spring Boot backend. It also contains the legacy JSP
-views while the React frontend in `../front` replaces them.
+This folder contains the Spring Boot backend. The React frontend in `../front`
+owns the UI; this backend provides REST APIs, persistence, security, Flyway
+migrations, Stripe webhook handling, and legacy route redirects.
 
 ## Run
 
@@ -19,13 +20,13 @@ views while the React frontend in `../front` replaces them.
 
 ```powershell
 .\mvnw.cmd clean package
-java -jar target\autostrada-auctions-0.0.1-SNAPSHOT.war
+java -jar target\autostrada-auctions-0.0.1-SNAPSHOT.jar
 ```
 
-## API And Legacy UI
+## API And Legacy Routes
 
 React-facing API endpoints are under `/api`. Public marketplace read endpoints
-are under `/api/public`. Existing JSP routes remain available for flows that do
-not yet have React replacements.
+are under `/api/public`. No JSP files remain; old MVC view names redirect to
+the React frontend using `APP_FRONTEND_BASE_URL` for bookmark compatibility.
 
 Flyway migrations are in `src/main/resources/db/migration`.

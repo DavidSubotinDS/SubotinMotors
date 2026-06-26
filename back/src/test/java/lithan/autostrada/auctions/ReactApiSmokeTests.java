@@ -6,6 +6,7 @@ import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.nullValue;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -13,6 +14,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
 @SpringBootTest
@@ -46,5 +48,18 @@ class ReactApiSmokeTests {
         .andExpect(jsonPath("$.username").value("demo_bidder"))
         .andExpect(jsonPath("$.roles", hasItem("ROLE_USER")))
         .andExpect(jsonPath("$.email").doesNotExist());
+  }
+
+  @Test
+  void apiAuthenticationFailuresReturnJsonErrors() throws Exception {
+    mockMvc.perform(post("/api/auth/login")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("{\"username\":\"admin123\",\"password\":\"wrong\"}"))
+        .andExpect(status().isUnauthorized())
+        .andExpect(jsonPath("$.message").value("Invalid username or password."));
+
+    mockMvc.perform(get("/api/user/workspace").accept(MediaType.APPLICATION_JSON))
+        .andExpect(status().isUnauthorized())
+        .andExpect(jsonPath("$.message").value("Authentication required."));
   }
 }

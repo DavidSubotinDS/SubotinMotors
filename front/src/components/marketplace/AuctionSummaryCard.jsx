@@ -1,6 +1,7 @@
 import { Clock3 } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
-import { backendUrl } from '../../config.js';
+import { moneyWhole } from '../../utils/format.js';
 import Card from '../ui/Card.jsx';
 import VehicleImage from './VehicleImage.jsx';
 
@@ -18,23 +19,15 @@ export default function AuctionSummaryCard({ auction }) {
           <span>{auction.statusLabel}</span>
         </div>
         <h2>{auction.make} {auction.model}</h2>
-        <p>{formatWholeCurrency(auction.price)}</p>
+        <p>{moneyWhole(auction.price, 'EUR')}</p>
         <span className="inline-status">
           <Clock3 aria-hidden="true" size={16} />
           {auction.auctionEndTime}
         </span>
       </div>
-      <a className="summary-link" href={backendUrl(`/cars/${auction.make}/${auction.model}/${auction.year}/${auction.id}`)}>
+      <Link className="summary-link" to={`/auctions/${auction.id}`}>
         Open auction
-      </a>
+      </Link>
     </Card>
   );
-}
-
-function formatWholeCurrency(value) {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'EUR',
-    maximumFractionDigits: 0,
-  }).format(value ?? 0);
 }

@@ -2,8 +2,8 @@
 
 > Update note, 24 June 2026: the repository has been reorganized into
 > `back/` for the Spring Boot backend and `front/` for the React frontend.
-> Sections that describe JSP views document the legacy compatibility UI that is
-> being replaced by React.
+> JSP views have been removed; React now owns the user interface and former
+> MVC page routes redirect to matching React routes for compatibility.
 
 Student: David Subotin IT-40/2022  
 GitHub repository: https://github.com/DavidSubotinDS/SubotinMotors  
@@ -27,7 +27,7 @@ The application was reviewed against the submission notice and the attached writ
 
 Autostrada Auctions is a web application for buying, selling, and managing vehicles and car parts. The system combines an auction marketplace with a conventional car-parts store. It supports public browsing, authenticated user actions, administrator moderation, test-drive management, payment tracking, and realistic demonstration data.
 
-The backend is implemented as a Spring Boot project with a layered architecture. React now lives in a separate `front/` folder as the target frontend, while JSP views remain in `back/` as legacy compatibility during migration. The default configuration uses an embedded H2 database, while a MySQL profile is available for deployment-like environments.
+The backend is implemented as a Spring Boot project with a layered architecture. The React application lives in a separate `front/` folder and consumes DTO-based REST APIs from the backend. The default configuration uses an embedded H2 database, while a MySQL profile is available for deployment-like environments.
 
 ## 2. Project Objectives
 
@@ -53,8 +53,10 @@ The project uses the following technologies:
 - Spring Security
 - Spring Data JPA
 - Jakarta Bean Validation
-- JSP and JSTL
-- Bootstrap
+- REST API controllers and DTOs
+- React with Vite
+- React Router
+- CSS modules organized under the frontend source tree
 - Flyway database migrations
 - H2 for local development and tests
 - MySQL for the optional database profile
@@ -145,9 +147,9 @@ The application also supports listing and part discussions. Authenticated users 
 
 ## 6. Architecture
 
-The application follows a layered Spring MVC architecture.
+The application follows a separated React and Spring Boot architecture.
 
-Controllers handle HTTP routes, form binding, validation results, and view selection. Services contain business rules such as ownership checks, lifecycle transitions, payment decisions, and inventory handling. Repositories provide persistence access through Spring Data JPA. Entities model the stored business data, while DTO and form classes model user input.
+React components handle the user interface, routing, shared layout, and reusable UI states. Backend controllers expose REST endpoints for public, authenticated user, store, and administrator workflows, while legacy MVC page routes redirect to the React frontend. Services contain business rules such as ownership checks, lifecycle transitions, payment decisions, and inventory handling. Repositories provide persistence access through Spring Data JPA. Entities model the stored business data, while DTO and form classes model API input and output.
 
 Flyway migrations create and evolve the database schema. The project currently includes migrations for the initial schema, Stripe payment support, test-drive statuses, demo marketplace data, password reset and auction tracking, car-parts store, listing comments, structured addresses, fixed-price listings, listing test rides, deposits, payment purposes, shipping snapshots, fixed-price demo data, and branding.
 
@@ -162,7 +164,7 @@ Important entity groups include:
 
 ## 7. Security and Validation
 
-Security is implemented with Spring Security. Public routes are separated from authenticated user routes and administrator routes. User pages require authentication, and administrator pages require the administrator role.
+Security is implemented with Spring Security. Public routes are separated from authenticated user routes and administrator routes. User APIs require authentication, and administrator APIs require the administrator role.
 
 Ownership checks are enforced in service logic. A user cannot edit another user's car, manage another user's bid, decide test-drive requests for a car owned by someone else, or access another user's protected workflow as if it were their own.
 
@@ -213,17 +215,31 @@ The test suite covers registration, duplicate usernames and emails, search, pagi
 
 ## 10. Local Execution
 
-Java 17 or newer is required. The application can be started locally with:
+Java 17 or newer is required. The backend can be started locally with:
 
 ```powershell
 cd back
 .\mvnw.cmd spring-boot:run
 ```
 
-The local application is available at:
+The local backend is available at:
 
 ```text
 http://localhost:8080
+```
+
+The React frontend can be started separately with:
+
+```powershell
+cd front
+npm install
+npm run dev
+```
+
+The local frontend is available at:
+
+```text
+http://localhost:5173
 ```
 
 The project can be packaged with:
@@ -233,7 +249,7 @@ cd back
 .\mvnw.cmd clean package
 ```
 
-For MySQL execution, the `mysql` profile and database connection environment variables must be configured. Payment-related execution remains sandbox-only and requires Stripe sandbox credentials if checkout is being demonstrated.
+For MySQL execution, the `mysql` profile and database connection environment variables must be configured. The frontend can point to a different backend by setting `VITE_API_BASE_URL`, and backend legacy redirects can target a different React host by setting `APP_FRONTEND_BASE_URL`. Payment-related execution remains sandbox-only and requires Stripe sandbox credentials if checkout is being demonstrated.
 
 ## 11. Limitations and Future Improvements
 
@@ -257,4 +273,4 @@ Possible future improvements include production deployment, richer administrator
 
 ## 13. Conclusion
 
-Autostrada Auctions implements a complete vehicle and car-parts marketplace with public browsing, authenticated user workflows, administrator moderation, validation, payment audit behavior, and automated verification. Based on the repository review and the successful test run, the application satisfies the checked project-readiness requirements for documentation submission and defense preparation.
+Autostrada Auctions implements a complete vehicle and car-parts marketplace with public browsing, authenticated user workflows, administrator moderation, validation, payment audit behavior, automated verification, and a separated React frontend backed by Spring Boot REST APIs. Based on the repository review and the successful test run, the application satisfies the checked project-readiness requirements for documentation submission and defense preparation.

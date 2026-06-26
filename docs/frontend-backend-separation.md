@@ -3,7 +3,7 @@
 This branch establishes a two-folder structure:
 
 - `back/` contains the Spring Boot backend, service layer, repositories, Flyway
-  migrations, tests, and temporary JSP compatibility views.
+  migrations, tests, and REST APIs.
 - `front/` contains the React application, Vite build config, routes,
   reusable UI components, API client, and frontend tests.
 
@@ -14,14 +14,15 @@ workflow transitions, persistence, Stripe webhook verification, and Flyway
 migrations. New React-facing endpoints should return DTOs from `/api/**` and
 reuse existing services rather than moving business logic into controllers.
 
-Current React-facing endpoints:
+React-facing endpoints:
 
 - `GET /api/session`
-- `GET /api/public/summary`
-- `GET /api/public/auctions`
-- `GET /api/public/listings`
-- `GET /api/public/parts`
-- `GET /api/public/part-categories`
+- `/api/public/**` for public content, auctions, fixed-price listings, parts, seller profiles, and summaries
+- `/api/auth/**` for login, logout, registration, and password reset
+- `/api/user/**` for profile, auctions, fixed-price listings, bids, watchlists, notifications, appointments, and deposits
+- `/api/store/**` for cart, checkout, and customer orders
+- `/api/comments/**` for auction and part discussions
+- `/api/admin/**` for user, auction, bid, transaction, inventory, and store-order administration
 
 ## Frontend Boundary
 
@@ -45,14 +46,15 @@ Initial reusable components:
 The sidebar already accepts session roles so regular user, admin, and store
 team navigation can be expanded without duplicating layout code.
 
-## Legacy JSP Compatibility
+## JSP Migration Status
 
-JSP remains in `back/src/main/webapp/view` only as compatibility. It should not
-be treated as the target frontend implementation for new work.
+No JSP files remain in the repository. JSP/JSTL/Jasper dependencies and Spring
+MVC JSP view prefix/suffix configuration were removed from the backend.
 
-Remaining JSP-backed flows include authentication, registration, profile
-management, bidding mutations, comments, watchlists, test-drive/test-ride
-state changes, cart and checkout flows, order history, and admin management.
+Former JSP routes now have React route coverage. Legacy MVC controllers are
+kept only as compatibility shims for existing links and old form routes; any
+non-redirect view name is redirected to the React frontend using
+`APP_FRONTEND_BASE_URL`.
 
-Do not delete a JSP page until the equivalent React route and backend API flow
-exist and have been verified.
+New frontend work belongs in `front/`. New backend UI data/actions belong under
+`/api/**` and should return DTOs rather than JPA entities.

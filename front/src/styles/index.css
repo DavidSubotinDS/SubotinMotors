@@ -34,6 +34,11 @@ input {
   font: inherit;
 }
 
+textarea,
+select {
+  font: inherit;
+}
+
 .app-shell {
   min-height: 100vh;
 }
@@ -203,7 +208,6 @@ input {
 
 .page-header,
 .section-header,
-.legacy-actions,
 .toolbar {
   display: flex;
   align-items: center;
@@ -273,6 +277,321 @@ input {
   border: 1px solid var(--border);
   border-radius: 8px;
   background: var(--surface);
+}
+
+.auth-card,
+.content-card,
+.detail-panel,
+.profile-card,
+.checkout-panel,
+.upload-panel {
+  padding: 18px;
+}
+
+.auth-card {
+  max-width: 520px;
+}
+
+.inline-links,
+.form-actions,
+.table-actions,
+.card-actions,
+.action-stack,
+.inline-form,
+.pager {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.inline-links {
+  margin-top: 16px;
+}
+
+.inline-links a,
+.data-table a {
+  color: var(--teal);
+  font-weight: 750;
+}
+
+.form-grid {
+  display: grid;
+  gap: 16px;
+  max-width: 920px;
+}
+
+.form-grid.two-col {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.form-field {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.form-field span {
+  color: #334155;
+  font-weight: 750;
+}
+
+.form-field input,
+.form-field textarea,
+.form-field select,
+.inline-form input,
+.comment-form textarea,
+.comment-form input[type="file"],
+.upload-panel input {
+  width: 100%;
+  min-height: 42px;
+  padding: 9px 11px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: #162033;
+}
+
+.form-field textarea,
+.comment-form textarea {
+  min-height: 112px;
+  resize: vertical;
+}
+
+.field-error {
+  color: var(--red);
+  font-weight: 700;
+}
+
+.wide {
+  grid-column: 1 / -1;
+}
+
+.success-panel {
+  padding: 12px;
+  border: 1px solid #a7f3d0;
+  border-radius: 8px;
+  background: #ecfdf5;
+  color: #047857;
+}
+
+.detail-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(320px, 0.75fr);
+  gap: 18px;
+  margin-bottom: 26px;
+}
+
+.detail-media {
+  overflow: hidden;
+}
+
+.detail-media .summary-image,
+.detail-media .summary-image-fallback {
+  height: 100%;
+  min-height: 360px;
+}
+
+.part-detail-art {
+  display: grid;
+  place-items: center;
+  min-height: 320px;
+  padding: 24px;
+}
+
+.part-detail-art img {
+  max-width: 100%;
+  max-height: 320px;
+  border-radius: 8px;
+  object-fit: contain;
+}
+
+.info-list {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+}
+
+.info-list div {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.info-list dt {
+  color: var(--text-muted);
+  font-weight: 750;
+}
+
+.info-list dd {
+  margin: 0;
+  text-align: right;
+  font-weight: 800;
+}
+
+.action-stack {
+  align-items: stretch;
+  flex-direction: column;
+  margin-top: 18px;
+}
+
+.inline-form {
+  align-items: stretch;
+}
+
+.inline-form input {
+  min-width: 0;
+  flex: 1 1 160px;
+}
+
+.table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 720px;
+}
+
+.data-table th,
+.data-table td {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  vertical-align: top;
+}
+
+.data-table th {
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  text-transform: uppercase;
+}
+
+.data-table tr:last-child td {
+  border-bottom: 0;
+}
+
+.status-badge,
+.comment-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  padding: 3px 8px;
+  border-radius: 7px;
+  background: #e7eef5;
+  color: #334155;
+  font-size: 0.78rem;
+  font-weight: 850;
+}
+
+.status-active,
+.status-paid,
+.status-accepted {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.status-pending,
+.status-ongoing,
+.status-reserved {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.status-deactive,
+.status-denied,
+.status-cancelled,
+.status-rejected {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.discussion {
+  display: grid;
+  gap: 14px;
+}
+
+.comment-list {
+  display: grid;
+  gap: 12px;
+}
+
+.comment-card,
+.comment-form {
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.comment-card header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--text-muted);
+}
+
+.comment-card p {
+  margin: 10px 0 0;
+}
+
+.comment-image {
+  max-width: 280px;
+  margin-top: 12px;
+  border-radius: 8px;
+}
+
+.comment-form {
+  display: grid;
+  gap: 12px;
+}
+
+.mutation-wrap {
+  display: inline-grid;
+  gap: 4px;
+}
+
+.profile-card {
+  display: grid;
+  grid-template-columns: 140px minmax(0, 1fr);
+  gap: 20px;
+  align-items: start;
+  margin-bottom: 18px;
+}
+
+.profile-card img {
+  width: 140px;
+  height: 140px;
+  border-radius: 8px;
+  object-fit: cover;
+}
+
+.upload-panel,
+.checkout-panel {
+  display: grid;
+  gap: 12px;
+  max-width: 620px;
+}
+
+.pager {
+  margin-top: 14px;
+}
+
+.json-preview {
+  max-height: 420px;
+  overflow: auto;
+  margin: 0;
+  padding: 12px;
+  border-radius: 8px;
+  background: #0f172a;
+  color: #e2e8f0;
 }
 
 .metric-grid,
@@ -416,8 +735,7 @@ input {
 
 .alert,
 .empty-state,
-.loading-state,
-.legacy-card {
+.loading-state {
   padding: 18px;
 }
 
@@ -453,28 +771,6 @@ input {
   animation: spin 0.8s linear infinite;
 }
 
-.legacy-card {
-  display: grid;
-  gap: 18px;
-  max-width: 780px;
-}
-
-.legacy-card h2 {
-  margin: 0;
-}
-
-.legacy-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.legacy-list span {
-  padding: 7px 10px;
-  border-radius: 7px;
-  background: #eef3f7;
-}
-
 @keyframes spin {
   to {
     transform: rotate(360deg);
@@ -505,8 +801,14 @@ input {
 
   .summary-grid,
   .metric-grid,
-  .part-grid {
+  .part-grid,
+  .detail-grid,
+  .form-grid.two-col {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .detail-grid {
+    grid-template-columns: 1fr;
   }
 }
 
@@ -523,7 +825,6 @@ input {
 
   .page-header,
   .section-header,
-  .legacy-actions,
   .toolbar {
     align-items: flex-start;
     flex-direction: column;
@@ -532,7 +833,9 @@ input {
   .summary-grid,
   .metric-grid,
   .part-grid,
-  .sidebar {
+  .sidebar,
+  .form-grid.two-col,
+  .profile-card {
     grid-template-columns: 1fr;
   }
 

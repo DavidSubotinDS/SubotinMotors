@@ -1,6 +1,7 @@
 import { Gauge } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
-import { backendUrl } from '../../config.js';
+import { moneyMinor } from '../../utils/format.js';
 import Card from '../ui/Card.jsx';
 import VehicleImage from './VehicleImage.jsx';
 
@@ -18,22 +19,15 @@ export default function ListingSummaryCard({ listing }) {
           <span>{listing.status}</span>
         </div>
         <h2>{listing.title}</h2>
-        <p>{formatMinorCurrency(listing.priceMinor)}</p>
+        <p>{moneyMinor(listing.priceMinor, 'EUR')}</p>
         <span className="inline-status">
           <Gauge aria-hidden="true" size={16} />
           {listing.mileage.toLocaleString()} km
         </span>
       </div>
-      <a className="summary-link" href={backendUrl(`/listings/${listing.id}`)}>
+      <Link className="summary-link" to={`/listings/${listing.id}`}>
         Open listing
-      </a>
+      </Link>
     </Card>
   );
-}
-
-function formatMinorCurrency(value) {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'EUR',
-  }).format((value ?? 0) / 100);
 }

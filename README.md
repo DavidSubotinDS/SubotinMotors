@@ -1,13 +1,13 @@
 # Autostrada Auctions
 
-Autostrada Auctions is being split into a Spring Boot backend and a React frontend.
-The legacy JSP UI is still present for compatibility while React pages and API
-coverage are built out.
+Autostrada Auctions is now split into a Spring Boot backend and a React frontend.
+The former JSP pages have been migrated to React routes under `front/`; the backend
+serves REST APIs and redirects legacy page views to the React dev/prod URL.
 
 ## Repository Structure
 
 ```text
-back/   Spring Boot backend, MVC/JSP compatibility views, REST API, Flyway, tests
+back/   Spring Boot backend, REST API, Flyway, tests
 front/  React frontend built with Vite
 docs/   Project notes and CRUD/lifecycle coverage
 documentation/  Longer project documentation
@@ -18,9 +18,8 @@ Backend API code belongs in `back/`. React UI code belongs in `front/`.
 
 ## Technology
 
-- Backend: Java 17, Spring Boot 3.5, Spring MVC, Spring Security, Spring Data JPA, Flyway
+- Backend: Java 17, Spring Boot 3.5, Spring Security, Spring Data JPA, Flyway
 - Frontend: React, Vite, React Router
-- Legacy compatibility: JSP, JSTL, Bootstrap assets under `back/src/main/webapp/view`
 - Databases: H2 for local development and tests, MySQL profile for deployment-like use
 - Payments: Stripe Checkout sandbox and signed webhooks
 
@@ -33,7 +32,8 @@ cd back
 .\mvnw.cmd spring-boot:run
 ```
 
-Open <http://localhost:8080>.
+The backend runs on <http://localhost:8080>. Open the React frontend at
+<http://localhost:5173> for the application UI.
 
 If an older Oracle Java entry appears first on `PATH`, set `JAVA_HOME` to a JDK
 17 installation before running Maven.
@@ -55,7 +55,7 @@ Local backend data is stored in `back/data/` and ignored by Git.
 cd back
 .\mvnw.cmd clean test
 .\mvnw.cmd clean package
-java -jar target\autostrada-auctions-0.0.1-SNAPSHOT.war
+java -jar target\autostrada-auctions-0.0.1-SNAPSHOT.jar
 ```
 
 Flyway migrations live in `back/src/main/resources/db/migration`.
@@ -92,33 +92,34 @@ $env:APP_CORS_ALLOWED_ORIGINS = "http://localhost:5173"
 
 ## React API Foundation
 
-The first React-facing endpoints are public read endpoints:
+React-facing endpoints now cover the former JSP page surface:
 
 - `GET /api/public/summary`
 - `GET /api/public/auctions`
+- `GET /api/public/auctions/{id}`
 - `GET /api/public/listings`
+- `GET /api/public/listings/{id}`
 - `GET /api/public/parts`
+- `GET /api/public/parts/{id}`
 - `GET /api/public/part-categories`
 - `GET /api/session`
+- `/api/auth/**` for login, logout, registration, and password reset
+- `/api/user/**` for profile, auctions, listings, bids, appointments, watchlists, notifications, and deposits
+- `/api/store/**` for cart, checkout, and orders
+- `/api/admin/**` for admin dashboards, moderation, inventory, orders, and transactions
 
 They return DTOs rather than JPA entities. Sensitive account data such as
 passwords and email addresses is not exposed by the session DTO.
 
-## JSP Compatibility Status
+## JSP Migration Status
 
-JSP is no longer the target frontend technology. The JSP views remain under
-`back/src/main/webapp/view` so existing behavior keeps working while React
-replacement pages are developed.
+No `.jsp` files remain in the project. JSP/JSTL/Jasper dependencies and Spring
+MVC JSP view prefix/suffix configuration were removed from the backend.
 
-Still JSP-backed in this branch:
-
-- Login, registration, password reset, profile editing, and image uploads
-- Bidding, comments, auction follow actions, and test-drive/test-ride workflows
-- Cart, checkout, order history, and Stripe redirect flows
-- Admin dashboard, car moderation, store inventory, and store order details
-
-React currently provides the application shell, navigation, marketplace summary,
-auction/listing/store browse pages, API client layer, and migration status page.
+Legacy MVC controllers are still present as compatibility shims for old form and
+bookmark URLs. Non-redirect view names are resolved by a React redirect resolver
+using `APP_FRONTEND_BASE_URL` (default `http://localhost:5173`). New UI work
+should be implemented in React and use `/api/**`.
 
 See [`docs/frontend-backend-separation.md`](docs/frontend-backend-separation.md)
 for the migration boundary.

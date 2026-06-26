@@ -1,6 +1,6 @@
 # Autostrada Auctions React Frontend
 
-This folder contains the React application that will replace the JSP UI over time.
+This folder contains the React application that replaces the former JSP UI.
 
 ## Local development
 
@@ -24,4 +24,6 @@ npm.cmd run build
 npm.cmd run test
 ```
 
-The current React app consumes the backend API under `/api/public/*` and keeps links to legacy JSP flows where full React replacements have not been implemented yet.
+The React app consumes backend DTO APIs under `/api/**`. Public marketplace,
+auth, user dashboard, cart/order, comments, and admin/store-admin screens are
+routed in React.

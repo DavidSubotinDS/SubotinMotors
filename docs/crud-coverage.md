@@ -4,9 +4,9 @@ Spring Data repositories inherit low-level database CRUD methods, but the
 application does not expose those methods directly. Controllers call services
 that enforce ownership, roles, and valid marketplace state transitions.
 
-The backend now lives in `back/`. The new React frontend in `front/` consumes
-DTO-based API endpoints under `/api/**`; JSP routes listed below remain legacy
-compatibility routes until equivalent React flows exist.
+The backend now lives in `back/`. The React frontend in `front/` consumes
+DTO-based API endpoints under `/api/**`; former MVC page routes redirect to
+matching React routes for bookmark and form compatibility.
 
 ## Demonstrable operations
 

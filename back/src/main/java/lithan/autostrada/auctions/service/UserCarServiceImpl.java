@@ -13,6 +13,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import lithan.autostrada.auctions.entity.Car;
 import lithan.autostrada.auctions.entity.CarBidding;
+import lithan.autostrada.auctions.entity.CarGalleryPicture;
 import lithan.autostrada.auctions.entity.CarPicture;
 import lithan.autostrada.auctions.entity.TestDrive;
 import lithan.autostrada.auctions.entity.TestDriveStatus;
@@ -27,6 +28,8 @@ import lithan.autostrada.auctions.validation.ImageUploadValidator.ValidatedImage
 
 @Service
 public class UserCarServiceImpl implements UserCarService {
+
+  private static final int MAX_VEHICLE_IMAGES = 8;
 
   @Autowired
   private UserService userService;
@@ -51,17 +54,24 @@ public class UserCarServiceImpl implements UserCarService {
   @Override
   @Transactional
   public void postCar(MultipartFile file, Car car) throws Exception {
+    postCar(file == null ? List.of() : List.of(file), car);
+  }
+
+  @Override
+  @Transactional
+  public void postCar(List<MultipartFile> files, Car car) throws Exception {
     requireFutureAuctionEnd(car);
-    ValidatedImage image = ImageUploadValidator.validate(file);
+    List<ValidatedImage> images = validateImages(files, 0, true);
     UserAccount user = userService.getUserLogin();
     CarPicture picture = new CarPicture();
 
-    picture.setFileName(image.fileName());
-    picture.setFileType(image.contentType());
-    picture.setImage(Base64.getEncoder().encodeToString(image.bytes()));
+    setPictureData(picture, images.get(0));
     picture.setCar(car);
 
     car.setCarPicture(picture);
+    for (int index = 1; index < images.size(); index++) {
+      car.addGalleryPicture(galleryPicture(images.get(index), index));
+    }
     car.setStatus("PENDING");
     car.setUser(user);
     carRepo.save(car);
@@ -303,10 +313,62 @@ public class UserCarServiceImpl implements UserCarService {
     ValidatedImage image = ImageUploadValidator.validate(file);
     Car car = getOwnedCarById(carId);
     CarPicture picture = car.getCarPicture();
+    if (picture == null) {
+      picture = new CarPicture();
+      picture.setCar(car);
+      car.setCarPicture(picture);
+    }
+    setPictureData(picture, image);
+    carPictureRepo.save(picture);
+  }
+
+  @Override
+  @Transactional
+  public void addGalleryPictures(List<MultipartFile> files, int carId) throws Exception {
+    Car car = getOwnedCarById(carId);
+    int existingCount = car.getCarPicture() == null ? 0 : 1;
+    existingCount += car.getGalleryPictures().size();
+    List<ValidatedImage> images = validateImages(files, existingCount, false);
+    int displayOrder = car.getGalleryPictures().size() + 1;
+    for (ValidatedImage image : images) {
+      car.addGalleryPicture(galleryPicture(image, displayOrder++));
+    }
+    carRepo.save(car);
+  }
+
+  private List<ValidatedImage> validateImages(
+      List<MultipartFile> files,
+      int existingCount,
+      boolean required) throws Exception {
+    List<MultipartFile> uploads = files == null
+        ? List.of()
+        : files.stream().filter(file -> file != null && !file.isEmpty()).toList();
+    if (required && uploads.isEmpty()) {
+      throw new IllegalArgumentException("At least one car picture is required");
+    }
+    if (existingCount + uploads.size() > MAX_VEHICLE_IMAGES) {
+      throw new IllegalArgumentException("A vehicle can have at most 8 pictures");
+    }
+    List<ValidatedImage> images = new java.util.ArrayList<>();
+    for (MultipartFile upload : uploads) {
+      images.add(ImageUploadValidator.validate(upload));
+    }
+    return images;
+  }
+
+  private CarGalleryPicture galleryPicture(ValidatedImage image, int displayOrder) {
+    CarGalleryPicture picture = new CarGalleryPicture();
     picture.setFileName(image.fileName());
     picture.setFileType(image.contentType());
     picture.setImage(Base64.getEncoder().encodeToString(image.bytes()));
-    carPictureRepo.save(picture);
+    picture.setDisplayOrder(displayOrder);
+    return picture;
+  }
+
+  private void setPictureData(CarPicture picture, ValidatedImage image) {
+    picture.setFileName(image.fileName());
+    picture.setFileType(image.contentType());
+    picture.setImage(Base64.getEncoder().encodeToString(image.bytes()));
   }
 
   private void requireFutureAuctionEnd(Car car) {

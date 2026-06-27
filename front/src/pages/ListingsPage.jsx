@@ -18,7 +18,7 @@ export default function ListingsPage() {
   return (
     <>
       <PageHeader eyebrow="Fixed price" title="Vehicle listings">
-        Deposits, seller validation, and test rides continue through the Spring Boot backend.
+        Browse vehicles available at a fixed price.
       </PageHeader>
 
       <form className="toolbar" onSubmit={(event) => {
@@ -35,7 +35,7 @@ export default function ListingsPage() {
       </form>
 
       {loading && <LoadingState label="Loading listings" />}
-      {error && <Alert>Check that the backend API is reachable.</Alert>}
+      {error && <Alert>We could not load listings. Please try again.</Alert>}
       {data?.content?.length === 0 && <EmptyState title="No listings found" />}
       {data?.content?.length > 0 && (
         <div className="summary-grid">

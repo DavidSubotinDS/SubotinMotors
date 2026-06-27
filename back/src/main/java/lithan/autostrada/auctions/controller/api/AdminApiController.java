@@ -16,6 +16,7 @@ import lithan.autostrada.auctions.dto.api.ApiModels.AdminCarManagementResponse;
 import lithan.autostrada.auctions.dto.api.ApiModels.AdminDashboardResponse;
 import lithan.autostrada.auctions.dto.api.ApiModels.AdminTransactionsResponse;
 import lithan.autostrada.auctions.dto.api.ApiModels.ApiMessageResponse;
+import lithan.autostrada.auctions.dto.api.ApiModels.AuctionDetailResponse;
 import lithan.autostrada.auctions.dto.api.ApiModels.ProfileRequest;
 import lithan.autostrada.auctions.dto.api.ApiModels.ProfileResponse;
 import lithan.autostrada.auctions.dto.api.PageResponse;
@@ -110,6 +111,7 @@ public class AdminApiController {
   @GetMapping("/cars")
   public AdminCarManagementResponse cars(
       @RequestParam(defaultValue = "0") int carPage,
+      @RequestParam(defaultValue = "50") int carSize,
       @RequestParam(defaultValue = "idCar") String carSort,
       @RequestParam(defaultValue = "desc") String carDirection,
       @RequestParam(defaultValue = "0") int bidPage,
@@ -117,7 +119,7 @@ public class AdminApiController {
       @RequestParam(defaultValue = "desc") String bidDirection) {
     var cars = adminService.listCar(PageRequest.of(
         Math.max(carPage, 0),
-        5,
+        Math.min(Math.max(carSize, 1), 100),
         Sort.by(sortDirection(carDirection), carSortProperty(carSort))));
     var bids = adminService.listCarBid(PageRequest.of(
         Math.max(bidPage, 0),
@@ -132,6 +134,16 @@ public class AdminApiController {
   public ApiMessageResponse activateCar(@PathVariable int idCar) {
     userCarService.changeCarStatusByAdmin(idCar, "ACTIVE");
     return new ApiMessageResponse("Auction activated.", null);
+  }
+
+  @GetMapping("/cars/{idCar}")
+  public AuctionDetailResponse car(@PathVariable int idCar) {
+    var car = userCarService.getCarById(idCar);
+    return new AuctionDetailResponse(
+        mapper.auction(car),
+        userCarService.highestBidding(idCar),
+        false,
+        java.util.List.of());
   }
 
   @PostMapping("/cars/{idCar}/deactivate")

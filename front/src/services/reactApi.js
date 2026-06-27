@@ -29,9 +29,10 @@ export const userApi = {
   updateProfilePicture: (file) => postForm('/api/user/profile/picture', fileForm(file)),
   auctions: () => getJson('/api/user/auctions'),
   auction: (id) => getJson(`/api/user/auctions/${id}`),
-  createAuction: (body, file) => postForm('/api/user/auctions', objectForm(body, { imageFile: file })),
+  createAuction: (body, files) => postForm('/api/user/auctions', objectForm(body, { imageFiles: files })),
   updateAuction: (id, body) => putJson(`/api/user/auctions/${id}`, body),
   uploadAuctionPicture: (id, file) => postForm(`/api/user/auctions/${id}/picture`, fileForm(file)),
+  addAuctionPictures: (id, files) => postForm(`/api/user/auctions/${id}/pictures`, objectForm({}, { imageFiles: files })),
   activateAuction: (id) => postJson(`/api/user/auctions/${id}/activate`),
   deactivateAuction: (id) => postJson(`/api/user/auctions/${id}/deactivate`),
   bid: (id, bidPrice) => postJson(`/api/user/auctions/${id}/bid`, { bidPrice }),
@@ -52,8 +53,8 @@ export const userApi = {
   ownerCancelTestDrive: (id) => postJson(`/api/user/test-drives/${id}/owner-cancel`),
   listings: () => getJson('/api/user/listings'),
   listingForm: (id) => getJson(`/api/user/listings/${id}`),
-  createListing: (body, file) => postForm('/api/user/listings', objectForm(body, { imageFile: file })),
-  updateListing: (id, body, file) => putForm(`/api/user/listings/${id}`, objectForm(body, { imageFile: file })),
+  createListing: (body, files) => postForm('/api/user/listings', objectForm(body, { imageFiles: files })),
+  updateListing: (id, body, files) => putForm(`/api/user/listings/${id}`, objectForm(body, { imageFiles: files })),
   activateListing: (id) => postJson(`/api/user/listings/${id}/activate`),
   deactivateListing: (id) => postJson(`/api/user/listings/${id}/deactivate`),
   listingDeposit: (id) => postJson(`/api/user/listings/${id}/deposit`),
@@ -89,6 +90,7 @@ export const adminApi = {
   updateUserProfile: (id, body) => putJson(`/api/admin/users/${id}`, body),
   markAdmin: (id) => postJson(`/api/admin/users/${id}/mark-admin`),
   cars: (params) => getJson('/api/admin/cars', params),
+  car: (id) => getJson(`/api/admin/cars/${id}`),
   activateCar: (id) => postJson(`/api/admin/cars/${id}/activate`),
   deactivateCar: (id) => postJson(`/api/admin/cars/${id}/deactivate`),
   approveBid: (id) => postJson(`/api/admin/bids/${id}/approve`),
@@ -111,9 +113,10 @@ function objectForm(values = {}, files = {}) {
     }
   });
   Object.entries(files).forEach(([key, value]) => {
-    if (value) {
-      formData.append(key, value);
-    }
+    const entries = Array.isArray(value) ? value : [value];
+    entries.filter(Boolean).forEach((entry) => {
+      formData.append(key, entry);
+    });
   });
   return formData;
 }

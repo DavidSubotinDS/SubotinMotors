@@ -18,7 +18,7 @@ export default function StorePage() {
   return (
     <>
       <PageHeader eyebrow="Store" title="Car parts catalog">
-        Inventory, cart, checkout, and signed Stripe webhooks stay server-side.
+        Find the parts you need for your vehicle.
       </PageHeader>
 
       <form className="toolbar" onSubmit={(event) => {
@@ -35,7 +35,7 @@ export default function StorePage() {
       </form>
 
       {loading && <LoadingState label="Loading parts" />}
-      {error && <Alert>Check that the backend API is reachable.</Alert>}
+      {error && <Alert>We could not load parts. Please try again.</Alert>}
       {data?.content?.length === 0 && <EmptyState title="No parts found" />}
       {data?.content?.length > 0 && (
         <div className="part-grid">

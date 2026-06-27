@@ -50,12 +50,12 @@ export default function DashboardSidebar({ session }) {
           <span className="avatar">{session.authenticated ? initials(session.displayName) : 'AA'}</span>
           <div>
             <strong>{session.authenticated ? session.displayName || session.username : 'Guest'}</strong>
-            <small>{roles.has('ROLE_ADMIN') ? 'Admin workspace' : 'Marketplace workspace'}</small>
+            <small>{roles.has('ROLE_ADMIN') ? 'Administrator' : 'Marketplace member'}</small>
           </div>
         </div>
       </div>
 
-      <SidebarGroup title="React">
+      <SidebarGroup title="Marketplace">
         {primaryItems.map((item) => (
           <NavLink key={item.to} className="sidebar-link" to={item.to} end={item.to === '/'}>
             <item.icon aria-hidden="true" size={18} />

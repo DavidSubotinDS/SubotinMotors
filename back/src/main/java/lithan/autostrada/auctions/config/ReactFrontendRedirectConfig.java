@@ -85,6 +85,12 @@ public class ReactFrontendRedirectConfig {
       String route = ROUTES.getOrDefault(viewName, "/");
       RedirectView view = new RedirectView(frontendBaseUrl + route);
       view.setContextRelative(false);
+      // Stripe returns the Checkout Session ID in the success URL. Preserve it when the
+      // legacy backend route hands control back to the React success page.
+      view.setPropagateQueryParams(true);
+      // React loads its own data through the API, so server-side model attributes must not
+      // be appended to the client URL during this handoff.
+      view.setExposeModelAttributes(false);
       return view;
     }
   }

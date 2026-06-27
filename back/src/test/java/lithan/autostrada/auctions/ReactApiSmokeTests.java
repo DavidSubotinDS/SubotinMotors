@@ -17,12 +17,17 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
+import lithan.autostrada.auctions.repository.CarRepository;
+
 @SpringBootTest
 @AutoConfigureMockMvc
 class ReactApiSmokeTests {
 
   @Autowired
   private MockMvc mockMvc;
+
+  @Autowired
+  private CarRepository carRepository;
 
   @Test
   void publicMarketplaceSummaryIsAvailableForReact() throws Exception {
@@ -61,5 +66,26 @@ class ReactApiSmokeTests {
     mockMvc.perform(get("/api/user/workspace").accept(MediaType.APPLICATION_JSON))
         .andExpect(status().isUnauthorized())
         .andExpect(jsonPath("$.message").value("Authentication required."));
+  }
+
+  @Test
+  void adminApisExposeAuctionPreviewsAndPartVisibility() throws Exception {
+    int pendingCarId = carRepository.findAll().stream()
+        .filter(car -> "PENDING".equals(car.getStatus()))
+        .findFirst()
+        .orElseThrow()
+        .getIdCar();
+
+    mockMvc.perform(get("/api/admin/cars/{idCar}", pendingCarId)
+            .with(user("admin123").roles("USER", "ADMIN")))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.auction.id").value(pendingCarId))
+        .andExpect(jsonPath("$.auction.status").value("PENDING"))
+        .andExpect(jsonPath("$.auction.sellerDisplayName", not(nullValue())));
+
+    mockMvc.perform(get("/api/admin/store/parts")
+            .with(user("admin123").roles("USER", "ADMIN")))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.content[0].active").isBoolean());
   }
 }

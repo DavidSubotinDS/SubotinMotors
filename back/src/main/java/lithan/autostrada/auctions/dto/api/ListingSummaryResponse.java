@@ -1,5 +1,7 @@
 package lithan.autostrada.auctions.dto.api;
 
+import java.util.List;
+
 public record ListingSummaryResponse(
     int id,
     String title,
@@ -13,5 +15,6 @@ public record ListingSummaryResponse(
     long depositAmountMinor,
     String status,
     String imageUrl,
+    List<String> imageUrls,
     String sellerDisplayName) {
 }

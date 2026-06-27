@@ -51,6 +51,14 @@ import lithan.autostrada.auctions.entity.UserProfile;
 public class ApiModelMapper {
 
   public AuctionSummaryResponse auction(Car car) {
+    List<String> imageUrls = new java.util.ArrayList<>();
+    if (car.getCarPicture() != null) {
+      imageUrls.add(imageDataUrl(
+          car.getCarPicture().getFileType(),
+          car.getCarPicture().getImage()));
+    }
+    car.getGalleryPictures().forEach(picture -> imageUrls.add(
+        imageDataUrl(picture.getFileType(), picture.getImage())));
     return new AuctionSummaryResponse(
         car.getIdCar(),
         car.getMake(),
@@ -61,13 +69,20 @@ public class ApiModelMapper {
         car.getAuctionStatusLabel(),
         car.getAuctionEndTimeDisplay(),
         car.getAuctionEndTimeEpochMillis(),
-        car.getCarPicture() == null
-            ? null
-            : imageDataUrl(car.getCarPicture().getFileType(), car.getCarPicture().getImage()),
+        imageUrls.isEmpty() ? null : imageUrls.get(0),
+        List.copyOf(imageUrls),
         displayName(car.getUser()));
   }
 
   public ListingSummaryResponse listing(CarListing listing) {
+    List<String> imageUrls = new java.util.ArrayList<>();
+    if (listing.getPicture() != null) {
+      imageUrls.add(imageDataUrl(
+          listing.getPicture().getFileType(),
+          listing.getPicture().getImage()));
+    }
+    listing.getGalleryPictures().forEach(picture -> imageUrls.add(
+        imageDataUrl(picture.getFileType(), picture.getImage())));
     return new ListingSummaryResponse(
         listing.getIdListing(),
         listing.getTitle(),
@@ -80,9 +95,8 @@ public class ApiModelMapper {
         listing.getPriceMinor(),
         listing.getDepositAmountMinor(),
         listing.getStatus().name(),
-        listing.getPicture() == null
-            ? null
-            : imageDataUrl(listing.getPicture().getFileType(), listing.getPicture().getImage()),
+        imageUrls.isEmpty() ? null : imageUrls.get(0),
+        List.copyOf(imageUrls),
         displayName(listing.getSeller()));
   }
 
@@ -106,7 +120,8 @@ public class ApiModelMapper {
         part.getDescription(),
         part.getPriceMinor(),
         part.getStockQuantity(),
-        part.getImageUrl());
+        part.getImageUrl(),
+        part.isActive());
   }
 
   public PartDetailResponse partDetail(CarPart part, List<ListingCommentView> comments) {

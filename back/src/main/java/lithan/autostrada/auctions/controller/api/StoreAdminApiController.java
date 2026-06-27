@@ -42,11 +42,12 @@ public class StoreAdminApiController {
   @GetMapping("/parts")
   public PageResponse<PartSummaryResponse> parts(
       @RequestParam(defaultValue = "0") int page,
+      @RequestParam(defaultValue = "25") int size,
       @RequestParam(defaultValue = "name") String sort,
       @RequestParam(defaultValue = "asc") String direction) {
     var parts = partService.listAll(PageRequest.of(
         Math.max(page, 0),
-        10,
+        Math.min(Math.max(size, 1), 100),
         Sort.by(sortDirection(direction), partSort(sort))));
     return PageResponse.from(parts.map(mapper::part));
   }

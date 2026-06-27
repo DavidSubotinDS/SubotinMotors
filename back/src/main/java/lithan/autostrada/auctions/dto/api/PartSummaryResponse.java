@@ -8,5 +8,6 @@ public record PartSummaryResponse(
     String description,
     long priceMinor,
     int stockQuantity,
-    String imageUrl) {
+    String imageUrl,
+    boolean active) {
 }

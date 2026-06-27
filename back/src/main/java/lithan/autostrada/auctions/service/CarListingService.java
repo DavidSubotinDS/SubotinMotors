@@ -23,7 +23,11 @@ public interface CarListingService {
 
   CarListing create(CarListingForm form, MultipartFile image);
 
+  CarListing create(CarListingForm form, List<MultipartFile> images);
+
   CarListing update(int listingId, CarListingForm form, MultipartFile image);
+
+  CarListing update(int listingId, CarListingForm form, List<MultipartFile> images);
 
   void activate(int listingId);
 

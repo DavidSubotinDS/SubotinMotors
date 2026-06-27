@@ -1,5 +1,7 @@
 package lithan.autostrada.auctions.dto.api;
 
+import java.util.List;
+
 public record AuctionSummaryResponse(
     int id,
     String make,
@@ -11,5 +13,6 @@ public record AuctionSummaryResponse(
     String auctionEndTime,
     long auctionEndTimeEpochMillis,
     String imageUrl,
+    List<String> imageUrls,
     String sellerDisplayName) {
 }

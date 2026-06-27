@@ -3,6 +3,7 @@ package lithan.autostrada.auctions.entity;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
 
 import jakarta.persistence.CascadeType;
@@ -16,6 +17,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.OneToOne;
+import jakarta.persistence.OrderBy;
 import jakarta.persistence.Table;
 import jakarta.persistence.Transient;
 import jakarta.validation.constraints.Digits;
@@ -66,6 +68,14 @@ public class Car {
 
   @OneToOne(fetch = FetchType.EAGER, cascade = CascadeType.ALL, orphanRemoval = true, mappedBy = "car")
   private CarPicture carPicture;
+
+  @OneToMany(
+      fetch = FetchType.EAGER,
+      cascade = CascadeType.ALL,
+      orphanRemoval = true,
+      mappedBy = "car")
+  @OrderBy("displayOrder ASC, idPicture ASC")
+  private List<CarGalleryPicture> galleryPictures = new ArrayList<>();
 
   @OneToMany(fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true, mappedBy = "car")
   private List<CarBidding> carBiddings;
@@ -200,6 +210,15 @@ public class Car {
 
   public void setCarPicture(CarPicture carPicture) {
     this.carPicture = carPicture;
+  }
+
+  public List<CarGalleryPicture> getGalleryPictures() {
+    return galleryPictures;
+  }
+
+  public void addGalleryPicture(CarGalleryPicture picture) {
+    picture.setCar(this);
+    galleryPictures.add(picture);
   }
 
   public int getIdCar() {

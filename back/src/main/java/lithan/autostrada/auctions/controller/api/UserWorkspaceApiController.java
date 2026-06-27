@@ -1,6 +1,8 @@
 package lithan.autostrada.auctions.controller.api;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
@@ -15,7 +17,6 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -146,12 +147,10 @@ public class UserWorkspaceApiController {
   @PostMapping("/auctions")
   public AuctionSummaryResponse createAuction(
       @Valid @ModelAttribute AuctionRequest request,
-      @RequestParam("imageFile") MultipartFile imageFile) throws Exception {
+      @RequestParam(name = "imageFiles", required = false) List<MultipartFile> imageFiles,
+      @RequestParam(name = "imageFile", required = false) MultipartFile imageFile) throws Exception {
     Car car = toCar(request);
-    if (imageFile.isEmpty()) {
-      throw new IllegalArgumentException("Car picture is required.");
-    }
-    userCarService.postCar(imageFile, car);
+    userCarService.postCar(mergeImages(imageFiles, imageFile), car);
     return mapper.auction(car);
   }
 
@@ -170,6 +169,14 @@ public class UserWorkspaceApiController {
       @RequestParam("imageFile") MultipartFile imageFile) throws Exception {
     userCarService.saveUploadPicture(imageFile, idCar);
     return new ApiMessageResponse("Auction picture updated.", null);
+  }
+
+  @PostMapping("/auctions/{idCar}/pictures")
+  public ApiMessageResponse addAuctionPictures(
+      @PathVariable int idCar,
+      @RequestParam("imageFiles") List<MultipartFile> imageFiles) throws Exception {
+    userCarService.addGalleryPictures(imageFiles, idCar);
+    return new ApiMessageResponse("Auction gallery updated.", null);
   }
 
   @PostMapping("/auctions/{idCar}/activate")
@@ -308,16 +315,21 @@ public class UserWorkspaceApiController {
   @PostMapping("/listings")
   public ListingSummaryResponse createListing(
       @Valid @ModelAttribute CarListingForm form,
-      @RequestPart("imageFile") MultipartFile image) {
-    return mapper.listing(listingService.create(form, image));
+      @RequestParam(name = "imageFiles", required = false) List<MultipartFile> imageFiles,
+      @RequestParam(name = "imageFile", required = false) MultipartFile imageFile) {
+    return mapper.listing(listingService.create(form, mergeImages(imageFiles, imageFile)));
   }
 
   @PutMapping("/listings/{listingId}")
   public ListingSummaryResponse updateListing(
       @PathVariable int listingId,
       @Valid @ModelAttribute CarListingForm form,
-      @RequestPart(name = "imageFile", required = false) MultipartFile image) {
-    return mapper.listing(listingService.update(listingId, form, image));
+      @RequestParam(name = "imageFiles", required = false) List<MultipartFile> imageFiles,
+      @RequestParam(name = "imageFile", required = false) MultipartFile imageFile) {
+    if (imageFiles != null && !imageFiles.isEmpty()) {
+      return mapper.listing(listingService.update(listingId, form, imageFiles));
+    }
+    return mapper.listing(listingService.update(listingId, form, imageFile));
   }
 
   @PostMapping("/listings/{listingId}/activate")
@@ -404,5 +416,18 @@ public class UserWorkspaceApiController {
     car.setPrice(request.price() == null ? 0 : request.price());
     car.setAuctionEndTime(request.auctionEndTime());
     return car;
+  }
+
+  private List<MultipartFile> mergeImages(
+      List<MultipartFile> imageFiles,
+      MultipartFile imageFile) {
+    List<MultipartFile> merged = new ArrayList<>();
+    if (imageFiles != null) {
+      merged.addAll(imageFiles);
+    }
+    if (imageFile != null && !imageFile.isEmpty()) {
+      merged.add(imageFile);
+    }
+    return merged;
   }
 }

@@ -16,7 +16,7 @@ export default function Navbar({ session }) {
         <span className="brand-mark">AA</span>
         <span>
           <strong>Autostrada Auctions</strong>
-          <small>React workspace</small>
+          <small>Marketplace</small>
         </span>
       </NavLink>
 

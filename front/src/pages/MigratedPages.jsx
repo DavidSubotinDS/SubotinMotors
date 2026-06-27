@@ -1,14 +1,19 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useOutletContext, useParams, useSearchParams } from 'react-router-dom';
 import {
+  ArrowRight,
   Bell,
   CalendarClock,
   Camera,
   Check,
+  CheckCircle2,
   CreditCard,
   Edit,
   EyeOff,
+  MapPin,
+  PackageCheck,
   Plus,
+  ReceiptText,
   Save,
   ShoppingCart,
   Trash2,
@@ -29,6 +34,7 @@ import LoadingState from '../components/ui/LoadingState.jsx';
 import PageHeader from '../components/ui/PageHeader.jsx';
 import PartSummaryCard from '../components/marketplace/PartSummaryCard.jsx';
 import StatusBadge from '../components/ui/StatusBadge.jsx';
+import VehicleCarousel from '../components/marketplace/VehicleCarousel.jsx';
 import VehicleImage from '../components/marketplace/VehicleImage.jsx';
 import { adminApi, authApi, commentsApi, publicApi, storeApi, userApi } from '../services/reactApi.js';
 import { dateOnly, dateTime, moneyMinor, moneyWhole } from '../utils/format.js';
@@ -42,9 +48,9 @@ export function HomePage() {
   return (
     <>
       <PageHeader
-        eyebrow="React marketplace"
+        eyebrow="Marketplace"
         title="Autostrada Auctions"
-        description="Browse live auctions, fixed-price listings, and store inventory from the React frontend."
+        description="Browse live auctions, fixed-price listings, and store inventory."
       />
       <div className="metric-grid">
         <Metric label="Live auctions" value={summary.featuredAuctions.length} />
@@ -139,7 +145,7 @@ export function RegisterPage() {
   }
   return (
     <>
-      <PageHeader eyebrow="Account" title="Create account" description="One React form replaces the old two-step JSP registration flow." />
+      <PageHeader eyebrow="Account" title="Create account" description="Create your marketplace account and complete your profile." />
       {error && <Alert title="Registration failed">{error}</Alert>}
       <form className="form-grid two-col" onSubmit={submit}>
         {['username', 'email', 'password', 'firstName', 'lastName', 'phoneNumber', 'address', 'streetAddress', 'city', 'postalCode', 'country'].map((field) => (
@@ -164,7 +170,7 @@ export function RegisterPage() {
 export function ThankYouPage() {
   return (
     <>
-      <PageHeader eyebrow="Account created" title="You are ready to sign in" description="Your React account setup is complete." />
+      <PageHeader eyebrow="Account created" title="You are ready to sign in" description="Your account setup is complete." />
       <Button href="/login">Go to sign in</Button>
     </>
   );
@@ -233,7 +239,7 @@ export function AuctionDetailPage() {
   const { session } = useOutletContext();
   const [refresh, setRefresh] = useState(0);
   const state = useLoad(() => publicApi.auction(id), [id, refresh]);
-  if (state.loading) return <LoadingState label="Loading auction" />;
+  if (state.loading && !state.data) return <LoadingState label="Loading auction" />;
   if (state.error) return <Alert title="Auction unavailable">{state.error.message}</Alert>;
   const { auction, highestBid, following, comments } = state.data;
   return (
@@ -241,11 +247,11 @@ export function AuctionDetailPage() {
       <PageHeader
         eyebrow={auction.statusLabel}
         title={`${auction.make} ${auction.model}`}
-        description={`${auction.year} auction managed from the React frontend.`}
+        description={`${auction.year} vehicle auction.`}
       />
       <div className="detail-grid">
         <Card className="detail-media">
-          <VehicleImage src={auction.imageUrl} alt={`${auction.make} ${auction.model}`} fallback={auction.make?.slice(0, 2)} />
+          <VehicleCarousel images={auction.imageUrls} src={auction.imageUrl} alt={`${auction.make} ${auction.model}`} fallback={auction.make?.slice(0, 2)} />
         </Card>
         <Card className="detail-panel">
           <InfoList rows={[
@@ -256,7 +262,7 @@ export function AuctionDetailPage() {
           ]} />
           {session.authenticated && (
             <ActionStack>
-              <BidForm auction={auction} onDone={() => setRefresh((value) => value + 1)} />
+              <BidForm auction={auction} highestBid={highestBid} onDone={() => setRefresh((value) => value + 1)} />
               <DateAction label="Request test drive" onSubmit={(date) => userApi.scheduleTestDrive(auction.id, date)} />
               <MutationButton icon={following ? EyeOff : Bell} run={() => following ? userApi.unfollowAuction(auction.id) : userApi.followAuction(auction.id)} onDone={() => setRefresh((value) => value + 1)}>
                 {following ? 'Unfollow' : 'Follow'}
@@ -286,7 +292,7 @@ export function ListingDetailPage() {
       <PageHeader eyebrow={listing.status} title={listing.title} description={description} />
       <div className="detail-grid">
         <Card className="detail-media">
-          <VehicleImage src={listing.imageUrl} alt={listing.title} fallback={listing.make?.slice(0, 2)} />
+          <VehicleCarousel images={listing.imageUrls} src={listing.imageUrl} alt={listing.title} fallback={listing.make?.slice(0, 2)} />
         </Card>
         <Card className="detail-panel">
           <InfoList rows={[
@@ -376,7 +382,7 @@ export function CartPage() {
   const cart = state.data;
   return (
     <>
-      <PageHeader eyebrow="Store" title="Cart" description="Review parts and start Stripe Checkout from React." />
+      <PageHeader eyebrow="Store" title="Cart" description="Review your parts and continue to secure checkout." />
       <DataTable
         rows={cart.items}
         columns={[
@@ -442,11 +448,127 @@ export function CheckoutSuccessPage({ deposit = false }) {
   );
   if (state.loading) return <LoadingState label="Confirming checkout" />;
   if (state.error) return <Alert title="Checkout lookup failed">{state.error.message}</Alert>;
+  if (deposit) return <DepositCheckoutConfirmation deposit={state.data} />;
+  return <StoreCheckoutConfirmation order={state.data} />;
+}
+
+function StoreCheckoutConfirmation({ order }) {
+  const isPaid = order.status === 'PAID';
   return (
     <>
-      <PageHeader eyebrow="Payment" title="Checkout complete" description="Stripe returned a successful checkout session." />
-      <Card className="detail-panel">
-        <pre className="json-preview">{JSON.stringify(state.data, null, 2)}</pre>
+      <PageHeader
+        eyebrow="Payment"
+        title={isPaid ? 'Payment confirmed' : 'Checkout received'}
+        description={isPaid
+          ? 'Your payment has been confirmed and your parts order is being prepared.'
+          : 'Stripe returned your checkout session. We are waiting for payment confirmation.'}
+        actions={<Button href={`/orders/${order.idOrder}`} icon={ReceiptText}>View order</Button>}
+      />
+      <Card className="checkout-success-card">
+        <div className="checkout-success-heading">
+          <div className={`checkout-success-icon ${isPaid ? 'is-paid' : 'is-pending'}`}>
+            <CheckCircle2 aria-hidden="true" size={30} />
+          </div>
+          <div className="checkout-success-copy">
+            <div className="checkout-success-meta">
+              <span>Order #{order.idOrder}</span>
+              <StatusBadge value={order.status} />
+            </div>
+            <h2>{isPaid ? 'Thanks for your order.' : 'Your order is being confirmed.'}</h2>
+            <p>{isPaid
+              ? 'A receipt is recorded in your order history.'
+              : 'This page will show the completed order as soon as Stripe’s webhook is processed.'}</p>
+          </div>
+          <div className="checkout-success-total">
+            <span>Order total</span>
+            <strong>{moneyMinor(order.totalMinor, order.currency)}</strong>
+          </div>
+        </div>
+      </Card>
+      <div className="checkout-success-grid">
+        <Card className="checkout-success-section">
+          <div className="checkout-success-section-title">
+            <PackageCheck aria-hidden="true" size={21} />
+            <h2>Items in this order</h2>
+          </div>
+          <DataTable
+            rows={order.items}
+            columns={[
+              { key: 'partName', header: 'Part', render: (item) => <div><strong>{item.partName}</strong><small>{item.sku}</small></div> },
+              { key: 'quantity', header: 'Qty' },
+              { key: 'unitPriceMinor', header: 'Unit price', render: (item) => moneyMinor(item.unitPriceMinor, order.currency) },
+              { key: 'lineTotalMinor', header: 'Subtotal', render: (item) => moneyMinor(item.lineTotalMinor, order.currency) },
+            ]}
+            emptyText="No items were found for this order."
+          />
+        </Card>
+        <Card className="checkout-success-section checkout-delivery-card">
+          <div className="checkout-success-section-title">
+            <MapPin aria-hidden="true" size={21} />
+            <h2>Delivery details</h2>
+          </div>
+          <p className="checkout-delivery-address">{order.shippingName}<br />{order.shippingAddress}</p>
+          <InfoList rows={[
+            ['Placed', dateTime(order.createdAt)],
+            ['Paid', order.paidAt ? dateTime(order.paidAt) : 'Awaiting confirmation'],
+          ]} />
+          <div className="checkout-success-actions">
+            <Button href="/orders" icon={ReceiptText}>My orders</Button>
+            <Button href="/parts" variant="secondary" icon={ArrowRight}>Continue shopping</Button>
+          </div>
+        </Card>
+      </div>
+    </>
+  );
+}
+
+function DepositCheckoutConfirmation({ deposit }) {
+  const isPaid = deposit.status === 'PAID';
+  const listing = deposit.listing;
+  return (
+    <>
+      <PageHeader
+        eyebrow="Reservation deposit"
+        title={isPaid ? 'Deposit confirmed' : 'Deposit received'}
+        description={isPaid
+          ? 'Your reservation deposit has been confirmed.'
+          : 'Stripe returned your checkout session. We are waiting for payment confirmation.'}
+        actions={<Button href="/user/listing-deposits" icon={ReceiptText}>View deposits</Button>}
+      />
+      <Card className="checkout-success-card">
+        <div className="checkout-success-heading">
+          <div className={`checkout-success-icon ${isPaid ? 'is-paid' : 'is-pending'}`}>
+            <CheckCircle2 aria-hidden="true" size={30} />
+          </div>
+          <div className="checkout-success-copy">
+            <div className="checkout-success-meta">
+              <span>Deposit #{deposit.idDeposit}</span>
+              <StatusBadge value={deposit.status} />
+            </div>
+            <h2>{listing?.title || 'Vehicle reservation'}</h2>
+            <p>{listing ? `${listing.year} ${listing.make} ${listing.model}` : 'Your reservation is recorded in your account.'}</p>
+          </div>
+          <div className="checkout-success-total">
+            <span>Deposit amount</span>
+            <strong>{moneyMinor(deposit.amountMinor, deposit.currency)}</strong>
+          </div>
+        </div>
+      </Card>
+      <Card className="checkout-success-section checkout-deposit-details">
+        <div className="checkout-success-section-title">
+          <ReceiptText aria-hidden="true" size={21} />
+          <h2>Reservation details</h2>
+        </div>
+        <InfoList rows={[
+          ['Listing', listing?.title],
+          ['Status', <StatusBadge value={deposit.status} />],
+          ['Created', dateTime(deposit.createdAt)],
+          ['Paid', deposit.paidAt ? dateTime(deposit.paidAt) : 'Awaiting confirmation'],
+        ]} />
+        <div className="checkout-success-actions">
+          <Button href="/user/listing-deposits" icon={ReceiptText}>My deposits</Button>
+          {listing?.id && <Button href={`/listings/${listing.id}`} variant="secondary" icon={ArrowRight}>View listing</Button>}
+        </div>
       </Card>
     </>
   );
@@ -497,8 +619,7 @@ export function UserAuctionsPage() {
             </div>
             <div className="card-actions">
               <Button href={`/user/auctions/${auction.id}/edit`} variant="secondary" icon={Edit}>Edit</Button>
-              <MutationButton variant="ghost" icon={Check} run={() => userApi.activateAuction(auction.id)} onDone={() => setRefresh((value) => value + 1)}>Activate</MutationButton>
-              <MutationButton variant="ghost" icon={EyeOff} run={() => userApi.deactivateAuction(auction.id)} onDone={() => setRefresh((value) => value + 1)}>Hide</MutationButton>
+              <UserAuctionVisibilityAction auction={auction} onDone={() => setRefresh((value) => value + 1)} />
             </div>
           </Card>
         ))}
@@ -514,7 +635,7 @@ export function AuctionFormPage() {
   const editing = Boolean(id);
   const navigate = useNavigate();
   const [form, setForm] = useState({ make: '', model: '', year: '', price: '', auctionEndTime: '' });
-  const [file, setFile] = useState(null);
+  const [files, setFiles] = useState([]);
   const [error, setError] = useState(null);
   useEffect(() => {
     if (editing) {
@@ -535,8 +656,9 @@ export function AuctionFormPage() {
     try {
       if (editing) {
         await userApi.updateAuction(id, { ...form, price: Number(form.price) });
+        if (files.length) await userApi.addAuctionPictures(id, files);
       } else {
-        await userApi.createAuction({ ...form, price: Number(form.price) }, file);
+        await userApi.createAuction({ ...form, price: Number(form.price) }, files);
       }
       navigate('/user/auctions');
     } catch (err) {
@@ -549,7 +671,12 @@ export function AuctionFormPage() {
         <FormField key={field} label={label(field)} name={field} value={form[field]} onChange={bind(setForm)} />
       ))}
       <FormField label="Auction end" name="auctionEndTime" type="datetime-local" value={form.auctionEndTime} onChange={bind(setForm)} />
-      {!editing && <input type="file" accept="image/png,image/jpeg,image/webp" onChange={(event) => setFile(event.target.files?.[0] ?? null)} />}
+      <ImageUploadField
+        files={files}
+        onChange={setFiles}
+        label={editing ? 'Add gallery images' : 'Vehicle images'}
+        required={!editing}
+      />
     </EntityForm>
   );
 }
@@ -572,8 +699,7 @@ export function UserListingsPage() {
           { key: 'actions', header: '', render: (row) => (
             <div className="table-actions">
               <Button href={`/user/listings/${row.id}/edit`} variant="secondary" icon={Edit}>Edit</Button>
-              <MutationButton variant="ghost" icon={Check} run={() => userApi.activateListing(row.id)} onDone={() => setRefresh((value) => value + 1)}>Activate</MutationButton>
-              <MutationButton variant="ghost" icon={EyeOff} run={() => userApi.deactivateListing(row.id)} onDone={() => setRefresh((value) => value + 1)}>Hide</MutationButton>
+              <ListingVisibilityAction listing={row} onDone={() => setRefresh((value) => value + 1)} />
             </div>
           ) },
         ]}
@@ -587,7 +713,7 @@ export function ListingFormPage() {
   const editing = Boolean(id);
   const navigate = useNavigate();
   const [form, setForm] = useState({ title: '', make: '', model: '', year: '', mileage: '', fuelType: '', transmission: '', price: '', depositAmount: '', description: '' });
-  const [file, setFile] = useState(null);
+  const [files, setFiles] = useState([]);
   const [error, setError] = useState(null);
   useEffect(() => {
     if (editing) {
@@ -599,9 +725,9 @@ export function ListingFormPage() {
     setError(null);
     try {
       if (editing) {
-        await userApi.updateListing(id, form, file);
+        await userApi.updateListing(id, form, files);
       } else {
-        await userApi.createListing(form, file);
+        await userApi.createListing(form, files);
       }
       navigate('/user/listings');
     } catch (err) {
@@ -614,7 +740,12 @@ export function ListingFormPage() {
         <FormField key={field} label={label(field)} name={field} value={form[field]} onChange={bind(setForm)} />
       ))}
       <FormField label="Description" name="description" as="textarea" rows="5" value={form.description} onChange={bind(setForm)} />
-      <input type="file" accept="image/png,image/jpeg,image/webp" onChange={(event) => setFile(event.target.files?.[0] ?? null)} />
+      <ImageUploadField
+        files={files}
+        onChange={setFiles}
+        label={editing ? 'Add gallery images' : 'Vehicle images'}
+        required={!editing}
+      />
     </EntityForm>
   );
 }
@@ -704,17 +835,69 @@ export function AdminCarsPage() {
   const state = useLoad(() => adminApi.cars(), [refresh]);
   if (state.loading) return <LoadingState label="Loading auction admin" />;
   if (state.error) return <Alert title="Admin unavailable">{state.error.message}</Alert>;
+  const carColumns = [
+    { key: 'make', header: 'Vehicle', render: (row) => <Link to={`/admin/cars/${row.id}/preview`}>{row.year} {row.make} {row.model}</Link> },
+    { key: 'price', header: 'Price', render: (row) => moneyWhole(row.price, 'EUR') },
+    { key: 'status', header: 'Status', render: (row) => <StatusBadge value={row.status} /> },
+    { key: 'actions', header: '', render: (row) => <AdminAuctionVisibilityAction auction={row} onDone={() => setRefresh((value) => value + 1)} /> },
+  ];
+  const pendingCars = state.data.cars.content.filter((car) => car.status === 'PENDING');
+  const reviewedCars = state.data.cars.content.filter((car) => car.status !== 'PENDING');
+  const auctionTable = (rows, emptyText) => (
+    <DataTable
+      rows={rows}
+      emptyText={emptyText}
+      rowLink={(row) => `/admin/cars/${row.id}/preview`}
+      rowLabel={(row) => `Preview ${row.year} ${row.make} ${row.model}`}
+      columns={carColumns}
+    />
+  );
   return (
     <>
       <PageHeader eyebrow="Admin" title="Auction moderation" description="Review auction posts and bids." />
-      <DataTable rows={state.data.cars.content} columns={[
-        { key: 'make', header: 'Vehicle', render: (row) => `${row.year} ${row.make} ${row.model}` },
-        { key: 'price', header: 'Price', render: (row) => moneyWhole(row.price, 'EUR') },
-        { key: 'status', header: 'Status', render: (row) => <StatusBadge value={row.status} /> },
-        { key: 'actions', header: '', render: (row) => <div className="table-actions"><MutationButton variant="ghost" icon={Check} run={() => adminApi.activateCar(row.id)} onDone={() => setRefresh((value) => value + 1)}>Activate</MutationButton><MutationButton variant="ghost" icon={EyeOff} run={() => adminApi.deactivateCar(row.id)} onDone={() => setRefresh((value) => value + 1)}>Hide</MutationButton></div> },
-      ]} />
+      <SectionTitle title={`Awaiting approval (${pendingCars.length})`} />
+      {auctionTable(pendingCars, 'There are no auctions awaiting approval.')}
+      <SectionTitle title="Other auctions" />
+      {auctionTable(reviewedCars, 'There are no other auctions.')}
       <SectionTitle title="Bids" />
-      <DataTable rows={state.data.bids.content} columns={bidColumns((row) => <div className="table-actions"><MutationButton variant="ghost" icon={Check} run={() => adminApi.approveBid(row.idBid)} onDone={() => setRefresh((value) => value + 1)}>Approve</MutationButton><MutationButton variant="ghost" icon={X} run={() => adminApi.denyBid(row.idBid)} onDone={() => setRefresh((value) => value + 1)}>Deny</MutationButton></div>)} />
+      <DataTable rows={state.data.bids.content} columns={bidColumns((row) => row.status === 'ONGOING' ? <div className="table-actions"><MutationButton variant="ghost" icon={Check} run={() => adminApi.approveBid(row.idBid)} onDone={() => setRefresh((value) => value + 1)}>Approve</MutationButton><MutationButton variant="ghost" icon={X} run={() => adminApi.denyBid(row.idBid)} onDone={() => setRefresh((value) => value + 1)}>Deny</MutationButton></div> : null)} />
+    </>
+  );
+}
+
+export function AdminAuctionPreviewPage() {
+  const { id } = useParams();
+  const [refresh, setRefresh] = useState(0);
+  const state = useLoad(() => adminApi.car(id), [id, refresh]);
+  if (state.loading && !state.data) return <LoadingState label="Loading auction preview" />;
+  if (state.error) return <Alert title="Auction preview unavailable">{state.error.message}</Alert>;
+  const { auction, highestBid } = state.data;
+  return (
+    <>
+      <PageHeader
+        eyebrow="Admin auction preview"
+        title={`${auction.make} ${auction.model}`}
+        description="Review the auction exactly as it will appear to marketplace visitors before approving it."
+        actions={<Button href="/admin/cars" variant="secondary">Back to moderation</Button>}
+      />
+      <div className="detail-grid">
+        <Card className="detail-media">
+          <VehicleCarousel images={auction.imageUrls} src={auction.imageUrl} alt={`${auction.make} ${auction.model}`} fallback={auction.make?.slice(0, 2)} />
+        </Card>
+        <Card className="detail-panel">
+          <InfoList rows={[
+            ['Status', <StatusBadge value={auction.statusLabel} />],
+            ['Vehicle', `${auction.year} ${auction.make} ${auction.model}`],
+            ['Asking price', moneyWhole(auction.price, 'EUR')],
+            ['Highest bid', moneyWhole(highestBid, 'EUR')],
+            ['Ends', auction.auctionEndTime],
+            ['Seller', auction.sellerDisplayName],
+          ]} />
+          <ActionStack>
+            <AdminAuctionVisibilityAction auction={auction} onDone={() => setRefresh((value) => value + 1)} />
+          </ActionStack>
+        </Card>
+      </div>
     </>
   );
 }
@@ -757,7 +940,8 @@ export function AdminStorePartsPage() {
         { key: 'category', header: 'Category' },
         { key: 'priceMinor', header: 'Price', render: (row) => moneyMinor(row.priceMinor, 'EUR') },
         { key: 'stockQuantity', header: 'Stock' },
-        { key: 'actions', header: '', render: (row) => <div className="table-actions"><Button href={`/admin/store/parts/${row.id}/edit`} variant="secondary" icon={Edit}>Edit</Button><MutationButton variant="ghost" icon={EyeOff} run={() => adminApi.setStorePartActive(row.id, false)} onDone={() => setRefresh((value) => value + 1)}>Hide</MutationButton></div> },
+        { key: 'visibility', header: 'Visibility', render: (row) => <StatusBadge value={row.active ? 'ACTIVE' : 'HIDDEN'} /> },
+        { key: 'actions', header: '', render: (row) => <div className="table-actions"><Button href={`/admin/store/parts/${row.id}/edit`} variant="secondary" icon={Edit}>Edit</Button><MutationButton variant="ghost" icon={row.active ? EyeOff : Check} run={() => adminApi.setStorePartActive(row.id, !row.active)} onDone={() => setRefresh((value) => value + 1)}>{row.active ? 'Hide' : 'Show'}</MutationButton></div> },
       ]} />
     </>
   );
@@ -836,15 +1020,96 @@ function ActionStack({ children }) {
   return <div className="action-stack">{children}</div>;
 }
 
-function BidForm({ auction, onDone }) {
+const VISIBLE_AUCTION_STATUSES = new Set(['ACTIVE', 'ENDING_SOON', 'ENDED']);
+
+function UserAuctionVisibilityAction({ auction, onDone }) {
+  if (VISIBLE_AUCTION_STATUSES.has(auction.status)) {
+    return <MutationButton variant="ghost" icon={EyeOff} run={() => userApi.deactivateAuction(auction.id)} onDone={onDone}>Hide</MutationButton>;
+  }
+  if (auction.status === 'DEACTIVE') {
+    return <MutationButton variant="ghost" icon={Check} run={() => userApi.activateAuction(auction.id)} onDone={onDone}>Show</MutationButton>;
+  }
+  return null;
+}
+
+function ListingVisibilityAction({ listing, onDone }) {
+  if (listing.status === 'ACTIVE') {
+    return <MutationButton variant="ghost" icon={EyeOff} run={() => userApi.deactivateListing(listing.id)} onDone={onDone}>Hide</MutationButton>;
+  }
+  if (listing.status === 'INACTIVE') {
+    return <MutationButton variant="ghost" icon={Check} run={() => userApi.activateListing(listing.id)} onDone={onDone}>Show</MutationButton>;
+  }
+  return null;
+}
+
+function AdminAuctionVisibilityAction({ auction, onDone }) {
+  if (VISIBLE_AUCTION_STATUSES.has(auction.status)) {
+    return <MutationButton variant="ghost" icon={EyeOff} run={() => adminApi.deactivateCar(auction.id)} onDone={onDone}>Hide</MutationButton>;
+  }
+  if (auction.status === 'PENDING') {
+    return <MutationButton variant="ghost" icon={Check} run={() => adminApi.activateCar(auction.id)} onDone={onDone}>Approve</MutationButton>;
+  }
+  if (auction.status === 'DEACTIVE') {
+    return <MutationButton variant="ghost" icon={Check} run={() => adminApi.activateCar(auction.id)} onDone={onDone}>Show</MutationButton>;
+  }
+  return null;
+}
+
+function BidForm({ auction, highestBid, onDone }) {
   const [bidPrice, setBidPrice] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState(null);
+  const [message, setMessage] = useState(null);
+  const minimumBid = Math.max(Number(auction.price ?? 0), Number(highestBid ?? 0)) + 1;
+
+  async function submit(event) {
+    event.preventDefault();
+    setError(null);
+    setMessage(null);
+
+    const amount = Number(bidPrice);
+    if (!Number.isInteger(amount) || amount < minimumBid) {
+      setError(`Enter a whole-number bid of at least ${moneyWhole(minimumBid, 'EUR')}.`);
+      return;
+    }
+
+    setBusy(true);
+    try {
+      const result = await userApi.bid(auction.id, amount);
+      setBidPrice('');
+      setMessage(result?.message ?? 'Bid placed.');
+      onDone?.();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
-    <form className="inline-form" onSubmit={(event) => {
-      event.preventDefault();
-      userApi.bid(auction.id, Number(bidPrice)).then(onDone);
-    }}>
-      <input value={bidPrice} onChange={(event) => setBidPrice(event.target.value)} placeholder="Bid amount" />
-      <Button type="submit" icon={CreditCard}>Bid</Button>
+    <form className="inline-form bid-form" onSubmit={submit} noValidate>
+      <input
+        type="number"
+        inputMode="numeric"
+        min={minimumBid}
+        step="1"
+        required
+        aria-label="Bid amount"
+        aria-describedby="bid-requirement bid-feedback"
+        value={bidPrice}
+        onChange={(event) => {
+          setBidPrice(event.target.value);
+          setError(null);
+          setMessage(null);
+        }}
+        placeholder={`Minimum ${moneyWhole(minimumBid, 'EUR')}`}
+      />
+      <Button type="submit" icon={CreditCard} disabled={busy}>{busy ? 'Submitting' : 'Bid'}</Button>
+      <small id="bid-requirement" className="bid-requirement">
+        Your bid must be at least {moneyWhole(minimumBid, 'EUR')}.
+      </small>
+      {error && <small id="bid-feedback" className="field-error bid-feedback" role="alert">{error}</small>}
+      {message && <small id="bid-feedback" className="bid-success bid-feedback" role="status">{message}</small>}
     </form>
   );
 }
@@ -939,10 +1204,31 @@ function UploadPanel({ label: text, onUpload }) {
   );
 }
 
+function ImageUploadField({ files, onChange, label: text, required = false }) {
+  return (
+    <label className="image-upload-field wide">
+      <span>{text}</span>
+      <input
+        type="file"
+        accept="image/png,image/jpeg,image/webp"
+        multiple
+        required={required}
+        onChange={(event) => onChange(Array.from(event.target.files ?? []))}
+      />
+      <small>
+        {files.length
+          ? `${files.length} image${files.length === 1 ? '' : 's'} selected.`
+          : `Select up to 8 images.${required ? ' The first image becomes the cover.' : ' New images are added to the gallery.'}`}
+      </small>
+      {files.length > 8 && <small className="field-error">Choose no more than 8 images.</small>}
+    </label>
+  );
+}
+
 function EntityForm({ title, error, onSubmit, children }) {
   return (
     <>
-      <PageHeader eyebrow="Form" title={title} description="Validated by the Spring Boot API." />
+      <PageHeader eyebrow="Form" title={title} description="Enter the details below." />
       {error && <Alert title="Save failed">{error}</Alert>}
       <form className="form-grid two-col" onSubmit={onSubmit}>
         {children}
@@ -961,7 +1247,7 @@ function PagedTable({ title, eyebrow, load, columns }) {
   if (state.error) return <Alert title={`${title} unavailable`}>{state.error.message}</Alert>;
   return (
     <>
-      <PageHeader eyebrow={eyebrow} title={title} description="React table backed by the Spring Boot API." />
+      <PageHeader eyebrow={eyebrow} title={title} />
       <DataTable rows={state.data.content} columns={columns} />
       <div className="pager">
         <Button variant="secondary" disabled={page <= 0} onClick={() => setPage((value) => value - 1)}>Previous</Button>
@@ -977,7 +1263,7 @@ function SimpleState({ state, title, render }) {
   if (state.error) return <Alert title={`${title} unavailable`}>{state.error.message}</Alert>;
   return (
     <>
-      <PageHeader eyebrow="Account" title={title} description="Migrated from JSP to React." />
+      <PageHeader eyebrow="Account" title={title} />
       {render(state.data)}
     </>
   );
@@ -987,12 +1273,25 @@ function AppointmentTable({ title, rows, owner = false, reload }) {
   return (
     <>
       <SectionTitle title={title} />
-      <DataTable rows={rows} columns={[
-        { key: 'auction', header: 'Auction', render: (row) => `${row.auction.year} ${row.auction.make} ${row.auction.model}` },
-        { key: 'date', header: 'Date', render: (row) => dateOnly(row.date) },
-        { key: 'status', header: 'Status', render: (row) => <StatusBadge value={row.status} /> },
-        { key: 'actions', header: '', render: (row) => owner ? ownerDriveActions(row.idTestDrive, reload) : userDriveActions(row.idTestDrive, reload) },
-      ]} />
+      <DataTable
+        rows={rows}
+        rowLink={auctionAppointmentPath}
+        rowLabel={(row) => `Open ${auctionAppointmentTitle(row.auction)}`}
+        columns={[
+          {
+            key: 'auction',
+            header: 'Auction',
+            render: (row) => (
+              <AppointmentVehicleLink to={auctionAppointmentPath(row)}>
+                {auctionAppointmentTitle(row.auction)}
+              </AppointmentVehicleLink>
+            ),
+          },
+          { key: 'date', header: 'Date', render: (row) => dateOnly(row.date) },
+          { key: 'status', header: 'Status', render: (row) => <StatusBadge value={row.status} /> },
+          { key: 'actions', header: '', render: (row) => owner ? ownerDriveActions(row.idTestDrive, reload) : userDriveActions(row.idTestDrive, reload) },
+        ]}
+      />
     </>
   );
 }
@@ -1001,14 +1300,48 @@ function ListingRideTable({ title, rows, owner = false, reload }) {
   return (
     <>
       <SectionTitle title={title} />
-      <DataTable rows={rows} columns={[
-        { key: 'listing', header: 'Listing', render: (row) => row.listing.title },
-        { key: 'scheduledAt', header: 'Date', render: (row) => dateTime(row.scheduledAt) },
-        { key: 'status', header: 'Status', render: (row) => <StatusBadge value={row.status} /> },
-        { key: 'actions', header: '', render: (row) => owner ? ownerListingRideActions(row.idTestRide, reload) : userListingRideActions(row.idTestRide, reload) },
-      ]} />
+      <DataTable
+        rows={rows}
+        rowLink={listingRidePath}
+        rowLabel={(row) => `Open ${listingRideTitle(row.listing)}`}
+        columns={[
+          {
+            key: 'listing',
+            header: 'Listing',
+            render: (row) => (
+              <AppointmentVehicleLink to={listingRidePath(row)}>
+                {listingRideTitle(row.listing)}
+              </AppointmentVehicleLink>
+            ),
+          },
+          { key: 'scheduledAt', header: 'Date', render: (row) => dateTime(row.scheduledAt) },
+          { key: 'status', header: 'Status', render: (row) => <StatusBadge value={row.status} /> },
+          { key: 'actions', header: '', render: (row) => owner ? ownerListingRideActions(row.idTestRide, reload) : userListingRideActions(row.idTestRide, reload) },
+        ]}
+      />
     </>
   );
+}
+
+function AppointmentVehicleLink({ to, children }) {
+  if (!to) return children;
+  return <Link className="appointment-vehicle-link" to={to}>{children}</Link>;
+}
+
+function auctionAppointmentPath(row) {
+  return row.auction?.id ? `/auctions/${row.auction.id}` : null;
+}
+
+function auctionAppointmentTitle(auction) {
+  return [auction?.year, auction?.make, auction?.model].filter(Boolean).join(' ') || 'auction';
+}
+
+function listingRidePath(row) {
+  return row.listing?.id ? `/listings/${row.listing.id}` : null;
+}
+
+function listingRideTitle(listing) {
+  return listing?.title || [listing?.year, listing?.make, listing?.model].filter(Boolean).join(' ') || 'listing';
 }
 
 function ownerDriveActions(id, reload) {

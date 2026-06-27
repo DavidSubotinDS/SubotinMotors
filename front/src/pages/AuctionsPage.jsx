@@ -18,7 +18,7 @@ export default function AuctionsPage() {
   return (
     <>
       <PageHeader eyebrow="Auctions" title="Live vehicle auctions">
-        Server-side auction rules remain authoritative for bidding and deadlines.
+        Browse available vehicles and place bids before the deadline.
       </PageHeader>
 
       <form className="toolbar" onSubmit={(event) => {
@@ -35,7 +35,7 @@ export default function AuctionsPage() {
       </form>
 
       {loading && <LoadingState label="Loading auctions" />}
-      {error && <Alert>Check that the backend API is reachable.</Alert>}
+      {error && <Alert>We could not load auctions. Please try again.</Alert>}
       {data?.content?.length === 0 && <EmptyState title="No auctions found" />}
       {data?.content?.length > 0 && (
         <div className="summary-grid">

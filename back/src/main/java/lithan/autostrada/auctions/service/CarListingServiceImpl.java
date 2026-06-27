@@ -17,6 +17,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import lithan.autostrada.auctions.dto.CarListingForm;
 import lithan.autostrada.auctions.entity.CarListing;
+import lithan.autostrada.auctions.entity.CarListingGalleryPicture;
 import lithan.autostrada.auctions.entity.CarListingPicture;
 import lithan.autostrada.auctions.entity.CarListingStatus;
 import lithan.autostrada.auctions.entity.ListingTestRide;
@@ -30,6 +31,8 @@ import lithan.autostrada.auctions.validation.ImageUploadValidator.ValidatedImage
 
 @Service
 public class CarListingServiceImpl implements CarListingService {
+
+  private static final int MAX_VEHICLE_IMAGES = 8;
 
   private final CarListingRepository listingRepository;
   private final ListingTestRideRepository testRideRepository;
@@ -81,10 +84,13 @@ public class CarListingServiceImpl implements CarListingService {
   @Override
   @Transactional
   public CarListing create(CarListingForm form, MultipartFile image) {
-    if (image == null || image.isEmpty()) {
-      throw new IllegalArgumentException("Car picture is required");
-    }
-    ValidatedImage validatedImage = validateImage(image);
+    return create(form, image == null ? List.of() : List.of(image));
+  }
+
+  @Override
+  @Transactional
+  public CarListing create(CarListingForm form, List<MultipartFile> images) {
+    List<ValidatedImage> validatedImages = validateImages(images, 0, true);
     Instant now = Instant.now();
     CarListing listing = new CarListing();
     apply(form, listing);
@@ -92,24 +98,48 @@ public class CarListingServiceImpl implements CarListingService {
     listing.setStatus(CarListingStatus.ACTIVE);
     listing.setCreatedAt(now);
     listing.setUpdatedAt(now);
-    setPicture(listing, validatedImage);
+    setPicture(listing, validatedImages.get(0));
+    for (int index = 1; index < validatedImages.size(); index++) {
+      listing.addGalleryPicture(galleryPicture(validatedImages.get(index), index));
+    }
     return listingRepository.save(listing);
   }
 
   @Override
   @Transactional
   public CarListing update(int listingId, CarListingForm form, MultipartFile image) {
-    CarListing listing = ownedListing(listingId);
-    if (listing.getStatus() == CarListingStatus.SOLD
-        || listing.getStatus() == CarListingStatus.RESERVED) {
-      throw new IllegalStateException("Reserved or sold listings cannot be edited");
-    }
+    CarListing listing = editableListing(listingId);
     apply(form, listing);
     if (image != null && !image.isEmpty()) {
       setPicture(listing, validateImage(image));
     }
     listing.setUpdatedAt(Instant.now());
     return listingRepository.save(listing);
+  }
+
+  @Override
+  @Transactional
+  public CarListing update(int listingId, CarListingForm form, List<MultipartFile> images) {
+    CarListing listing = editableListing(listingId);
+    apply(form, listing);
+    int existingCount = listing.getPicture() == null ? 0 : 1;
+    existingCount += listing.getGalleryPictures().size();
+    List<ValidatedImage> validatedImages = validateImages(images, existingCount, false);
+    int displayOrder = listing.getGalleryPictures().size() + 1;
+    for (ValidatedImage image : validatedImages) {
+      listing.addGalleryPicture(galleryPicture(image, displayOrder++));
+    }
+    listing.setUpdatedAt(Instant.now());
+    return listingRepository.save(listing);
+  }
+
+  private CarListing editableListing(int listingId) {
+    CarListing listing = ownedListing(listingId);
+    if (listing.getStatus() == CarListingStatus.SOLD
+        || listing.getStatus() == CarListingStatus.RESERVED) {
+      throw new IllegalStateException("Reserved or sold listings cannot be edited");
+    }
+    return listing;
   }
 
   @Override
@@ -286,6 +316,31 @@ public class CarListingServiceImpl implements CarListingService {
     picture.setFileName(image.fileName());
     picture.setFileType(image.contentType());
     picture.setImage(Base64.getEncoder().encodeToString(image.bytes()));
+  }
+
+  private CarListingGalleryPicture galleryPicture(ValidatedImage image, int displayOrder) {
+    CarListingGalleryPicture picture = new CarListingGalleryPicture();
+    picture.setFileName(image.fileName());
+    picture.setFileType(image.contentType());
+    picture.setImage(Base64.getEncoder().encodeToString(image.bytes()));
+    picture.setDisplayOrder(displayOrder);
+    return picture;
+  }
+
+  private List<ValidatedImage> validateImages(
+      List<MultipartFile> images,
+      int existingCount,
+      boolean required) {
+    List<MultipartFile> uploads = images == null
+        ? List.of()
+        : images.stream().filter(image -> image != null && !image.isEmpty()).toList();
+    if (required && uploads.isEmpty()) {
+      throw new IllegalArgumentException("At least one car picture is required");
+    }
+    if (existingCount + uploads.size() > MAX_VEHICLE_IMAGES) {
+      throw new IllegalArgumentException("A vehicle can have at most 8 pictures");
+    }
+    return uploads.stream().map(this::validateImage).toList();
   }
 
   private void validateFuture(LocalDateTime scheduledAt) {

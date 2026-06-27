@@ -2,6 +2,8 @@ package lithan.autostrada.auctions.entity;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
@@ -15,6 +17,8 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToOne;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.OrderBy;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 
@@ -71,6 +75,14 @@ public class CarListing {
       orphanRemoval = true,
       mappedBy = "listing")
   private CarListingPicture picture;
+
+  @OneToMany(
+      fetch = FetchType.EAGER,
+      cascade = CascadeType.ALL,
+      orphanRemoval = true,
+      mappedBy = "listing")
+  @OrderBy("displayOrder ASC, idPicture ASC")
+  private List<CarListingGalleryPicture> galleryPictures = new ArrayList<>();
 
   @Column(name = "created_at", nullable = false)
   private Instant createdAt;
@@ -203,6 +215,15 @@ public class CarListing {
 
   public void setPicture(CarListingPicture picture) {
     this.picture = picture;
+  }
+
+  public List<CarListingGalleryPicture> getGalleryPictures() {
+    return galleryPictures;
+  }
+
+  public void addGalleryPicture(CarListingGalleryPicture picture) {
+    picture.setListing(this);
+    galleryPictures.add(picture);
   }
 
   public Instant getCreatedAt() {

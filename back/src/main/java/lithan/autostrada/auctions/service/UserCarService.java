@@ -15,6 +15,8 @@ public interface UserCarService {
 
   void postCar(MultipartFile file, Car car) throws Exception;
 
+  void postCar(List<MultipartFile> files, Car car) throws Exception;
+
   Car getOwnedCarById(int id);
 
   Car editOwnedCar(Car car);
@@ -50,4 +52,6 @@ public interface UserCarService {
   void cancelTestDriveForOwnedCar(int testDriveId);
 
   void saveUploadPicture(MultipartFile file, int carId) throws Exception;
+
+  void addGalleryPictures(List<MultipartFile> files, int carId) throws Exception;
 }

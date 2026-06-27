@@ -5,6 +5,7 @@ import AuctionsPage from './pages/AuctionsPage.jsx';
 import ListingsPage from './pages/ListingsPage.jsx';
 import {
   AdminCarsPage,
+  AdminAuctionPreviewPage,
   AdminOrdersPage,
   AdminPartFormPage,
   AdminStorePartsPage,
@@ -121,6 +122,7 @@ export const routes = [
       { path: 'admin/users', element: <AdminUsersPage /> },
       { path: 'admin/car-management', element: <AdminCarsPage /> },
       { path: 'admin/cars', element: <AdminCarsPage /> },
+      { path: 'admin/cars/:id/preview', element: <AdminAuctionPreviewPage /> },
       { path: 'admin/auctions', element: <AdminCarsPage /> },
       { path: 'admin/listings', element: <AdminCarsPage /> },
       { path: 'admin/transactions', element: <AdminTransactionsPage /> },

@@ -42,3 +42,4 @@ front/node_modules/
 front/dist/
 front/coverage/
 front/.vite/
+front/test-results/

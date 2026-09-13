@@ -69,6 +69,15 @@ and the remaining steps before merging.
 
 Flyway migrations live in `back/src/main/resources/db/migration`.
 
+## Continuous Integration
+
+GitHub Actions runs backend and frontend verification on branch pushes and
+pull requests targeting `master`. Backend verification uses Java 17 and
+`bash ./mvnw --batch-mode --no-transfer-progress clean verify` from `back/`.
+Frontend verification uses Node.js 22, `npm ci`, `npm test`, and
+`npm run build` from `front/`. Workflow runs retain test reports, the backend
+JAR, and the frontend build as downloadable artifacts for seven days.
+
 ## Run The React Frontend
 
 ```powershell

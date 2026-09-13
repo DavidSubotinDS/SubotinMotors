@@ -5,17 +5,16 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.hamcrest.Matchers.contains;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.flash;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.model;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrlPattern;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.view;
 
 import java.time.Instant;
 import java.time.LocalDate;
@@ -25,13 +24,17 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.data.domain.Page;
+import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockHttpSession;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.transaction.annotation.Transactional;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import lithan.autostrada.auctions.dto.api.ApiModels.AdminTransactionsResponse;
+import lithan.autostrada.auctions.dto.api.ApiModels.PaymentResponse;
 
 import lithan.autostrada.auctions.entity.Car;
 import lithan.autostrada.auctions.entity.CarBidding;
@@ -55,6 +58,9 @@ class MarketplaceFeatureIntegrationTests {
 
   @Autowired
   private MockMvc mockMvc;
+
+  @Autowired
+  private ObjectMapper objectMapper;
 
   @Autowired
   private UserRepository userRepository;
@@ -180,7 +186,7 @@ class MarketplaceFeatureIntegrationTests {
     saveCar(owner, "CoverageBatch", "Hidden", 16_000, "DEACTIVE");
     saveCar(owner, "CoverageBatch", "Luxury", 40_000, "ACTIVE");
 
-    MvcResult firstResult = mockMvc.perform(get("/cars")
+    mockMvc.perform(get("/api/public/auctions")
             .param("page", "0")
             .param("size", "2")
             .param("keyword", "coveragebatch")
@@ -189,18 +195,11 @@ class MarketplaceFeatureIntegrationTests {
             .param("sort", "price")
             .param("direction", "desc"))
         .andExpect(status().isOk())
-        .andExpect(view().name("cars"))
-        .andExpect(model().attribute("sort", "price"))
-        .andExpect(model().attribute("direction", "desc"))
-        .andReturn();
+        .andExpect(jsonPath("$.totalElements").value(3))
+        .andExpect(jsonPath("$.totalPages").value(2))
+        .andExpect(jsonPath("$.content[*].price", contains(18_000, 15_000)));
 
-    Page<Car> firstPage = carPage(firstResult);
-    assertEquals(3, firstPage.getTotalElements());
-    assertEquals(2, firstPage.getTotalPages());
-    assertEquals(List.of(18_000, 15_000),
-        firstPage.getContent().stream().map(Car::getPrice).toList());
-
-    MvcResult secondResult = mockMvc.perform(get("/cars")
+    mockMvc.perform(get("/api/public/auctions")
             .param("page", "1")
             .param("size", "2")
             .param("keyword", "CoverageBatch")
@@ -209,11 +208,9 @@ class MarketplaceFeatureIntegrationTests {
             .param("sort", "price")
             .param("direction", "desc"))
         .andExpect(status().isOk())
-        .andReturn();
-
-    Page<Car> secondPage = carPage(secondResult);
-    assertEquals(List.of(12_000),
-        secondPage.getContent().stream().map(Car::getPrice).toList());
+        .andExpect(jsonPath("$.page").value(1))
+        .andExpect(jsonPath("$.last").value(true))
+        .andExpect(jsonPath("$.content[*].price", contains(12_000)));
   }
 
   @Test
@@ -236,18 +233,19 @@ class MarketplaceFeatureIntegrationTests {
   }
 
   @Test
-  void invalidRegistrationStaysOnAccountStepWithFieldErrors() throws Exception {
-    MvcResult result = mockMvc.perform(post("/register/accountProcess")
-            .with(csrf())
-            .param("username", "ab")
-            .param("email", "invalid")
-            .param("password", "123"))
-        .andExpect(status().isOk())
-        .andExpect(view().name("register-account"))
-        .andExpect(model().attributeHasFieldErrors("account", "username", "email", "password"))
-        .andReturn();
-
-    assertNull(result.getRequest().getSession().getAttribute("registerAccount"));
+  void invalidRegistrationReturnsFieldErrorsWithoutCreatingAccount() throws Exception {
+    long accountCount = userRepository.count();
+    mockMvc.perform(post("/api/auth/register")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("""
+                {"username":"ab","email":"invalid","password":"123",
+                 "firstName":"New","lastName":"Driver","phoneNumber":"0612345678"}
+                """))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.fieldErrors.username").isNotEmpty())
+        .andExpect(jsonPath("$.fieldErrors.email").isNotEmpty())
+        .andExpect(jsonPath("$.fieldErrors.password").isNotEmpty());
+    assertEquals(accountCount, userRepository.count());
   }
 
   @Test
@@ -260,7 +258,7 @@ class MarketplaceFeatureIntegrationTests {
 
     MockMultipartFile emptyImage = new MockMultipartFile(
         "imageFile", "", "application/octet-stream", new byte[0]);
-    mockMvc.perform(multipart("/user/postCarProcess")
+    mockMvc.perform(multipart("/api/user/auctions")
             .file(emptyImage)
             .param("make", "")
             .param("model", "")
@@ -268,27 +266,26 @@ class MarketplaceFeatureIntegrationTests {
             .param("price", "0")
             .with(user("user123").roles("USER"))
             .with(csrf()))
-        .andExpect(status().isOk())
-        .andExpect(view().name("user/post-car"))
-        .andExpect(model().attributeHasFieldErrors("car", "make", "model", "year", "price"));
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.fieldErrors.make").isNotEmpty())
+        .andExpect(jsonPath("$.fieldErrors.model").isNotEmpty())
+        .andExpect(jsonPath("$.fieldErrors.year").isNotEmpty())
+        .andExpect(jsonPath("$.fieldErrors.price").isNotEmpty());
 
-    mockMvc.perform(post("/postCarBidding")
-            .param("carId", String.valueOf(car.getIdCar()))
-            .param("bidPrice", "0")
+    mockMvc.perform(post("/api/user/auctions/{idCar}/bid", car.getIdCar())
+            .contentType(MediaType.APPLICATION_JSON).content("{\"bidPrice\":0}")
             .with(user("user123").roles("USER"))
             .with(csrf()))
-        .andExpect(status().isOk())
-        .andExpect(view().name("user/car-bid"))
-        .andExpect(model().attributeHasFieldErrors("carBidding", "bidPrice"));
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.message").isNotEmpty());
 
-    mockMvc.perform(post("/test-drive/testDriveProcess")
-            .param("carId", String.valueOf(car.getIdCar()))
-            .param("date", LocalDate.now().toString())
+    mockMvc.perform(post("/api/user/auctions/{idCar}/test-drives", car.getIdCar())
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("{\"date\":\"" + LocalDate.now() + "\"}")
             .with(user("user123").roles("USER"))
             .with(csrf()))
-        .andExpect(status().isOk())
-        .andExpect(view().name("user/test-drive"))
-        .andExpect(model().attributeHasFieldErrors("testDrive", "date"));
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.message").isNotEmpty());
 
     assertEquals(carCount, carRepository.count());
     assertEquals(bidCount, bidRepository.count());
@@ -303,13 +300,13 @@ class MarketplaceFeatureIntegrationTests {
     LocalDate originalDate = LocalDate.now().plusDays(5);
     LocalDate rescheduledDate = originalDate.plusDays(2);
 
-    mockMvc.perform(post("/test-drive/testDriveProcess")
-            .param("carId", String.valueOf(car.getIdCar()))
-            .param("date", originalDate.toString())
+    mockMvc.perform(post("/api/user/auctions/{idCar}/test-drives", car.getIdCar())
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("{\"date\":\"" + originalDate + "\"}")
             .with(user("user123").roles("USER"))
             .with(csrf()))
-        .andExpect(status().is3xxRedirection())
-        .andExpect(redirectedUrl("/"));
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.message").value("Test drive requested."));
 
     TestDrive testDrive = testDriveRepository.findByUserOrderByDateAsc(requester).stream()
         .filter(booking -> booking.getCar().getIdCar() == car.getIdCar())
@@ -317,39 +314,36 @@ class MarketplaceFeatureIntegrationTests {
         .orElseThrow();
     assertEquals(TestDriveStatus.PENDING, testDrive.getStatus());
 
-    mockMvc.perform(get("/user/test-drive")
+    mockMvc.perform(get("/api/user/appointments")
             .with(user("user123").roles("USER")))
         .andExpect(status().isOk())
-        .andExpect(model().attribute("bookedTestDrives",
-            org.hamcrest.Matchers.hasItem(
-                org.hamcrest.Matchers.hasProperty("idTestDrive",
-                    org.hamcrest.Matchers.is(testDrive.getIdTestDrive())))));
+        .andExpect(jsonPath("$.bookedTestDrives[*].idTestDrive",
+            org.hamcrest.Matchers.hasItem(testDrive.getIdTestDrive())));
 
-    mockMvc.perform(post("/user/test-drives/{idTestDrive}/accept", testDrive.getIdTestDrive())
+    mockMvc.perform(post("/api/user/test-drives/{idTestDrive}/accept", testDrive.getIdTestDrive())
             .with(user("admin123").roles("USER", "ADMIN"))
             .with(csrf()))
-        .andExpect(status().is3xxRedirection())
-        .andExpect(redirectedUrl("/user/test-drive"))
-        .andExpect(flash().attribute("appointmentMessage", "Test-drive request accepted."));
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.message").value("Test-drive request accepted."));
     assertEquals(TestDriveStatus.ACCEPTED,
         testDriveRepository.findById(testDrive.getIdTestDrive()).orElseThrow().getStatus());
 
-    mockMvc.perform(post("/user/test-drives/{idTestDrive}/reschedule", testDrive.getIdTestDrive())
+    mockMvc.perform(post("/api/user/test-drives/{idTestDrive}/reschedule", testDrive.getIdTestDrive())
             .param("date", rescheduledDate.toString())
             .with(user("user123").roles("USER"))
             .with(csrf()))
-        .andExpect(status().is3xxRedirection())
-        .andExpect(flash().attribute("appointmentMessage", "Test drive rescheduled."));
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.message").value("Test drive rescheduled."));
 
     TestDrive rescheduled = testDriveRepository.findById(testDrive.getIdTestDrive()).orElseThrow();
     assertEquals(rescheduledDate, rescheduled.getDate());
     assertEquals(TestDriveStatus.PENDING, rescheduled.getStatus());
 
-    mockMvc.perform(post("/user/test-drives/{idTestDrive}/cancel", testDrive.getIdTestDrive())
+    mockMvc.perform(post("/api/user/test-drives/{idTestDrive}/cancel", testDrive.getIdTestDrive())
             .with(user("user123").roles("USER"))
             .with(csrf()))
-        .andExpect(status().is3xxRedirection())
-        .andExpect(flash().attribute("appointmentMessage", "Test drive cancelled."));
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.message").value("Test drive cancelled."));
     assertEquals(TestDriveStatus.CANCELLED,
         testDriveRepository.findById(testDrive.getIdTestDrive()).orElseThrow().getStatus());
   }
@@ -372,48 +366,28 @@ class MarketplaceFeatureIntegrationTests {
     event.setProcessedAt(Instant.parse("2026-06-19T10:16:00Z"));
     webhookEventRepository.saveAndFlush(event);
 
-    MvcResult result = mockMvc.perform(get("/admin/transactions")
+    MvcResult result = mockMvc.perform(get("/api/admin/transactions")
             .param("sort", "amountMinor")
             .param("direction", "asc")
             .with(user("admin123").roles("USER", "ADMIN")))
         .andExpect(status().isOk())
-        .andExpect(view().name("admin/transactions"))
-        .andExpect(model().attribute("sort", "amountMinor"))
-        .andExpect(model().attribute("direction", "asc"))
         .andReturn();
 
-    List<PaymentOrder> transactions = transactionList(result).stream()
-        .filter(payment -> "Transaction".equals(payment.getBid().getCar().getMake()))
+    var response = objectMapper.readValue(result.getResponse().getContentAsByteArray(),
+        AdminTransactionsResponse.class);
+    List<PaymentResponse> transactions = response.transactions().content().stream()
+        .filter(payment -> "Transaction".equals(payment.bid().auction().make()))
         .toList();
     assertEquals(List.of(affordable.getIdPayment(), expensive.getIdPayment()),
-        transactions.stream().map(PaymentOrder::getIdPayment).toList());
-    assertEquals("user123", transactions.get(0).getBuyer().getUsername());
-    assertEquals("admin123", transactions.get(0).getSeller().getUsername());
-    assertEquals("Budget", transactions.get(0).getBid().getCar().getModel());
-    assertEquals(1_100_000L, transactions.get(0).getAmountMinor());
-    assertFalse(transactions.get(0).getStatus().isBlank());
+        transactions.stream().map(PaymentResponse::idPayment).toList());
+    assertEquals("user123", transactions.get(0).buyer().username());
+    assertEquals("admin123", transactions.get(0).seller().username());
+    assertEquals("Budget", transactions.get(0).bid().auction().model());
+    assertEquals(1_100_000L, transactions.get(0).amountMinor());
+    assertFalse(transactions.get(0).status().isBlank());
 
-    List<PaymentWebhookEvent> webhookEvents = webhookList(result);
-    assertTrue(webhookEvents.stream()
-        .anyMatch(webhook -> "evt_admin_display".equals(webhook.getProviderEventId())));
-  }
-
-  @SuppressWarnings("unchecked")
-  private Page<Car> carPage(MvcResult result) {
-    assertNotNull(result.getModelAndView());
-    return (Page<Car>) result.getModelAndView().getModel().get("carPage");
-  }
-
-  @SuppressWarnings("unchecked")
-  private List<PaymentOrder> transactionList(MvcResult result) {
-    assertNotNull(result.getModelAndView());
-    return (List<PaymentOrder>) result.getModelAndView().getModel().get("transactions");
-  }
-
-  @SuppressWarnings("unchecked")
-  private List<PaymentWebhookEvent> webhookList(MvcResult result) {
-    assertNotNull(result.getModelAndView());
-    return (List<PaymentWebhookEvent>) result.getModelAndView().getModel().get("webhookEvents");
+    assertTrue(response.webhookEvents().stream()
+        .anyMatch(webhook -> "evt_admin_display".equals(webhook.stripeEventId())));
   }
 
   private Car saveCar(UserAccount owner, String make, String model, int price, String status) {

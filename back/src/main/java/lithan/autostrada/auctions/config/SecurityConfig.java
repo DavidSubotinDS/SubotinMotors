@@ -21,6 +21,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
+import org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint;
 import org.springframework.security.web.util.matcher.RequestMatcher;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
@@ -110,11 +111,15 @@ public class SecurityConfig {
     http.csrf(csrf -> csrf
         .ignoringRequestMatchers("/webhooks/stripe", "/api/**"));
 
+    var loginEntryPoint = new LoginUrlAuthenticationEntryPoint("/login");
     http.exceptionHandling(exceptions -> exceptions
-        .defaultAuthenticationEntryPointFor(
-            (request, response, exception) ->
-                writeApiError(response, HttpStatus.UNAUTHORIZED, "Authentication required."),
-            API_REQUEST)
+        .authenticationEntryPoint((request, response, exception) -> {
+          if (API_REQUEST.matches(request)) {
+            writeApiError(response, HttpStatus.UNAUTHORIZED, "Authentication required.");
+          } else {
+            loginEntryPoint.commence(request, response, exception);
+          }
+        })
         .defaultAccessDeniedHandlerFor(
             (request, response, exception) ->
                 writeApiError(response, HttpStatus.FORBIDDEN, "You do not have permission to perform this action."),

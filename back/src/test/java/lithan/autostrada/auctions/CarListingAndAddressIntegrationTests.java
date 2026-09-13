@@ -11,11 +11,10 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.model;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrlPattern;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.view;
 
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -27,6 +26,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.mock.web.MockHttpSession;
+import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -208,12 +208,10 @@ class CarListingAndAddressIntegrationTests {
     CarListing listing = createListingAs(
         "user123", "City-friendly hatchback", "Honda", "Jazz");
 
-    mockMvc.perform(get("/listings/{listingId}", listing.getIdListing()))
+    mockMvc.perform(get("/api/public/listings/{listingId}", listing.getIdListing()))
         .andExpect(status().isOk())
-        .andExpect(view().name("listing-details"))
-        .andExpect(model().attribute("listing",
-            org.hamcrest.Matchers.hasProperty(
-                "idListing", org.hamcrest.Matchers.is(listing.getIdListing()))));
+        .andExpect(jsonPath("$.listing.id").value(listing.getIdListing()))
+        .andExpect(jsonPath("$.listing.title").value("City-friendly hatchback"));
 
     assertEquals(CarListingStatus.ACTIVE, listing.getStatus());
     assertEquals("user123", listing.getSeller().getUsername());
@@ -226,22 +224,21 @@ class CarListingAndAddressIntegrationTests {
         "admin123", "Test ride estate", "Volvo", "V60");
     long count = listingTestRideRepository.count();
 
-    mockMvc.perform(post("/listings/{listingId}/test-rides", listing.getIdListing())
+    mockMvc.perform(post("/api/user/listings/{listingId}/test-rides", listing.getIdListing())
             .with(user("user123").roles("USER"))
-            .with(csrf())
-            .param("scheduledAt", LocalDateTime.now().minusHours(1).withSecond(0).withNano(0).toString()))
-        .andExpect(status().isOk())
-        .andExpect(view().name("listing-details"))
-        .andExpect(model().attributeHasFieldErrors("testRide", "scheduledAt"));
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("{\"scheduledAt\":\"" + LocalDateTime.now().minusHours(1).withNano(0) + "\"}"))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.message").isNotEmpty());
     assertEquals(count, listingTestRideRepository.count());
 
     LocalDateTime future = LocalDateTime.now().plusDays(3).withSecond(0).withNano(0);
-    mockMvc.perform(post("/listings/{listingId}/test-rides", listing.getIdListing())
+    mockMvc.perform(post("/api/user/listings/{listingId}/test-rides", listing.getIdListing())
             .with(user("user123").roles("USER"))
-            .with(csrf())
-            .param("scheduledAt", future.toString()))
-        .andExpect(status().is3xxRedirection())
-        .andExpect(redirectedUrl("/listings/" + listing.getIdListing()));
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("{\"scheduledAt\":\"" + future + "\"}"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.message").value("Test ride request sent to the seller."));
 
     ListingTestRide ride = listingTestRideRepository
         .findByUserOrderByScheduledAtAsc(

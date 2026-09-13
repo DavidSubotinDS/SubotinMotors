@@ -8,9 +8,14 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrlPattern;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -66,6 +71,25 @@ class ReactApiSmokeTests {
     mockMvc.perform(get("/api/user/workspace").accept(MediaType.APPLICATION_JSON))
         .andExpect(status().isUnauthorized())
         .andExpect(jsonPath("$.message").value("Authentication required."));
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = { "*/*", "text/html", "application/json" })
+  void authenticationResponseDependsOnRouteRatherThanAcceptHeader(String accept) throws Exception {
+    mockMvc.perform(get("/api/user/workspace").accept(accept))
+        .andExpect(status().isUnauthorized())
+        .andExpect(header().doesNotExist("Location"))
+        .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+        .andExpect(jsonPath("$.message").value("Authentication required."));
+    mockMvc.perform(get("/user/my-profile").accept(accept))
+        .andExpect(status().isFound())
+        .andExpect(redirectedUrlPattern("**/login"));
+    mockMvc.perform(get("/api/admin/transactions").accept(accept)
+            .with(user("user123").roles("USER")))
+        .andExpect(status().isForbidden())
+        .andExpect(header().doesNotExist("Location"))
+        .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+        .andExpect(jsonPath("$.message").value("You do not have permission to perform this action."));
   }
 
   @Test

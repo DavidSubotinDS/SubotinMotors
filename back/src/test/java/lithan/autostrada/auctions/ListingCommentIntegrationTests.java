@@ -8,15 +8,15 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.flash;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.model;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.hamcrest.Matchers.hasItem;
+import static org.hamcrest.Matchers.hasItems;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrlPattern;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.view;
 
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
-import java.util.List;
 
 import javax.imageio.ImageIO;
 
@@ -25,11 +25,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.mock.web.MockMultipartFile;
 
-import lithan.autostrada.auctions.dto.ListingCommentView;
 import lithan.autostrada.auctions.entity.Car;
 import lithan.autostrada.auctions.entity.CarPart;
 import lithan.autostrada.auctions.repository.CarPartRepository;
@@ -57,30 +55,19 @@ class ListingCommentIntegrationTests {
   void auctionDiscussionShowsSeededSellerAndAdminReplies() throws Exception {
     Car car = demoCar("Toyota", "RAV4", "demo_seller");
 
-    MvcResult result = mockMvc.perform(get(carUrl(car)))
+    mockMvc.perform(get("/api/public/auctions/{idCar}", car.getIdCar()))
         .andExpect(status().isOk())
-        .andExpect(view().name("car-details"))
-        .andExpect(model().attributeExists("comments", "commentForm"))
-        .andReturn();
-
-    List<ListingCommentView> comments = comments(result);
-    assertTrue(comments.stream().anyMatch(comment -> "Seller".equals(comment.getBadgeLabel())));
-    assertTrue(comments.stream().anyMatch(comment -> "Admin".equals(comment.getBadgeLabel())));
-    assertTrue(comments.stream().anyMatch(comment -> !comment.isHighlighted()));
+        .andExpect(jsonPath("$.comments[*].badgeLabel", hasItems("Seller", "Admin")))
+        .andExpect(jsonPath("$.comments[*].highlightClass", hasItem("")));
   }
 
   @Test
   void partDiscussionShowsSeededStoreTeamReply() throws Exception {
     CarPart part = partRepository.findBySkuIgnoreCase("BRK-PAD-001").orElseThrow();
 
-    MvcResult result = mockMvc.perform(get("/parts/{idPart}", part.getIdPart()))
+    mockMvc.perform(get("/api/public/parts/{idPart}", part.getIdPart()))
         .andExpect(status().isOk())
-        .andExpect(view().name("store/part-details"))
-        .andExpect(model().attributeExists("comments", "commentForm"))
-        .andReturn();
-
-    assertTrue(comments(result).stream()
-        .anyMatch(comment -> "Store team".equals(comment.getBadgeLabel())));
+        .andExpect(jsonPath("$.comments[*].badgeLabel", hasItem("Store team")));
   }
 
   @Test
@@ -172,11 +159,6 @@ class ListingCommentIntegrationTests {
             "commentError", "Image content does not match a valid JPEG or PNG file"));
 
     assertEquals(initialCount, commentRepository.count());
-  }
-
-  @SuppressWarnings("unchecked")
-  private List<ListingCommentView> comments(MvcResult result) {
-    return (List<ListingCommentView>) result.getModelAndView().getModel().get("comments");
   }
 
   private Car demoCar(String make, String model, String owner) {

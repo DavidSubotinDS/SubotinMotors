@@ -157,7 +157,7 @@ public class UserWorkspaceApiController {
   @PutMapping("/auctions/{idCar}")
   public AuctionSummaryResponse updateAuction(
       @PathVariable int idCar,
-      @RequestBody AuctionRequest request) {
+      @Valid @RequestBody AuctionRequest request) {
     Car car = toCar(request);
     car.setIdCar(idCar);
     return mapper.auction(userCarService.editOwnedCar(car));

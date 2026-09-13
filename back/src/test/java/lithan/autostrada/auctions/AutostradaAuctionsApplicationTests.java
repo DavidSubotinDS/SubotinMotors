@@ -1,156 +1,153 @@
 package lithan.autostrada.auctions;
 
-import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.test.web.servlet.MockMvc;
-
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.*;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrlPattern;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.model;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
+import java.util.Comparator;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import lithan.autostrada.auctions.dto.api.ApiModels.AdminCarManagementResponse;
+import lithan.autostrada.auctions.dto.api.ApiModels.AdminDashboardResponse;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.test.web.servlet.MockMvc;
 
 @SpringBootTest
 @AutoConfigureMockMvc
 class AutostradaAuctionsApplicationTests {
 
-	@Autowired
-	private MockMvc mockMvc;
+  @Autowired
+  private MockMvc mockMvc;
 
-	@Test
-	void contextLoads() {
-	}
+  @Autowired
+  private ObjectMapper objectMapper;
 
-	@Test
-	void homePageIsPublic() throws Exception {
-		mockMvc.perform(get("/"))
-				.andExpect(status().isOk());
-	}
+  @Test
+  void contextLoads() {
+  }
 
-	@Test
-	void carCatalogueSupportsPaginationFilteringAndSorting() throws Exception {
-		mockMvc.perform(get("/cars")
-						.param("page", "0")
-						.param("size", "4")
-						.param("keyword", "test")
-						.param("low", "1000")
-						.param("high", "50000")
-						.param("sort", "price")
-						.param("direction", "asc"))
-				.andExpect(status().isOk())
-				.andExpect(model().attributeExists("carPage"))
-				.andExpect(model().attribute("sort", "price"))
-				.andExpect(model().attribute("direction", "asc"));
-	}
+  @Test
+  void homePageRedirectsToReactWithoutAuthentication() throws Exception {
+    mockMvc.perform(get("/"))
+        .andExpect(status().isFound())
+        .andExpect(redirectedUrl("http://localhost:5173/"));
+  }
 
-	@Test
-	void partsCatalogueIsPublicAndSearchable() throws Exception {
-		mockMvc.perform(get("/parts")
-						.param("keyword", "filter")
-						.param("category", "Filters")
-						.param("sort", "priceMinor")
-						.param("direction", "asc"))
-				.andExpect(status().isOk())
-				.andExpect(model().attributeExists("partPage", "parts", "categories"))
-				.andExpect(model().attribute("sort", "priceMinor"));
-	}
+  @Test
+  void carCatalogueSupportsPaginationFilteringAndSorting() throws Exception {
+    mockMvc.perform(get("/api/public/auctions")
+            .param("page", "0").param("size", "4")
+            .param("keyword", "test").param("low", "1000").param("high", "50000")
+            .param("sort", "price").param("direction", "asc"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.page").value(0))
+        .andExpect(jsonPath("$.size").value(4))
+        .andExpect(jsonPath("$.content.length()", lessThanOrEqualTo(4)));
+  }
 
-	@Test
-	void carCatalogueRejectsAnInvertedPriceRange() throws Exception {
-		mockMvc.perform(get("/cars")
-						.param("low", "50000")
-						.param("high", "1000"))
-				.andExpect(status().isOk())
-				.andExpect(model().attribute(
-						"searchError", "Minimum price cannot be greater than maximum price"));
-	}
+  @Test
+  void partsCatalogueIsPublicAndSearchable() throws Exception {
+    mockMvc.perform(get("/api/public/parts")
+            .param("keyword", "filter").param("category", "Filters")
+            .param("sort", "priceMinor").param("direction", "asc"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.content", not(empty())))
+        .andExpect(jsonPath("$.content[*].category", everyItem(is("Filters"))));
+    mockMvc.perform(get("/api/public/part-categories"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$", hasItem("Filters")));
+  }
 
-	@Test
-	@WithMockUser(username = "admin123", roles = "ADMIN")
-	void adminListsSupportIndependentPaginationAndSorting() throws Exception {
-		mockMvc.perform(get("/admin/dashboard")
-						.param("userSort", "profile.lastName")
-						.param("userDirection", "desc")
-						.param("adminSort", "username")
-						.param("adminDirection", "asc"))
-				.andExpect(status().isOk())
-				.andExpect(model().attributeExists("userPage", "adminPage"))
-				.andExpect(model().attribute("userSort", "profile.lastName"))
-				.andExpect(model().attribute("adminSort", "username"));
+  @Test
+  void carCatalogueRejectsAnInvertedPriceRange() throws Exception {
+    mockMvc.perform(get("/api/public/auctions").param("low", "50000").param("high", "1000"))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.message")
+            .value("Minimum price cannot be greater than maximum price"));
+  }
 
-		mockMvc.perform(get("/admin/car-management")
-						.param("carSort", "price")
-						.param("carDirection", "asc")
-						.param("bidSort", "car.make")
-						.param("bidDirection", "desc"))
-				.andExpect(status().isOk())
-				.andExpect(model().attributeExists("carPage", "bidPage"))
-				.andExpect(model().attribute("carSort", "price"))
-				.andExpect(model().attribute("bidSort", "car.make"));
+  @Test
+  @WithMockUser(username = "admin123", roles = "ADMIN")
+  void adminListsSupportIndependentPaginationAndSorting() throws Exception {
+    var dashboardResult = mockMvc.perform(get("/api/admin/dashboard")
+            .param("userPage", "1").param("adminPage", "0")
+            .param("userSort", "profile.lastName").param("userDirection", "desc")
+            .param("adminSort", "username").param("adminDirection", "asc"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.users.page").value(1))
+        .andExpect(jsonPath("$.admins.page").value(0))
+        .andReturn();
+    var dashboard = objectMapper.readValue(dashboardResult.getResponse().getContentAsByteArray(),
+        AdminDashboardResponse.class);
+    assertThat(dashboard.users().content()).isNotEmpty();
+    assertThat(dashboard.users().content().stream().map(user -> user.profile().lastName()).toList())
+        .isSortedAccordingTo(Comparator.reverseOrder());
+    assertThat(dashboard.admins().content().stream().map(user -> user.username()).toList())
+        .isNotEmpty().isSorted();
 
-		mockMvc.perform(get("/admin/transactions")
-						.param("sort", "amountMinor")
-						.param("direction", "asc"))
-				.andExpect(status().isOk())
-				.andExpect(model().attributeExists("transactionPage", "transactions", "webhookEvents"))
-				.andExpect(model().attribute("sort", "amountMinor"))
-				.andExpect(model().attribute("direction", "asc"));
-	}
+    var carsResult = mockMvc.perform(get("/api/admin/cars")
+            .param("carPage", "1").param("carSize", "2").param("bidPage", "0")
+            .param("carSort", "price").param("carDirection", "asc")
+            .param("bidSort", "car.make").param("bidDirection", "desc"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.cars.page").value(1))
+        .andExpect(jsonPath("$.cars.size").value(2))
+        .andExpect(jsonPath("$.bids.page").value(0))
+        .andReturn();
+    var cars = objectMapper.readValue(carsResult.getResponse().getContentAsByteArray(),
+        AdminCarManagementResponse.class);
+    assertThat(cars.cars().content().stream().map(car -> car.price()).toList())
+        .hasSize(2).isSorted();
+    assertThat(cars.bids().content().stream().map(bid -> bid.auction().make()).toList())
+        .isNotEmpty().isSortedAccordingTo(Comparator.reverseOrder());
+  }
 
-	@Test
-	@WithMockUser(username = "user123", roles = "USER")
-	void bidAndTestDriveManagementPagesAreAvailable() throws Exception {
-		mockMvc.perform(get("/user/bids"))
-				.andExpect(status().isOk())
-				.andExpect(model().attributeExists("bids"));
+  @Test
+  @WithMockUser(username = "user123", roles = "USER")
+  void bidAndTestDriveManagementApisAreAvailable() throws Exception {
+    mockMvc.perform(get("/api/user/bids"))
+        .andExpect(status().isOk()).andExpect(jsonPath("$").isArray());
+    mockMvc.perform(get("/api/user/appointments"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.bookedTestDrives").isArray())
+        .andExpect(jsonPath("$.receivedTestDrives").isArray());
+  }
 
-		mockMvc.perform(get("/user/test-drive"))
-				.andExpect(status().isOk())
-				.andExpect(model().attributeExists("bookedTestDrives", "receivedTestDrives"));
-	}
+  @Test
+  @WithMockUser(username = "user123", roles = "USER")
+  void retiredPaymentsRedirectAndOrdersSupportPagination() throws Exception {
+    mockMvc.perform(get("/user/payments"))
+        .andExpect(status().is3xxRedirection()).andExpect(redirectedUrl("/orders"));
+    mockMvc.perform(get("/api/store/orders").param("page", "1"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.page").value(1))
+        .andExpect(jsonPath("$.content").isArray());
+  }
 
-	@Test
-	@WithMockUser(username = "user123", roles = "USER")
-	void paymentListsSupportIndependentPaginationAndSorting() throws Exception {
-		mockMvc.perform(get("/user/payments"))
-				.andExpect(status().is3xxRedirection())
-				.andExpect(redirectedUrl("/orders"));
+  @Test
+  void userPagesRequireAuthentication() throws Exception {
+    mockMvc.perform(get("/user/my-profile"))
+        .andExpect(status().is3xxRedirection()).andExpect(redirectedUrlPattern("**/login"));
+  }
 
-		mockMvc.perform(get("/orders"))
-				.andExpect(status().isOk())
-				.andExpect(model().attributeExists("orderPage", "orders"));
-	}
+  @Test
+  void seededUserCanAuthenticate() throws Exception {
+    mockMvc.perform(post("/loginUser").with(csrf())
+            .param("username", "user123").param("password", "user123"))
+        .andExpect(status().is3xxRedirection()).andExpect(redirectedUrl("/user"));
+  }
 
-	@Test
-	void userPagesRequireAuthentication() throws Exception {
-		mockMvc.perform(get("/user/my-profile"))
-				.andExpect(status().is3xxRedirection())
-				.andExpect(redirectedUrlPattern("**/login"));
-	}
-
-	@Test
-	void seededUserCanAuthenticate() throws Exception {
-		mockMvc.perform(post("/loginUser")
-						.with(csrf())
-						.param("username", "user123")
-						.param("password", "user123"))
-				.andExpect(status().is3xxRedirection())
-				.andExpect(redirectedUrl("/user"));
-	}
-
-	@Test
-	void seededAdminCanAuthenticate() throws Exception {
-		mockMvc.perform(post("/loginUser")
-						.with(csrf())
-						.param("username", "admin123")
-						.param("password", "admin123"))
-				.andExpect(status().is3xxRedirection())
-				.andExpect(redirectedUrl("/admin"));
-	}
+  @Test
+  void seededAdminCanAuthenticate() throws Exception {
+    mockMvc.perform(post("/loginUser").with(csrf())
+            .param("username", "admin123").param("password", "admin123"))
+        .andExpect(status().is3xxRedirection()).andExpect(redirectedUrl("/admin"));
+  }
 }

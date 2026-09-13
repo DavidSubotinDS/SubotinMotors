@@ -6,6 +6,16 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.Future;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.Size;
+import org.springframework.format.annotation.DateTimeFormat;
+import lithan.autostrada.auctions.validation.ProductionYear;
+
 public final class ApiModels {
 
   private ApiModels() {
@@ -21,16 +31,34 @@ public final class ApiModels {
   }
 
   public record RegistrationRequest(
+      @NotBlank(message = "Username is required")
+      @Size(min = 3, max = 15, message = "Username must be between 3 and 15 characters long")
       String username,
+      @NotBlank(message = "Email is required")
+      @Email(message = "Enter a valid email address")
+      @Size(max = 254, message = "Email must not exceed 254 characters")
       String email,
+      @NotBlank(message = "Password is required")
+      @Size(min = 6, message = "Password must be greater or equal to 6")
       String password,
+      @NotBlank(message = "First name is required")
+      @Size(max = 35, message = "First name must be between 1 and 35 characters long")
       String firstName,
+      @NotBlank(message = "Last name is required")
+      @Size(max = 35, message = "Last name must be between 1 and 35 characters long")
       String lastName,
+      @NotBlank(message = "Phone number is required")
+      @Pattern(regexp = "^(?:\\+[1-9]\\d{7,14}|\\d{8,15})$",
+          message = "Phone number must contain 8 to 15 digits, with an optional leading +")
       String phoneNumber,
       String address,
+      @Size(max = 255, message = "Street address must not exceed 255 characters")
       String streetAddress,
+      @Size(max = 120, message = "City must not exceed 120 characters")
       String city,
+      @Size(max = 30, message = "Postal code must not exceed 30 characters")
       String postalCode,
+      @Size(max = 120, message = "Country must not exceed 120 characters")
       String country,
       String about) {
   }
@@ -61,10 +89,18 @@ public final class ApiModels {
   }
 
   public record AuctionRequest(
+      @NotBlank(message = "Make is required")
       String make,
+      @NotBlank(message = "Model is required")
       String model,
+      @ProductionYear
       String year,
+      @NotNull(message = "Price is required")
+      @Positive(message = "Price must be greater than zero")
       Integer price,
+      @NotNull(message = "Auction end date and time is required")
+      @Future(message = "Auction end date and time must be in the future")
+      @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
       LocalDateTime auctionEndTime) {
   }
 

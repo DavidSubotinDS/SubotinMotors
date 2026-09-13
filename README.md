@@ -54,9 +54,18 @@ Local backend data is stored in `back/data/` and ignored by Git.
 ```powershell
 cd back
 .\mvnw.cmd clean test
-.\mvnw.cmd clean package
+.\mvnw.cmd -DskipTests package
 java -jar target\autostrada-auctions-0.0.1-SNAPSHOT.jar
 ```
+
+The packaging command above assumes the preceding tests passed on the same
+code. For a single command that compiles, tests, and packages, use
+`.\mvnw.cmd clean verify`.
+
+Tests use an in-memory H2 database with Stripe disabled or mocked. They do not
+use the running development database. See the
+[stabilization checklist](docs/stabilization-checklist.md) for verified checks
+and the remaining steps before merging.
 
 Flyway migrations live in `back/src/main/resources/db/migration`.
 
@@ -192,6 +201,18 @@ One-command Windows sandbox startup:
 ```powershell
 .\back\scripts\run-stripe-sandbox.ps1
 ```
+
+The script reads the test key from the Stripe CLI `default` profile unless
+`STRIPE_SECRET_KEY` is explicitly set in the current terminal. After renewing
+your CLI login, ignore any old terminal key with:
+
+```powershell
+.\back\scripts\run-stripe-sandbox.ps1 -UseCliLogin
+```
+
+Use `-StripeProfile "profile-name" -UseCliLogin` to select another saved CLI
+profile. The script never selects a key from a different profile and clears
+temporary credential variables even when startup fails.
 
 The local listener forwards:
 

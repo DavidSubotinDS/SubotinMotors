@@ -1,13 +1,10 @@
 package lithan.autostrada.auctions;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.model;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrlPattern;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.view;
 
 import java.time.Instant;
 
@@ -16,7 +13,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.transaction.annotation.Transactional;
 
 import lithan.autostrada.auctions.entity.CarPart;
@@ -45,47 +41,40 @@ class StoreAdminOrderIntegrationTests {
   private UserRepository userRepository;
 
   @Test
-  void adminStoreOrderPageReturnsOk() throws Exception {
-    mockMvc.perform(get("/admin/store/orders")
+  void adminStoreOrdersApiReturnsAPage() throws Exception {
+    mockMvc.perform(get("/api/admin/store/orders")
             .with(user("admin123").roles("ADMIN")))
         .andExpect(status().isOk())
-        .andExpect(view().name("admin/store-orders"))
-        .andExpect(model().attributeExists("orderPage", "orders"));
+        .andExpect(jsonPath("$.page").value(0))
+        .andExpect(jsonPath("$.content").isArray());
   }
 
   @Test
   void adminStoreOrderDetailsExposePurchasedItemLines() throws Exception {
     StoreOrder savedOrder = saveStoreOrderWithItem();
 
-    MvcResult result = mockMvc.perform(get("/admin/store/orders/{idOrder}", savedOrder.getIdOrder())
+    mockMvc.perform(get("/api/admin/store/orders/{idOrder}", savedOrder.getIdOrder())
             .with(user("admin123").roles("ADMIN")))
         .andExpect(status().isOk())
-        .andExpect(view().name("admin/store-order-details"))
-        .andExpect(model().attributeExists("order"))
-        .andReturn();
-
-    StoreOrder order = orderFrom(result);
-    assertEquals(savedOrder.getIdOrder(), order.getIdOrder());
-    assertEquals("user123", order.getUser().getUsername());
-    assertEquals("PAID", order.getStatus());
-    assertEquals("pi_admin_item_visibility", order.getPaymentIntentId());
-    assertEquals("cs_admin_item_visibility", order.getCheckoutSessionId());
-    assertEquals(1, order.getItems().size());
-
-    StoreOrderItem item = order.getItems().get(0);
-    assertEquals("Admin Detail Brake Pads", item.getPartName());
-    assertEquals("ADM-DET-001", item.getSku());
-    assertEquals(3499L, item.getUnitPriceMinor());
-    assertEquals(2, item.getQuantity());
-    assertEquals(6998L, item.getLineTotalMinor());
-    assertEquals(6998L, order.getTotalMinor());
+        .andExpect(jsonPath("$.idOrder").value(savedOrder.getIdOrder()))
+        .andExpect(jsonPath("$.user.username").value("user123"))
+        .andExpect(jsonPath("$.status").value("PAID"))
+        .andExpect(jsonPath("$.currency").value("eur"))
+        .andExpect(jsonPath("$.shippingCity").value("Novi Sad"))
+        .andExpect(jsonPath("$.items.length()").value(1))
+        .andExpect(jsonPath("$.items[0].partName").value("Admin Detail Brake Pads"))
+        .andExpect(jsonPath("$.items[0].sku").value("ADM-DET-001"))
+        .andExpect(jsonPath("$.items[0].unitPriceMinor").value(3499))
+        .andExpect(jsonPath("$.items[0].quantity").value(2))
+        .andExpect(jsonPath("$.items[0].lineTotalMinor").value(6998))
+        .andExpect(jsonPath("$.totalMinor").value(6998));
   }
 
   @Test
   void regularUsersCannotAccessAdminStoreOrderDetails() throws Exception {
     StoreOrder savedOrder = saveStoreOrderWithItem();
 
-    mockMvc.perform(get("/admin/store/orders/{idOrder}", savedOrder.getIdOrder())
+    mockMvc.perform(get("/api/admin/store/orders/{idOrder}", savedOrder.getIdOrder())
             .with(user("user123").roles("USER")))
         .andExpect(status().isForbidden());
   }
@@ -132,8 +121,4 @@ class StoreAdminOrderIntegrationTests {
     return orderRepository.saveAndFlush(order);
   }
 
-  private StoreOrder orderFrom(MvcResult result) {
-    assertNotNull(result.getModelAndView());
-    return (StoreOrder) result.getModelAndView().getModel().get("order");
-  }
 }

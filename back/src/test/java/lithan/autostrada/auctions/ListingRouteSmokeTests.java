@@ -3,7 +3,7 @@ package lithan.autostrada.auctions;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.forwardedUrl;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.model;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrlPattern;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -21,10 +21,10 @@ class ListingRouteSmokeTests {
   private MockMvc mockMvc;
 
   @Test
-  void publicListingPagesRenderOrForwardToCanonicalListings() throws Exception {
+  void publicListingPagesRedirectToReactOrForwardToLegacyRoutes() throws Exception {
     mockMvc.perform(get("/cars"))
-        .andExpect(status().isOk())
-        .andExpect(model().attributeExists("carPage", "listCar"));
+        .andExpect(status().isFound())
+        .andExpect(redirectedUrl("http://localhost:5173/auctions"));
 
     mockMvc.perform(get("/auctions"))
         .andExpect(status().isOk())
@@ -35,16 +35,16 @@ class ListingRouteSmokeTests {
         .andExpect(forwardedUrl("/cars"));
 
     mockMvc.perform(get("/listings"))
-        .andExpect(status().isOk())
-        .andExpect(model().attributeExists("listingPage", "listings"));
+        .andExpect(status().isFound())
+        .andExpect(redirectedUrl("http://localhost:5173/listings"));
 
     mockMvc.perform(get("/cars-for-sale"))
         .andExpect(status().isOk())
         .andExpect(forwardedUrl("/listings"));
 
     mockMvc.perform(get("/parts"))
-        .andExpect(status().isOk())
-        .andExpect(model().attributeExists("partPage", "parts", "categories"));
+        .andExpect(status().isFound())
+        .andExpect(redirectedUrl("http://localhost:5173/parts"));
 
     mockMvc.perform(get("/store"))
         .andExpect(status().isOk())
@@ -56,18 +56,18 @@ class ListingRouteSmokeTests {
   }
 
   @Test
-  void authenticatedUserListingPagesRenderOrForwardToCanonicalPages() throws Exception {
+  void authenticatedUserPagesRedirectToReactOrForwardToLegacyRoutes() throws Exception {
     mockMvc.perform(get("/user/my-posted-car").with(user("user123").roles("USER")))
-        .andExpect(status().isOk())
-        .andExpect(model().attributeExists("userCar"));
+        .andExpect(status().isFound())
+        .andExpect(redirectedUrl("http://localhost:5173/user/auctions"));
 
     mockMvc.perform(get("/user/my-posted-cars").with(user("user123").roles("USER")))
         .andExpect(status().isOk())
         .andExpect(forwardedUrl("/user/my-posted-car"));
 
     mockMvc.perform(get("/user/listings").with(user("user123").roles("USER")))
-        .andExpect(status().isOk())
-        .andExpect(model().attributeExists("listings"));
+        .andExpect(status().isFound())
+        .andExpect(redirectedUrl("http://localhost:5173/user/listings"));
 
     mockMvc.perform(get("/user/my-listings").with(user("user123").roles("USER")))
         .andExpect(status().isOk())
@@ -99,6 +99,13 @@ class ListingRouteSmokeTests {
     mockMvc.perform(get("/admin/parts").with(user("admin123").roles("USER", "ADMIN")))
         .andExpect(status().isOk())
         .andExpect(forwardedUrl("/admin/store/parts"));
+  }
+
+  @Test
+  void legacyCatalogueRedirectPreservesSearchQuery() throws Exception {
+    mockMvc.perform(get("/cars?keyword=BMW&page=2&sort=price&direction=asc"))
+        .andExpect(status().isFound())
+        .andExpect(redirectedUrl("http://localhost:5173/auctions?keyword=BMW&page=2&sort=price&direction=asc"));
   }
 
   @Test

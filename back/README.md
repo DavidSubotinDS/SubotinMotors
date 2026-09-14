@@ -30,3 +30,8 @@ are under `/api/public`. No JSP files remain; old MVC view names redirect to
 the React frontend using `APP_FRONTEND_BASE_URL` for bookmark compatibility.
 
 Flyway migrations are in `src/main/resources/db/migration`.
+
+The browser baseline uses a separate launcher under `src/test/java/e2e`, excluded
+from the production JAR. Start it through `npm run test:e2e` in `../front`, which
+forces a fresh in-memory H2 database and cleans up its processes. See the
+[E2E runbook](../docs/browser-e2e.md); normal startup does not expose test controls.

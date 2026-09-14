@@ -3,12 +3,14 @@ package lithan.autostrada.auctions.service;
 import java.math.BigDecimal;
 import java.io.IOException;
 import java.time.Instant;
+import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.Base64;
 import java.util.List;
 import java.util.Set;
 
 import org.springframework.data.domain.Page;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
@@ -31,6 +33,9 @@ import lithan.autostrada.auctions.validation.ImageUploadValidator.ValidatedImage
 
 @Service
 public class CarListingServiceImpl implements CarListingService {
+
+  @Autowired
+  private Clock clock;
 
   private static final int MAX_VEHICLE_IMAGES = 8;
 
@@ -344,7 +349,7 @@ public class CarListingServiceImpl implements CarListingService {
   }
 
   private void validateFuture(LocalDateTime scheduledAt) {
-    if (scheduledAt == null || !scheduledAt.isAfter(LocalDateTime.now())) {
+    if (scheduledAt == null || !scheduledAt.isAfter(LocalDateTime.now(clock))) {
       throw new IllegalArgumentException("Test ride date and time must be in the future");
     }
   }

@@ -156,7 +156,11 @@ public class Car {
 
   @Transient
   public String getAuctionStatusLabel() {
-    return switch (getAuctionStatus()) {
+    return auctionStatusLabelAt(LocalDateTime.now());
+  }
+
+  public String auctionStatusLabelAt(LocalDateTime now) {
+    return switch (auctionStatusAt(now)) {
       case "ENDING_SOON" -> "Ending soon";
       case "ENDED" -> "Ended";
       case "SOLD" -> "Sold";

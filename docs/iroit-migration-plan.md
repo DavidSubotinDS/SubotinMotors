@@ -43,7 +43,12 @@ rubric requirements remain explicit; only docs changed. Runtime build/test and
 container changes are not applicable. No baseline tag, commit or PR was created
 by the assistant.
 
-## S1 - Browser E2E baseline (next implementation task)
+## S1 - Browser E2E baseline
+
+Implementation evidence and current limitations are recorded in the
+[browser E2E runbook](browser-e2e.md). The baseline now lives on the S1 feature
+branch; this statement does not claim it is merged or that remote CI/manual
+Stripe smoke has run. The following acceptance criteria remain the stage contract.
 
 Add a small Playwright suite against the current backend/frontend before routing
 or security changes. Use isolated deterministic data and controlled clocks for

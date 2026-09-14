@@ -159,5 +159,7 @@ do not expose internal service terminology in the UI.
    Proposed default: hold for administrator reconciliation/refund, retain audit,
    and never report fulfillment success automatically.
 
-Next implementation task: [S1 browser E2E baseline](iroit-migration-plan.md).
+The [S1 browser E2E implementation and evidence](browser-e2e.md) tests the current
+monolith; the target architecture above remains proposed. After S1 merges, the
+next implementation task is [S2 API Gateway](iroit-migration-plan.md).
 The owner can create the baseline tag independently using the verified SHA.

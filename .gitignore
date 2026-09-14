@@ -43,3 +43,6 @@ front/dist/
 front/coverage/
 front/.vite/
 front/test-results/
+front/e2e-results/
+front/playwright-report/
+front/dist-e2e/

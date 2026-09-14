@@ -1,6 +1,7 @@
 package lithan.autostrada.auctions.service;
 
 import java.time.LocalDate;
+import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.Base64;
 import java.util.List;
@@ -28,6 +29,9 @@ import lithan.autostrada.auctions.validation.ImageUploadValidator.ValidatedImage
 
 @Service
 public class UserCarServiceImpl implements UserCarService {
+
+  @Autowired
+  private Clock clock;
 
   private static final int MAX_VEHICLE_IMAGES = 8;
 
@@ -142,7 +146,7 @@ public class UserCarServiceImpl implements UserCarService {
     if (!"ACTIVE".equals(car.getStatus())) {
       throw new IllegalStateException("Bids are only accepted on active cars");
     }
-    if (!car.isAuctionOpen()) {
+    if (!car.isAuctionOpenAt(LocalDateTime.now(clock))) {
       throw new IllegalStateException("This auction has ended");
     }
     if (car.getUser().getIdUser() == bidder.getIdUser()) {
@@ -192,7 +196,7 @@ public class UserCarServiceImpl implements UserCarService {
     validateTestDriveDate(date);
     Car car = getCarById(carId);
     UserAccount user = userService.getUserLogin();
-    if (!car.isAuctionOpen()) {
+    if (!car.isAuctionOpenAt(LocalDateTime.now(clock))) {
       throw new IllegalStateException("Test drives are only available for active cars");
     }
     if (car.getUser().getIdUser() == user.getIdUser()) {
@@ -302,7 +306,7 @@ public class UserCarServiceImpl implements UserCarService {
   }
 
   private void validateTestDriveDate(LocalDate date) {
-    if (date == null || !date.isAfter(LocalDate.now())) {
+    if (date == null || !date.isAfter(LocalDate.now(clock))) {
       throw new IllegalArgumentException("Test drive date must be in the future");
     }
   }
@@ -373,7 +377,7 @@ public class UserCarServiceImpl implements UserCarService {
 
   private void requireFutureAuctionEnd(Car car) {
     if (car.getAuctionEndTime() == null
-        || !car.getAuctionEndTime().isAfter(LocalDateTime.now())) {
+        || !car.getAuctionEndTime().isAfter(LocalDateTime.now(clock))) {
       throw new IllegalArgumentException(
           "Auction end date and time must be in the future");
     }

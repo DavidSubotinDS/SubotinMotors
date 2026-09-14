@@ -1,6 +1,8 @@
 package lithan.autostrada.auctions.controller.api;
 
 import java.util.List;
+import java.time.Clock;
+import java.time.LocalDateTime;
 
 import org.springframework.stereotype.Component;
 
@@ -50,7 +52,14 @@ import lithan.autostrada.auctions.entity.UserProfile;
 @Component
 public class ApiModelMapper {
 
+  private final Clock clock;
+
+  public ApiModelMapper(Clock clock) {
+    this.clock = clock;
+  }
+
   public AuctionSummaryResponse auction(Car car) {
+    LocalDateTime now = LocalDateTime.now(clock);
     List<String> imageUrls = new java.util.ArrayList<>();
     if (car.getCarPicture() != null) {
       imageUrls.add(imageDataUrl(
@@ -65,8 +74,8 @@ public class ApiModelMapper {
         car.getModel(),
         car.getYear(),
         car.getPrice(),
-        car.getAuctionStatus(),
-        car.getAuctionStatusLabel(),
+        car.auctionStatusAt(now),
+        car.auctionStatusLabelAt(now),
         car.getAuctionEndTimeDisplay(),
         car.getAuctionEndTimeEpochMillis(),
         imageUrls.isEmpty() ? null : imageUrls.get(0),

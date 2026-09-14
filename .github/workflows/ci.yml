@@ -69,7 +69,7 @@ jobs:
   frontend:
     name: Frontend
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
 
     defaults:
       run:
@@ -113,4 +113,36 @@ jobs:
           name: frontend-dist
           path: front/dist/
           if-no-files-found: error
+          retention-days: 7
+
+      # Keep E2E inside the existing required Frontend check so it gates master
+      # immediately, without silently relying on a new optional check name.
+      - name: Set up Java 17 for browser E2E
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: maven
+          cache-dependency-path: back/pom.xml
+
+      - name: Install Playwright Chromium and OS dependencies
+        run: npx playwright install --with-deps chromium
+
+      - name: Browser E2E with isolated startup and teardown
+        run: npm run test:e2e
+
+      - name: Verify E2E servers stopped
+        if: ${{ always() }}
+        run: node e2e/assert-stopped.mjs
+
+      - name: Upload browser failure evidence and server logs
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: browser-e2e-results
+          path: |
+            front/playwright-report/
+            front/test-results/playwright/
+            front/e2e-results/
+          if-no-files-found: warn
           retention-days: 7

@@ -75,8 +75,19 @@ GitHub Actions runs backend and frontend verification on branch pushes and
 pull requests targeting `master`. Backend verification uses Java 17 and
 `bash ./mvnw --batch-mode --no-transfer-progress clean verify` from `back/`.
 Frontend verification uses Node.js 22, `npm ci`, `npm test`, and
-`npm run build` from `front/`. Workflow runs retain test reports, the backend
+`npm run build`, and the isolated Playwright browser suite from `front/`.
+E2E is part of the existing `Frontend` check; both `Backend` and `Frontend`
+check names are retained. Workflow runs retain test reports, the backend
 JAR, and the frontend build as downloadable artifacts for seven days.
+
+## Browser regression baseline
+
+After `npm ci` and `npm run test:e2e:install` in `front/`, run
+`npm run test:e2e`. It builds and starts isolated backend/frontend processes,
+tests against a disposable in-memory database, and tears down after failure or
+success. No Stripe secrets or developer database are used. See the
+[browser E2E runbook](docs/browser-e2e.md) for coverage, known limitations,
+failure artifacts, and the separate manual Stripe sandbox smoke.
 
 ## Run The React Frontend
 

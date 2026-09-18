@@ -14,7 +14,7 @@ export default defineConfig({
   reporter: [['list'], ['html', { outputFolder: 'playwright-report', open: 'never' }],
     ['junit', { outputFile: 'e2e-results/playwright.xml' }]],
   use: {
-    baseURL: 'http://127.0.0.1:15173',
+    baseURL: 'http://127.0.0.1:18081',
     timezoneId: 'UTC', locale: 'en-GB',
     trace: 'retain-on-failure', screenshot: 'only-on-failure', video: 'retain-on-failure',
   },

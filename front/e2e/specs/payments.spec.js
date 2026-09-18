@@ -1,5 +1,5 @@
 import { test, expect, login, fill, json, address, saveAddress, startStoreCheckout,
-  signedEvent, sendEvent, providerPage, backend } from '../fixtures.js';
+  signedEvent, sendEvent, providerPage, gateway } from '../fixtures.js';
 
 test('shipping address, cart, signed payment result, order snapshots and admin item details', async ({ page, fixtures }) => {
   await login(page);
@@ -81,7 +81,7 @@ test('cancel return and unpaid completion never pay; signed expiry restores stoc
   expect((await json(page, lookup))).toMatchObject({ status: 'CHECKOUT_CREATED', paidAt: null });
   expect((await json(page, '/api/public/parts/1')).part.stockQuantity).toBe(9);
   await sendEvent(page, signedEvent(session, fixtures.stripeApiVersion, 'checkout.session.completed', 'unpaid', 'evt_e2e_unpaid'));
-  await page.goto(`${backend}/store/checkout/success?session_id=${session}`);
+  await page.goto(`${gateway}/store/checkout/success?session_id=${session}`);
   await expect(page.getByRole('heading', { name: 'Checkout received', exact: true })).toBeVisible();
   await expect(page.getByText('Your order is being confirmed.', { exact: true })).toBeVisible();
   expect((await json(page, lookup))).toMatchObject({ status: 'CHECKOUT_CREATED', paidAt: null });
@@ -118,8 +118,8 @@ test('listing deposit return is read-only; signed success reserves the listing w
   const event = signedEvent(session, fixtures.stripeApiVersion, 'checkout.session.completed', 'paid', 'evt_e2e_deposit');
   await sendEvent(page, event);
   await sendEvent(page, event);
-  await page.goto(`${backend}/listing-deposits/success?session_id=${session}`);
-  await expect(page).toHaveURL(new RegExp(`15173/listing-deposits/success\\?session_id=${session}`));
+  await page.goto(`${gateway}/listing-deposits/success?session_id=${session}`);
+  await expect(page).toHaveURL(new RegExp(`18081/listing-deposits/success\\?session_id=${session}`));
   await expect(page.getByRole('heading', { name: 'Deposit confirmed', exact: true })).toBeVisible();
   expect((await json(page, lookup)).status).toBe('PAID');
   expect((await json(page, '/api/public/listings/1')).listing.status).toBe('RESERVED');

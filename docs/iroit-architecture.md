@@ -1,5 +1,12 @@
 # IROIT target architecture and decision record
 
+Implementation status, S2 (2026-09-14): S1 merged as `35007b5`; the new
+[`gateway/`](../gateway/README.md) proxies the monolith and serves the frontend
+through one public origin. Backend still owns sessions, permissions, persistence
+and payments. Browser regression now traverses the gateway. See
+[S2 verification and handoff](api-gateway-pr.md). The five-service diagram and
+session exchange below remain **proposed**; S3+ is not implemented.
+
 Status: proposed implementation baseline for review, 2026-09-13. The user's
 constraints below are agreed inputs; the selected architecture is a design
 proposal until reviewed and merged. Nothing here describes already extracted
@@ -159,7 +166,7 @@ do not expose internal service terminology in the UI.
    Proposed default: hold for administrator reconciliation/refund, retain audit,
    and never report fulfillment success automatically.
 
-The [S1 browser E2E implementation and evidence](browser-e2e.md) tests the current
-monolith; the target architecture above remains proposed. After S1 merges, the
-next implementation task is [S2 API Gateway](iroit-migration-plan.md).
+The [browser E2E implementation and evidence](browser-e2e.md) now tests the current
+monolith through the S2 gateway; the service target architecture remains proposed.
+After S2 merges and its remaining gates pass, next is S3 container/MySQL baseline.
 The owner can create the baseline tag independently using the verified SHA.

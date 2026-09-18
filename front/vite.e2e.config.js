@@ -7,6 +7,6 @@ export default defineConfig({
   build: { outDir: 'dist-e2e' },
   preview: {
     host: '127.0.0.1', port: 15173, strictPort: true,
-    proxy: { '/api': 'http://127.0.0.1:18080' },
+    // No API proxy: tests must use the gateway public origin, never this asset server.
   },
 });

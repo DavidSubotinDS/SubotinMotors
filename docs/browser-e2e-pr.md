@@ -1,5 +1,9 @@
 # Suggested PR title
 
+Historical S1 handoff: PR #18 is now merged as `35007b5` and merged-master CI
+passed. Do not repeat its commit/PR commands. Current S2 commands and evidence
+are in [api-gateway-pr.md](api-gateway-pr.md).
+
 test: add isolated Playwright browser regression baseline
 
 # Suggested PR body

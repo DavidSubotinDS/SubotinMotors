@@ -1,5 +1,15 @@
 # IROIT authentication and authorization design
 
+S2 implementation status: Phase A below is implemented by the
+[pass-through gateway](../gateway/README.md). The backend remains the sole
+session/authentication/authorization owner, with unchanged API and legacy CSRF
+behavior. Gateway sanitizes forwarding/identity headers and creates forwarding
+values from its configured public origin, owns precise API CORS, and streams
+webhook bytes untouched. Backend forwarding/log correlation are opt-in via the
+`gateway` profile on private ingress; test controls are not gateway-routable.
+Phase B/C, the target cookie name, JWT assertions and session exchange remain
+proposals for S4+, not protections claimed by S2.
+
 Status: proposed staged design. No security configuration changes are performed
 by this documentation task. See [migration stages](iroit-migration-plan.md).
 

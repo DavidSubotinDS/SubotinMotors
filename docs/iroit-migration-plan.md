@@ -1,5 +1,12 @@
 # IROIT incremental migration and implementation backlog
 
+Current implementation status (2026-09-14): S1 merged into master as `35007b5`
+with successful merged-master Backend/Frontend CI. S2 code and local evidence
+are on `feature/david.subotin_api-gateway`; see [S2 handoff](api-gateway-pr.md)
+for actual verification and remaining gates. No S2 commit/push/PR/merge is claimed.
+S3+ remains proposed. The historical design-stage wording below is retained as
+the stage contract, not a claim that every listed stage has shipped.
+
 Status: proposed, documented on 2026-09-13/14. Start with the verified
 [baseline](iroit-baseline.md), [architecture](iroit-architecture.md),
 [ownership inventory](iroit-service-ownership.md), [contracts](iroit-api-events.md)
@@ -72,6 +79,13 @@ auction deadlines; no dependency on a developer's file H2 database.
   isolation and existing CI checks; no application database migration.
 
 ## S2 - Gateway routing to the monolith
+
+Implemented: independent Boot 3.5.15 / Cloud 2025.0.3 WebFlux gateway, explicit
+API/webhook/legacy/SPA routes, private header boundary, CORS, proxy budgets,
+correlation, health and transport tests; existing Frontend E2E traverses gateway.
+Backend CI now gates gateway tests and image smoke. Backend selected-resource
+redirects are repaired. [Gateway runbook](../gateway/README.md) records native
+startup, container addressing and recovery. See the handoff for unverified gates.
 
 Create `gateway/` with a Java 17 / existing Boot-compatible Spring Cloud Gateway
 Server WebFlux dependency set, verified against official compatibility guidance

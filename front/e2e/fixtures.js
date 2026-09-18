@@ -1,7 +1,7 @@
 import { test as base, expect } from '@playwright/test';
 import { createHmac } from 'node:crypto';
 
-export const backend = 'http://127.0.0.1:18080';
+export const gateway = 'http://127.0.0.1:18081';
 export const password = 'E2e-pass-123!';
 export const address = { email: 'buyer@e2e.invalid', firstName: 'Buyer', lastName: 'Fixture', phoneNumber: '+381641234567',
   address: 'Novi Sad', streetAddress: '12 Test Street', city: 'Novi Sad', postalCode: '21000', country: 'Serbia', about: '' };
@@ -10,13 +10,20 @@ export const vehicleImage = { name: 'vehicle.png', mimeType: 'image/png',
 
 export const test = base.extend({
   fixtures: [async ({ playwright, page }, use) => {
-    const control = await playwright.request.newContext({ baseURL: backend,
+    const control = await playwright.request.newContext({ baseURL: 'http://127.0.0.1:18080',
       extraHTTPHeaders: { 'X-E2E-Control': process.env.E2E_CONTROL_TOKEN } });
     const response = await control.post('/__e2e/reset');
     await expect(response).toBeOK();
     const data = await response.json();
     await page.clock.setFixedTime(new Date(data.instant));
     const errors = [];
+    const bypasses = [];
+    page.on('request', request => {
+      if (/^http:\/\/127\.0\.0\.1:(18080|15173)(\/|$)/.test(request.url())) bypasses.push(request.url());
+    });
+    const probe = await page.request.get('/api/session');
+    expect(probe.headers()['x-request-id'], 'Real gateway handled the API request').toMatch(/^[a-f0-9-]{36}$/);
+    expect((await page.request.get('/__e2e/ready')).status()).toBe(404);
     page.on('pageerror', (error) => errors.push(error.message));
     await use({ ...data, setTime: async (instant) => {
       await expect(await control.post('/__e2e/clock', { data: { instant } })).toBeOK();
@@ -24,6 +31,7 @@ export const test = base.extend({
     } });
     await control.dispose();
     expect(errors, 'No uncaught browser exceptions').toEqual([]);
+    expect(bypasses, 'Browser must not bypass gateway').toEqual([]);
   }, { auto: true }],
 });
 export { expect };
@@ -82,5 +90,7 @@ export function signedEvent(sessionId, apiVersion, type = 'checkout.session.comp
 }
 
 export async function sendEvent(page, event, status = 200) {
-  expect((await page.request.post(`${backend}/webhooks/stripe`, event)).status()).toBe(status);
+  const response = await page.request.post(`${gateway}/webhooks/stripe`, event);
+  expect(response.headers()['x-request-id']).toMatch(/^[a-f0-9-]{36}$/);
+  expect(response.status()).toBe(status);
 }

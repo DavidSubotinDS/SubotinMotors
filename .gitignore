@@ -2,6 +2,9 @@ HELP.md
 target/
 !.mvn/wrapper/maven-wrapper.jar
 !back/.mvn/wrapper/maven-wrapper.jar
+!gateway/.mvn/wrapper/maven-wrapper.jar
+gateway/target-verification.log
+gateway/container-build.log
 !**/src/main/**/target/
 !**/src/test/**/target/
 

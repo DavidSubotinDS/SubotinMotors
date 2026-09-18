@@ -45,9 +45,53 @@ jobs:
           cache-dependency-path: |
             back/pom.xml
             back/.mvn/wrapper/maven-wrapper.properties
+            gateway/pom.xml
+            gateway/.mvn/wrapper/maven-wrapper.properties
 
       - name: Test and package backend
         run: bash ./mvnw --batch-mode --no-transfer-progress clean verify
+
+      # Gateway failures block the existing required Backend check.
+      - name: Independently test and package gateway
+        working-directory: gateway
+        run: bash ./mvnw --batch-mode --no-transfer-progress clean verify
+
+      - name: Build gateway container
+        working-directory: gateway
+        run: docker build --tag autostrada-gateway:ci .
+
+      - name: Smoke gateway container without upstreams
+        working-directory: gateway
+        run: |
+          docker run --detach --name gateway-ci --publish 127.0.0.1:18081:8081 autostrada-gateway:ci
+          for attempt in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:18081/actuator/health/liveness; then break; fi
+            sleep 2
+          done
+          curl --fail http://127.0.0.1:18081/actuator/health/liveness
+          test "$(curl --silent --output /dev/null --write-out '%{http_code}' http://127.0.0.1:18081/actuator/health/readiness)" = 503
+          test "$(docker exec gateway-ci id -u)" != 0
+
+      - name: Gateway container logs and cleanup
+        if: ${{ always() }}
+        working-directory: gateway
+        run: |
+          mkdir -p target
+          if docker inspect gateway-ci > /dev/null 2>&1; then
+            docker logs gateway-ci > target/container.log 2>&1
+            docker rm --force gateway-ci
+          fi
+
+      - name: Upload gateway test and container evidence
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: gateway-test-reports
+          path: |
+            gateway/target/surefire-reports/
+            gateway/target/container.log
+          if-no-files-found: warn
+          retention-days: 7
 
       - name: Upload backend test reports
         if: ${{ always() }}
@@ -123,7 +167,9 @@ jobs:
           distribution: temurin
           java-version: "17"
           cache: maven
-          cache-dependency-path: back/pom.xml
+          cache-dependency-path: |
+            back/pom.xml
+            gateway/pom.xml
 
       - name: Install Playwright Chromium and OS dependencies
         run: npx playwright install --with-deps chromium

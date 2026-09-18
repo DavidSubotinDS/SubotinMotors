@@ -1,7 +1,7 @@
-# Browser E2E baseline (IROIT S1)
+# Browser regression baseline (IROIT S1 + S2)
 
-This suite runs the existing React/Spring monolith. It introduces no gateway,
-service, database migration, or authentication redesign. Read it alongside
+This suite runs React and the existing Spring monolith through the S2 gateway.
+It introduces no business service extraction, database migration, or authentication redesign. Read it alongside
 [S1 and the common gates](iroit-migration-plan.md), [baseline](iroit-baseline.md),
 [architecture](iroit-architecture.md), [ownership](iroit-service-ownership.md),
 [API/events](iroit-api-events.md), and [security](iroit-security.md).
@@ -21,7 +21,8 @@ npm.cmd run test:e2e
 On Linux/macOS use `npm` instead of `npm.cmd`; on Linux install the browser and
 its OS libraries with `npx playwright install --with-deps chromium`. After these
 one-time dependencies, `npm run test:e2e` compiles the test launcher, builds React,
-starts both servers, waits for readiness, runs Chromium, and stops its processes.
+builds the independent gateway, starts all three servers, waits for gateway readiness,
+runs Chromium through the gateway, and stops its processes.
 Do not run a backend `clean` build concurrently with the launcher.
 
 Useful variations (all use the same isolated startup):
@@ -31,20 +32,28 @@ npm.cmd run test:e2e -- --grep "deadline"
 npm.cmd run test:e2e -- --headed
 npm.cmd run test:e2e:report
 node e2e/assert-stopped.mjs
-# Deliberately exits 1 after both servers are ready, to test failure cleanup:
+# Deliberately exits 1 after all three servers are ready, to test failure cleanup:
 npm.cmd run test:e2e -- --verify-failure-cleanup
 node e2e/assert-stopped.mjs
 ```
 
 Do not use bare `playwright test` or increase workers: the configuration requires
 the launcher's per-run token and intentionally uses one worker. It never attaches
-to an existing backend. Ports **18080** (backend) and **15173** (React preview)
+to an existing backend. Ports **18080** (backend), **15173** (React preview), and
+**18081** (public gateway)
 must be free; a conflict fails before startup without stopping the existing app.
-Both servers bind to `127.0.0.1`. Interrupt with Ctrl+C for cleanup. A hard OS kill
+All servers bind to `127.0.0.1`. Interrupt with Ctrl+C for cleanup. A hard OS kill
 cannot run a JavaScript finally block; a CI runner teardown then removes its
 processes. No persistent application database needs cleaning.
 
 ## Isolation and fixtures
+
+- Browser base URL, application API requests, legacy navigation, provider return
+  links and signed webhook posts all use `http://127.0.0.1:18081`. React preview
+  has **no API proxy**. Fixtures assert gateway `X-Request-ID` and fail if browser
+  requests bypass the gateway to a private backend/frontend port. Only harness
+  reset/clock/readiness calls use backend port 18080 and a random control token.
+  The same control paths through the gateway return 404, even with a token.
 
 - `back/src/test/java/e2e/E2eApplication.java` is outside the production component
   scan and exists only on the test classpath. Neither its control endpoints nor
@@ -127,17 +136,18 @@ duplicate every CRUD permutation or claim full route/security coverage.
 ## Existing limitations and stage boundaries
 
 - Chromium desktop is the initial browser. Firefox/WebKit, mobile layouts, MySQL,
-  Compose, gateway forwarding, real network/provider outages and race/load tests
-  are not covered here. S2/S3 add the relevant runtime topology and database gates.
+  Compose, real provider outages and race/load tests are not covered here.
+  S2 adds gateway forwarding, stub transport/outage tests and native topology;
+  S3 adds the container/MySQL baseline.
 - Current APIs intentionally have the existing blanket `/api/**` CSRF exemption.
   Session rotation, CSRF enforcement and future internal-token security remain S4+
   work. This suite is not evidence that those proposed protections are implemented.
-- Legacy backend detail view redirects lose the item ID: for example
-  `/car-listings/1` ends at React `/listings`, and `/store/parts/1` at `/parts`.
-  The baseline asserts that current destination explicitly; direct React aliases
-  retain the ID. The resolver has the same limitation for other model-derived
-  detail/edit routes. Fix route parity in a focused compatibility change before
-  claiming that gateway routing preserves selected-resource navigation.
+- S2 resolves the selected-item gap: `/car-listings/1` ends at `/listings/1`,
+  `/store/parts/1` at `/parts/1`, and legacy auction URLs retain `/auctions/{id}`.
+  Tests now assert the chosen detail and reload behavior. The backend resolver
+  preserves supported detail/edit model IDs without leaking other attributes.
+  Legacy admin account editing still uses the existing users screen; not every
+  legacy form UI is reproduced. See the gateway route catalogue for precedence.
 - Catalog query strings survive the legacy handoff, but current React catalog
   filters initialize from component state rather than reading those URL queries.
   This baseline verifies query transport, not restored filter selection.
@@ -158,7 +168,8 @@ duplicate every CRUD permutation or claim full route/security coverage.
 
 ## CI and recovery
 
-The existing **Backend** check runs wrapper `clean verify`. The existing
+The existing **Backend** check runs backend and independent gateway `clean verify`,
+gateway image build and no-upstream container smoke. The existing
 **Frontend** check runs `npm ci`, 12 component tests, production build, browser
 installation and this E2E command. An E2E failure therefore fails the already
 required Frontend check; no optional new check needs to be added to protection.
@@ -167,7 +178,7 @@ Required protection remains owner-reported, not independently inspected here.
 The orchestrator stops only child processes it started in `finally` and on
 SIGINT/SIGTERM, including after failed tests/startup. Windows uses the owned PID
 tree; POSIX uses the owned process group. An `always()` CI step verifies the two
-ports are free. Another always step retains HTML/JUnit results, failed-test traces,
+ports plus the gateway port are free. Another always step retains HTML/JUnit results, failed-test traces,
 screenshots/videos, and build/server logs for seven days. Artifacts use only fake
 fixture users/data, but may contain the short-lived local session/control tokens.
 
@@ -187,7 +198,7 @@ Backend terminal, explicitly using a disposable memory database for the smoke:
 ```powershell
 Set-Location C:\Projects\SubotinMotors\back
 $smokeDb = 'jdbc:h2:mem:stripe_smoke_' + [guid]::NewGuid().ToString('N') + ';MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1'
-$env:SPRING_PROFILES_ACTIVE = 'default'
+$env:SPRING_PROFILES_ACTIVE = 'gateway'
 $env:SPRING_DATASOURCE_URL = $smokeDb
 $env:SPRING_DATASOURCE_DRIVER_CLASS_NAME = 'org.h2.Driver'
 $env:SPRING_DATASOURCE_USERNAME = 'sa'
@@ -195,21 +206,29 @@ $env:SPRING_DATASOURCE_PASSWORD = ''
 $env:SPRING_FLYWAY_URL = $smokeDb
 $env:SPRING_FLYWAY_USER = 'sa'
 $env:SPRING_FLYWAY_PASSWORD = ''
-$env:APP_FRONTEND_BASE_URL = 'http://localhost:15174'
-$env:APP_CORS_ALLOWED_ORIGINS = 'http://localhost:15174'
-.\scripts\run-stripe-sandbox.ps1 -Port 18081 -UseCliLogin
+$env:APP_FRONTEND_BASE_URL = 'http://localhost:18084'
+$env:APP_CORS_ALLOWED_ORIGINS = 'http://localhost:18084'
+.\scripts\run-stripe-sandbox.ps1 -Port 18083 -PublicBaseUrl http://localhost:18084 -UseCliLogin
 ```
 
 Frontend terminal:
 
 ```powershell
 Set-Location C:\Projects\SubotinMotors\front
-$env:VITE_API_BASE_URL = 'http://localhost:18081'
-$env:VITE_API_PROXY_TARGET = 'http://localhost:18081'
-npm.cmd run dev -- --host localhost --port 15174 --strictPort
+$env:VITE_API_BASE_URL = ''
+npm.cmd run build
+npm.cmd run preview -- --host 127.0.0.1 --port 15174 --strictPort
 ```
 
-1. Open `http://localhost:15174`, register a smoke buyer and complete shipping.
+Gateway terminal (the helper's Stripe listener delivers to this gateway, not directly to backend):
+
+```powershell
+Set-Location C:\Projects\SubotinMotors\gateway
+.\mvnw.cmd --batch-mode --no-transfer-progress package
+& "$env:JAVA_HOME/bin/java.exe" -jar target/gateway-0.0.1-SNAPSHOT.jar --server.port=18084 --gateway.public-url=http://localhost:18084 --gateway.backend-url=http://127.0.0.1:18083 --gateway.frontend-url=http://127.0.0.1:15174
+```
+
+1. Open `http://localhost:18084`, register a smoke buyer and complete shipping.
    Confirm the backend log names the `stripe_smoke_` memory DB before mutations.
    Select an in-stock part, note stock, quantity, total and shipping, then checkout.
    Confirm the browser reaches actual hosted Stripe Checkout in sandbox mode.
@@ -228,7 +247,7 @@ npm.cmd run dev -- --host localhost --port 15174 --strictPort
    cancel/expiry with a second listing if validating release behavior.
 5. Record commit SHA, date, sandbox identity (no secret), session/event IDs,
    webhook HTTP outcomes, order/deposit states and screenshots. Stop only these
-   two terminals' processes; closing the backend discards the smoke DB. Close the
+   three terminals' processes; closing the backend discards the smoke DB. Close the
    terminals to discard their environment settings. No normal database is erased.
 
 Do not treat `stripe trigger` with an unrelated synthetic session as proof that
@@ -277,6 +296,15 @@ documentation. No React production component or production security configuratio
 was modified. Exact staging commands and suggested commit/PR text are in
 [the owner handoff](browser-e2e-pr.md).
 
-Next architecture stage: **S2, `feature/david.subotin_api-gateway`**, after this
-baseline merges. Preserve the documented current session/API/query/webhook
-contracts through the gateway and explicitly resolve the legacy detail-ID gap.
+The verification table above is historical S1 evidence. S1 subsequently merged
+as `35007b5`; merged-master Backend/Frontend passed in run 34818110319.
+Current S2 results, remaining gates and owner commands are in
+[the gateway handoff](api-gateway-pr.md). Next after S2 is S3 Compose/MySQL.
+
+Final S2 local verification on 2026-09-17: 12 browser scenarios passed through
+gateway (30.1 s), with selected-detail reloads, oversized multipart rejection,
+forged-header denial and unchanged legacy CSRF. All three test ports were free
+after cleanup. Gateway clean verify passed 17 tests; frontend passed 12 tests and
+its build. Backend clean verify passed 105 tests on 2026-09-14; its production
+code has not changed since that run. S2 container runtime and remote CI remain
+unverified; see the handoff for the Docker engine failure and existing S1 CI evidence.

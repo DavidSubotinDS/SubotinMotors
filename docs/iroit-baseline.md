@@ -1,5 +1,16 @@
 # IROIT application baseline
 
+S2 prerequisite verification (2026-09-14): freshly fetched master is
+`35007b5eb71e602afa96e09f1c5f9d38e3f7406b`, the squash merge of S1 PR #18.
+Its tree exactly matches S1 `fc59eb6`; an ancestry check alone would not detect
+this squash merge. All six architecture files and both browser runbooks exist.
+[Master CI run 34818110319](https://github.com/DavidSubotinDS/SubotinMotors/actions/runs/34818110319)
+passed Backend and Frontend. The requested gateway branch already existed at
+that exact master SHA and was reused with a clean working tree. Default branch
+remains master. No local/remote tag was found; no baseline tag was created.
+Protection inspection returned 401; required checks remain owner-reported.
+The historical pre-architecture evidence and proposed tag below remain unchanged.
+
 Inspection date: 2026-09-13. This records evidence before service extraction;
 it does not claim completion of the IROIT course requirements.
 

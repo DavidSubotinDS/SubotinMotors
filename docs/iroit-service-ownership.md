@@ -1,5 +1,12 @@
 # IROIT source inventory and data ownership
 
+S2 implementation: [`gateway/`](../gateway/README.md) owns only routing and edge
+transport hygiene. Every existing business/API/webhook operation remains owned
+by `back/`, including sessions and the single business database. No entity,
+table, migration history or Stripe handler was moved. Canonical React GET/HEAD
+pages are served from `front/`; legacy action methods still reach backend.
+The ownership inventory below describes future extraction, not current services.
+
 Proposed ownership, inspected at `c74e283806d82fc0806e159fa259ce028a4db120`.
 See the [architecture decision record](iroit-architecture.md) for status and
 requirements provenance. Paths below are relative to the repository root.

@@ -1,6 +1,7 @@
 param(
   [ValidateRange(1, 65535)]
   [int] $Port = 8080,
+  [string] $PublicBaseUrl,
   [ValidateNotNullOrEmpty()]
   [string] $StripeProfile = "default",
   [switch] $UseCliLogin
@@ -83,7 +84,13 @@ try {
   $env:STRIPE_ENABLED = "true"
   $env:STRIPE_CURRENCY = "eur"
   $env:STRIPE_PLATFORM_FEE_BPS = "250"
-  $env:APP_BASE_URL = "http://localhost:$Port"
+  if ([string]::IsNullOrWhiteSpace($PublicBaseUrl)) { $PublicBaseUrl = "http://localhost:$Port" }
+  $publicOrigin = [uri] $PublicBaseUrl
+  if (-not $publicOrigin.IsAbsoluteUri -or $publicOrigin.Scheme -notin @('http', 'https') -or
+      $publicOrigin.UserInfo -or $publicOrigin.Query -or $publicOrigin.Fragment -or $publicOrigin.AbsolutePath -ne '/') {
+    throw 'PublicBaseUrl must be an HTTP(S) origin without credentials, path, query or fragment.'
+  }
+  $env:APP_BASE_URL = $PublicBaseUrl.TrimEnd('/')
 
   Write-Host "Using $keySource (key not displayed)."
   Write-Host "Requesting a temporary webhook signing secret..."
@@ -125,7 +132,7 @@ try {
     "listen",
     "--skip-update",
     "--events", $eventNames,
-    "--forward-to", "http://localhost:$Port/webhooks/stripe"
+    "--forward-to", "$($env:APP_BASE_URL)/webhooks/stripe"
   )
 
   $listener = Start-Process `
@@ -146,7 +153,7 @@ try {
 
   Write-Host ""
   Write-Host "Stripe sandbox is ready."
-  Write-Host "Webhook forwarding: http://localhost:$Port/webhooks/stripe"
+  Write-Host "Webhook forwarding: $($env:APP_BASE_URL)/webhooks/stripe"
   Write-Host "Listener logs: $listenerOutput and $listenerError"
   Write-Host "Starting Autostrada Auctions..."
   Write-Host ""

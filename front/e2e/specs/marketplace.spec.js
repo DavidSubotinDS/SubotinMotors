@@ -1,4 +1,4 @@
-import { test, expect, login, fill, json, password, vehicleImage, backend } from '../fixtures.js';
+import { test, expect, login, fill, json, password, vehicleImage, gateway } from '../fixtures.js';
 
 test('register, reject bad login, reuse the session across pages/reload, and invalidate logout', async ({ page }) => {
   expect((await page.request.get('/api/user/profile')).status()).toBe(401);
@@ -30,13 +30,16 @@ test('register, reject bad login, reuse the session across pages/reload, and inv
 });
 
 test('USER cannot use admin routes or another seller’s auction/listing mutations', async ({ page }) => {
-  expect((await page.request.get(`${backend}/__e2e/ready`, { maxRedirects: 0 })).status()).toBe(403);
+  expect((await page.request.get(`${gateway}/__e2e/ready`, { maxRedirects: 0 })).status()).toBe(404);
   await login(page);
   await page.goto('/admin/store/orders');
   await expect(page.getByText('You do not have permission to perform this action.', { exact: true })).toBeVisible();
   for (const path of ['/api/admin/store/orders', '/api/admin/dashboard', '/api/user/auctions/1', '/api/user/listings/1']) {
-    expect((await page.request.get(path)).status(), path).toBe(403);
+    expect((await page.request.get(path, { headers: { 'X-User-Id': '4', 'X-Roles': 'ROLE_ADMIN',
+      'X-Internal-Token': 'forged', 'Authorization': 'Bearer forged' } })).status(), path).toBe(403);
   }
+  // Existing legacy CSRF behavior is still enforced by Spring Security behind the proxy.
+  expect((await page.request.post('/user/listings/1/deactivate', { form: {} })).status()).toBe(403);
   for (const path of ['/api/user/auctions/1/deactivate', '/api/user/listings/1/deactivate', '/api/admin/cars/1/deactivate']) {
     expect((await page.request.post(path)).status(), path).toBe(403);
   }
@@ -64,6 +67,15 @@ test('seller creates and edits an auction with an image; admin approves it', asy
   await fill(page, { model: 'Roadster Edited', auctionEndTime: '2030-06-21T12:00' });
   await page.getByRole('button', { name: 'Save', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Browser Roadster Edited', exact: true })).toBeVisible();
+  const oversized = await page.request.post('/api/user/profile/picture', { multipart: {
+    imageFile: { name: 'too-large.png', mimeType: 'image/png',
+      buffer: Buffer.concat([vehicleImage.buffer, Buffer.alloc(6 * 1024 * 1024)]) },
+  } });
+  // Direct-backend comparison established the existing oversized multipart contract:
+  // Tomcat rejects this before the controller with empty 400, not an API JSON 413.
+  expect(oversized.status(), 'Existing backend oversized-file rejection survives gateway streaming').toBe(400);
+  expect(await oversized.text()).toBe('');
+  expect(oversized.headers()['x-request-id']).toMatch(/^[a-f0-9-]{36}$/);
   await login(page, 'admin');
   await page.goto('/admin/cars');
   const row = page.getByRole('link', { name: 'Preview 2024 Browser Roadster Edited', exact: true });
@@ -74,7 +86,7 @@ test('seller creates and edits an auction with an image; admin approves it', asy
   await expect(page.getByRole('img', { name: /Browser Roadster Edited/ }).first()).toBeVisible();
 });
 
-test('bid minimum, self-bid denial and exact auction deadline are enforced by the backend', async ({ page, fixtures }) => {
+test('bid minimum, self-bid denial and exact auction deadline are enforced by the backend through the gateway', async ({ page, fixtures }) => {
   await login(page, 'seller');
   await page.goto('/auctions/1');
   await page.getByRole('spinbutton', { name: 'Bid amount' }).fill('10001');
@@ -185,28 +197,33 @@ test('follow generates ending-soon notifications; recipient read/read-all persis
   await expect(page.getByRole('button', { name: 'Read', exact: true })).toHaveCount(0);
 });
 
-test('legacy backend routes reach React and preserve search and checkout query parameters', async ({ page }) => {
+test('legacy gateway routes reach React and preserve search and checkout query parameters', async ({ page }) => {
   await login(page);
-  await page.goto(`${backend}/cars?keyword=Roadster&sort=price&direction=asc`);
-  await expect(page).toHaveURL(/15173\/auctions\?keyword=Roadster&sort=price&direction=asc/);
+  await page.goto(`${gateway}/cars?keyword=Roadster&sort=price&direction=asc`);
+  await expect(page).toHaveURL(/18081\/auctions\?keyword=Roadster&sort=price&direction=asc/);
   await expect(page.getByRole('heading', { name: 'E2E Roadster', exact: true })).toBeVisible();
   for (const [path, target, heading] of [
-    // Current legacy view resolver drops detail IDs. Characterize, do not claim parity.
-    ['/car-listings/1', '/listings', 'Vehicle listings'],
-    ['/store/parts/1', '/parts', 'Car parts catalog'],
+    // Legacy redirects retain the selected item, then canonical React GET routes terminate the handoff.
+    ['/car-listings/1', '/listings/1', 'E2E Touring'],
+    ['/store/parts/1', '/parts/1', 'E2E Oil Filter'],
+    ['/cars/E2E/Roadster/2024/1', '/auctions/1', 'E2E Roadster'],
     ['/user/my-auctions', '/user/auctions', 'My auctions'],
     ['/user/payments', '/orders', 'Orders'],
     ['/payments/success?session_id=forged', '/orders', 'Orders'],
     ['/payments/seller/onboarding', '/parts', 'Car parts catalog'],
   ]) {
-    await page.goto(`${backend}${path}`);
-    await expect(page).toHaveURL(`http://127.0.0.1:15173${target}`);
+    await page.goto(`${gateway}${path}`);
+    await expect(page).toHaveURL(`http://127.0.0.1:18081${target}`);
     await expect(page.getByRole('heading', { name: heading, exact: true })).toBeVisible();
+    if (path.startsWith('/cars/') || path === '/car-listings/1' || path === '/store/parts/1') {
+      await page.reload();
+      await expect(page.getByRole('heading', { name: heading, exact: true })).toBeVisible();
+    }
   }
   expect(await json(page, '/api/store/payments')).toMatchObject({ redirectUrl: '/orders' });
   await page.goto('/store/checkout/success?session_id=cs_e2e_unknown');
   await expect(page.getByText('Checkout lookup failed', { exact: true })).toBeVisible();
-  // The React aliases themselves do retain detail IDs.
+  // Reload and a fresh navigation both retain the chosen detail through legacy handoff.
   await page.goto('/car-listings/1');
   await expect(page.getByRole('heading', { name: 'E2E Touring', exact: true })).toBeVisible();
   await page.goto('/store/parts/1');

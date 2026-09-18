@@ -1,5 +1,15 @@
 # IROIT API, event contracts and business flows
 
+S2 implemented transport: [`GatewayRoutes`](../gateway/src/main/java/lithan/autostrada/gateway/GatewayRoutes.java)
+routes `/api` and `/api/**` to the monolith for every method and the exact
+`POST /webhooks/stripe` without reading/rewriting its body. Canonical React
+GET/HEAD pages precede legacy route families; other legacy actions remain backend
+owned. Cookies, statuses, errors, query encoding and Location are preserved.
+Unmatched/private routes return JSON 404, never SPA fallback for API errors.
+See [the current route table](../gateway/README.md#route-precedence).
+Selected-resource MVC redirects now retain supported IDs. New internal APIs,
+composition, RabbitMQ events and durable checkout below remain proposed.
+
 Status: proposed contracts, not implemented endpoints. Existing paths are
 identified explicitly. Read with [ownership](iroit-service-ownership.md) and
 [security](iroit-security.md). Each extraction PR must commit executable

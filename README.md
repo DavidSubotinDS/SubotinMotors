@@ -1,5 +1,11 @@
 # Autostrada Auctions
 
+IROIT S2 adds an independent Spring Cloud Gateway in `gateway/`. Use the
+[gateway runbook](gateway/README.md) for the recommended single public origin,
+disposable local startup, routing and recovery. Backend still owns sessions,
+business rules, persistence and Stripe. [S2 evidence/owner commands](docs/api-gateway-pr.md)
+record actual verification. No business services or Compose topology have been extracted.
+
 Autostrada Auctions is now split into a Spring Boot backend and a React frontend.
 The former JSP pages have been migrated to React routes under `front/`; the backend
 serves REST APIs and redirects legacy page views to the React dev/prod URL.
@@ -9,6 +15,7 @@ serves REST APIs and redirects legacy page views to the React dev/prod URL.
 ```text
 back/   Spring Boot backend, REST API, Flyway, tests
 front/  React frontend built with Vite
+gateway/ Independent Java 17 WebFlux pass-through gateway
 docs/   Project notes and CRUD/lifecycle coverage
 documentation/  Longer project documentation
 images/ Demo screenshots and supporting documentation images
@@ -24,6 +31,9 @@ Backend API code belongs in `back/`. React UI code belongs in `front/`.
 - Payments: Stripe Checkout sandbox and signed webhooks
 
 ## Run The Backend
+
+This is the direct-backend fallback. For S2 use the gateway runbook above;
+set `VITE_API_PROXY_TARGET=http://localhost:8080` if using the old Vite-only topology.
 
 The default backend profile uses local H2. No database installation is required.
 

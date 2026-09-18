@@ -2,6 +2,15 @@ package lithan.autostrada.auctions.config;
 
 import java.util.Locale;
 import java.util.Map;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import lithan.autostrada.auctions.entity.Car;
+import lithan.autostrada.auctions.entity.CarListing;
+import lithan.autostrada.auctions.entity.CarPart;
+import lithan.autostrada.auctions.entity.StoreOrder;
+import lithan.autostrada.auctions.entity.UserProfile;
+import lithan.autostrada.auctions.dto.CarListingForm;
+import lithan.autostrada.auctions.dto.CarPartForm;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -83,7 +92,38 @@ public class ReactFrontendRedirectConfig {
         return null;
       }
       String route = ROUTES.getOrDefault(viewName, "/");
-      RedirectView view = new RedirectView(frontendBaseUrl + route);
+      RedirectView view = new RedirectView(frontendBaseUrl + route) {
+        @Override
+        protected void renderMergedOutputModel(Map<String, Object> model, HttpServletRequest request,
+            HttpServletResponse response) throws java.io.IOException {
+          // Resolve selected resources only from the controller's already-authorized model.
+          // Never serialize that model or copy private fields into the redirect query.
+          String selected = route;
+          if (model.get("car") instanceof Car car) {
+            if (viewName.equals("car-details") || viewName.equals("user/car-bid") || viewName.equals("user/test-drive"))
+              selected = "/auctions/" + car.getIdCar();
+            if (viewName.equals("user/edit-posted-car")) selected = "/user/auctions/" + car.getIdCar() + "/edit";
+          }
+          if (viewName.equals("user/upload-car-picture") && model.get("idCar") instanceof Number id)
+            selected = "/user/auctions/" + id.intValue() + "/edit";
+          if (viewName.equals("listing-details") && model.get("listing") instanceof CarListing listing)
+            selected = "/listings/" + listing.getIdListing();
+          if (viewName.equals("store/part-details") && model.get("part") instanceof CarPart part)
+            selected = "/parts/" + part.getIdPart();
+          if (model.get("order") instanceof StoreOrder order) {
+            if (viewName.equals("store/order-details")) selected = "/orders/" + order.getIdOrder();
+            if (viewName.equals("admin/store-order-details")) selected = "/admin/store/orders/" + order.getIdOrder();
+          }
+          if (viewName.equals("view-user") && model.get("profile") instanceof UserProfile profile)
+            selected = "/profiles/" + profile.getIdProfile();
+          if (viewName.equals("user/listing-form") && model.get("listingForm") instanceof CarListingForm form)
+            selected = form.getIdListing() > 0 ? "/user/listings/" + form.getIdListing() + "/edit" : "/user/listings/new";
+          if (viewName.equals("admin/store-part-form") && model.get("partForm") instanceof CarPartForm form)
+            selected = form.getIdPart() > 0 ? "/admin/store/parts/" + form.getIdPart() + "/edit" : "/admin/store/parts/new";
+          setUrl(frontendBaseUrl + selected);
+          super.renderMergedOutputModel(model, request, response);
+        }
+      };
       view.setContextRelative(false);
       // Stripe returns the Checkout Session ID in the success URL. Preserve it when the
       // legacy backend route hands control back to the React success page.

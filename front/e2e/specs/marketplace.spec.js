@@ -200,7 +200,7 @@ test('follow generates ending-soon notifications; recipient read/read-all persis
 test('legacy gateway routes reach React and preserve search and checkout query parameters', async ({ page }) => {
   await login(page);
   await page.goto(`${gateway}/cars?keyword=Roadster&sort=price&direction=asc`);
-  await expect(page).toHaveURL(/18081\/auctions\?keyword=Roadster&sort=price&direction=asc/);
+  await expect(page).toHaveURL(`${gateway}/auctions?keyword=Roadster&sort=price&direction=asc`);
   await expect(page.getByRole('heading', { name: 'E2E Roadster', exact: true })).toBeVisible();
   for (const [path, target, heading] of [
     // Legacy redirects retain the selected item, then canonical React GET routes terminate the handoff.
@@ -213,7 +213,7 @@ test('legacy gateway routes reach React and preserve search and checkout query p
     ['/payments/seller/onboarding', '/parts', 'Car parts catalog'],
   ]) {
     await page.goto(`${gateway}${path}`);
-    await expect(page).toHaveURL(`http://127.0.0.1:18081${target}`);
+    await expect(page).toHaveURL(`${gateway}${target}`);
     await expect(page.getByRole('heading', { name: heading, exact: true })).toBeVisible();
     if (path.startsWith('/cars/') || path === '/car-listings/1' || path === '/store/parts/1') {
       await page.reload();

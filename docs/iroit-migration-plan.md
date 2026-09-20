@@ -1,10 +1,11 @@
 # IROIT incremental migration and implementation backlog
 
-Current implementation status (2026-09-14): S1 merged into master as `35007b5`
-with successful merged-master Backend/Frontend CI. S2 code and local evidence
-are on `feature/david.subotin_api-gateway`; see [S2 handoff](api-gateway-pr.md)
-for actual verification and remaining gates. No S2 commit/push/PR/merge is claimed.
-S3+ remains proposed. The historical design-stage wording below is retained as
+Current implementation status (2026-09-19): S1 and S2 are merged; fetched master
+is `a08cb14`, with successful merged-master Backend/Frontend CI including gateway
+container/browser checks. S3 is implemented on the requested Compose branch;
+see [S3 handoff](docker-compose-pr.md) for actual evidence and remaining gates.
+S3 has not been committed/pushed/merged by this task. S4+ remains proposed.
+The historical design-stage wording below is retained as
 the stage contract, not a claim that every listed stage has shipped.
 
 Status: proposed, documented on 2026-09-13/14. Start with the verified
@@ -106,6 +107,13 @@ in that implementation task. This is routing only; backend still owns sessions.
   original backend path; verify webhook/return/reset URLs together. No data move.
 
 ## S3 - Reproducible container baseline
+
+Implementation: [runbook](docker-compose.md), production backend/frontend images,
+existing gateway image, private Compose networking, persistent MySQL and isolated
+production/MySQL/browser verification. CI gates remain Backend/Frontend. V1-V18
+are unchanged; initialization deliberately acknowledges their existing demo data.
+Acceptance is tracked against measured results in [the handoff](docker-compose-pr.md),
+including remote CI and real-provider gaps, rather than inferred from configuration.
 
 Containerize backend/frontend and add Compose for gateway, React assets, backend
 and MySQL. This validates actual MySQL migrations before distributing data.

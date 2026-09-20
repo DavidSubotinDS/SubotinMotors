@@ -1,5 +1,10 @@
 # Autostrada Auctions React Frontend
 
+S3: the [Compose baseline](../docs/docker-compose.md) builds an empty-API-base
+bundle and serves it using non-root Nginx, with SPA fallback and private ingress.
+From this directory `npm run test:compose` builds a unique disposable MySQL stack
+and runs the browser suite through its gateway. Native `test:e2e` still uses H2.
+
 This folder contains the React application that replaces the former JSP UI.
 
 For S2, open the gateway public origin (`http://localhost:8081`) and use an empty

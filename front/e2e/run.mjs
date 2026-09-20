@@ -13,7 +13,7 @@ const windows = process.platform === 'win32';
 const children = new Set();
 // Do not inherit developer Spring/Stripe/mail/Vite configuration or .env files.
 const env = Object.fromEntries(Object.entries(process.env).filter(([key]) =>
-  !/^(SPRING_|STRIPE_|APP_|SMTP_|PAYMENTS_|AUCTION_|VITE_|GATEWAY_|SERVER_|MANAGEMENT_|LOGGING_|JAVA_TOOL_OPTIONS$|JDK_JAVA_OPTIONS$|_JAVA_OPTIONS$)/i.test(key)));
+  !/^(E2E_|SPRING_|STRIPE_|APP_|SMTP_|PAYMENTS_|AUCTION_|VITE_|GATEWAY_|SERVER_|MANAGEMENT_|LOGGING_|JAVA_TOOL_OPTIONS$|JDK_JAVA_OPTIONS$|_JAVA_OPTIONS$)/i.test(key)));
 env.E2E_CONTROL_TOKEN = randomBytes(32).toString('hex');
 env.VITE_API_BASE_URL = '';
 env.TZ = 'UTC';

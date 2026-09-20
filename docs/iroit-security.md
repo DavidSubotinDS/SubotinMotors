@@ -1,5 +1,13 @@
 # IROIT authentication and authorization design
 
+S3 adds private container ingress, schema-scoped DB credentials, runtime secret
+injection and explicit demo-data acknowledgement. Production images exclude test
+controls; only the isolated harness publishes a random loopback control port.
+Compose makes current JSESSIONID HttpOnly/host-only/Path=/ and SameSite=Lax explicit,
+with Secure configurable for HTTPS (local HTTP default false). Backend is still
+the sole session/authorization owner. API CSRF exemptions and legacy enforcement
+are preserved; Phase B/C remain S4+ proposals. See [container runbook](docker-compose.md).
+
 S2 implementation status: Phase A below is implemented by the
 [pass-through gateway](../gateway/README.md). The backend remains the sole
 session/authentication/authorization owner, with unchanged API and legacy CSRF

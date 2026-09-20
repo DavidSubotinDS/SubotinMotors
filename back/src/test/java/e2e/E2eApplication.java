@@ -104,22 +104,32 @@ public class E2eApplication {
 
     @PostMapping("/__e2e/reset")
     public Map<String, Object> reset() throws Exception {
-      // Same connection for guard, reset and integrity restoration; only our disposable memory DB.
+      // Same connection for guard, reset and integrity restoration. Never reset normal databases.
+      boolean mysql;
       try (var connection = jdbc.getDataSource().getConnection(); var statement = connection.createStatement()) {
-        if (!connection.getMetaData().getURL().startsWith("jdbc:h2:mem:e2e_")) {
+        String url = connection.getMetaData().getURL();
+        mysql = url.startsWith("jdbc:mysql://mysql:3306/e2e_");
+        if (mysql) {
+          if (!ComposeE2eApplication.database().equals(connection.getCatalog())
+              || !System.getenv("E2E_CONTROL_TOKEN").equals(
+                  jdbc.queryForObject("SELECT token FROM e2e_guard", String.class))) {
+            throw new IllegalStateException("MySQL database is not owned by this harness");
+          }
+        } else if (!url.startsWith("jdbc:h2:mem:e2e_")) {
           throw new IllegalStateException("Refusing to reset a non-E2E database");
         }
         var tables = jdbc.queryForList(
-            "SELECT table_name FROM information_schema.tables WHERE table_schema='public' AND table_name LIKE 'tb_%'",
+            "SELECT table_name FROM information_schema.tables WHERE table_schema="
+                + (mysql ? "DATABASE()" : "'public'") + " AND table_name LIKE 'tb_%'",
             String.class);
-        statement.execute("SET REFERENTIAL_INTEGRITY FALSE");
+        statement.execute(mysql ? "SET FOREIGN_KEY_CHECKS=0" : "SET REFERENTIAL_INTEGRITY FALSE");
         try {
           for (String table : tables) {
             if (!table.matches("tb_[a-z_]+")) throw new IllegalStateException("Unexpected table");
-            statement.execute("TRUNCATE TABLE " + table + " RESTART IDENTITY");
+            statement.execute("TRUNCATE TABLE " + table + (mysql ? "" : " RESTART IDENTITY"));
           }
         } finally {
-          statement.execute("SET REFERENTIAL_INTEGRITY TRUE");
+          statement.execute(mysql ? "SET FOREIGN_KEY_CHECKS=1" : "SET REFERENTIAL_INTEGRITY TRUE");
         }
       }
       clock.time = START;
@@ -132,8 +142,10 @@ public class E2eApplication {
             i, username, "Fixture", i);
       }
       jdbc.update("INSERT INTO tb_role (role,id_user) VALUES ('ROLE_ADMIN',4)");
-      jdbc.update("ALTER TABLE tb_user ALTER COLUMN id_user RESTART WITH 5");
-      jdbc.update("ALTER TABLE tb_user_profile ALTER COLUMN id_profile RESTART WITH 5");
+      if (!mysql) {
+        jdbc.update("ALTER TABLE tb_user ALTER COLUMN id_user RESTART WITH 5");
+        jdbc.update("ALTER TABLE tb_user_profile ALTER COLUMN id_profile RESTART WITH 5");
+      }
       jdbc.update("INSERT INTO tb_car (make,model,production_year,status,price,id_user,auction_end_time) VALUES ('E2E','Roadster','2024','ACTIVE',10000,2,'2030-06-15 12:00:00')");
       jdbc.update("INSERT INTO tb_car (make,model,production_year,status,price,id_user,auction_end_time) VALUES ('E2E','Coupe','2023','ACTIVE',8000,2,'2030-06-15 13:00:00')");
       jdbc.update("INSERT INTO tb_car_listing (title,make,model,production_year,mileage,fuel_type,transmission,price_minor,deposit_amount_minor,description,status,id_seller,created_at,updated_at) VALUES ('E2E Touring','E2E','Touring','2024',12000,'Petrol','Manual',2500000,50000,'Deterministic test vehicle','ACTIVE',2,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)");

@@ -1,10 +1,12 @@
 # Autostrada Auctions
 
-IROIT S2 adds an independent Spring Cloud Gateway in `gateway/`. Use the
-[gateway runbook](gateway/README.md) for the recommended single public origin,
-disposable local startup, routing and recovery. Backend still owns sessions,
-business rules, persistence and Stripe. [S2 evidence/owner commands](docs/api-gateway-pr.md)
-record actual verification. No business services or Compose topology have been extracted.
+IROIT S3 adds a reproducible Docker Compose baseline: gateway, private Nginx
+frontend assets, backend and persistent MySQL. Use the [container runbook](docs/docker-compose.md)
+for deliberate demo initialization, configuration, backup/restore and isolated
+browser verification. Backend still owns sessions, business rules, persistence
+and Stripe. [S3 evidence/owner commands](docs/docker-compose-pr.md) distinguish
+verified behavior from the proposed service architecture. Native startup remains
+in the [gateway runbook](gateway/README.md). No business services are extracted.
 
 Autostrada Auctions is now split into a Spring Boot backend and a React frontend.
 The former JSP pages have been migrated to React routes under `front/`; the backend

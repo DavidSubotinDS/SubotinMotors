@@ -1,5 +1,10 @@
 # S2 API Gateway: evidence and owner handoff
 
+Historical S2 handoff. S2 subsequently merged in PR #19 as `a08cb14`, with
+successful merged-master CI run 35399306269 including container smoke and browser
+checks (verified 2026-09-19). The dated pre-merge record below is retained as history;
+do not repeat its owner commands. Current work/evidence is [S3](docker-compose-pr.md).
+
 Branch: `feature/david.subotin_api-gateway`. No commits, pushes, PRs or merges
 were performed for S2. Default branch remains master. No baseline tag was created.
 

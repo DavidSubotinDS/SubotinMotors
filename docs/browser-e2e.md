@@ -1,5 +1,12 @@
 # Browser regression baseline (IROIT S1 + S2)
 
+S3 adds `npm run test:compose` in `front/`: the same scenarios run through the
+container gateway/Nginx/backend against a unique MySQL schema/volume. URLs and
+report destinations come only from the harness; test controls require its token
+and database guard. Native `test:e2e` retains disposable H2. See [Compose runbook](docker-compose.md)
+and [current evidence](docker-compose-pr.md); historical MySQL/Compose gaps below
+refer to S1/S2. Real Stripe sandbox smoke remains separate and unverified.
+
 This suite runs React and the existing Spring monolith through the S2 gateway.
 It introduces no business service extraction, database migration, or authentication redesign. Read it alongside
 [S1 and the common gates](iroit-migration-plan.md), [baseline](iroit-baseline.md),

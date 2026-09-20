@@ -1,5 +1,10 @@
 # Autostrada pass-through gateway (IROIT S2)
 
+S3: [Compose startup and recovery](../docs/docker-compose.md) now supplies private
+backend/frontend/MySQL peers and reuses this image with pinned base digests.
+The native instructions below remain available; historical S2-only limits should
+be read alongside [S3 evidence](../docs/docker-compose-pr.md).
+
 Independent Java 17 executable. Spring Boot **3.5.15**, Spring Cloud BOM
 **2025.0.3**, Gateway Server WebFlux **4.3.5**. The
 [Cloud release announcement](https://spring.io/blog/2026/06/11/spring-cloud-2025-0-3-aka-northfields-has-been-released/)

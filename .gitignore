@@ -1,4 +1,9 @@
 HELP.md
+.env.compose
+.env.compose.*
+!.env.compose.example
+compose-results/
+backups/
 target/
 !.mvn/wrapper/maven-wrapper.jar
 !back/.mvn/wrapper/maven-wrapper.jar

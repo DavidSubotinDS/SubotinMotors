@@ -1,5 +1,11 @@
 # S3 evidence and owner handoff
 
+Historical handoff: S3 subsequently merged as `8d13104` via PR #20 at
+2026-09-20T10:15:21Z. Both exact merged-commit required checks passed in
+[run 35504550026](https://github.com/DavidSubotinDS/SubotinMotors/actions/runs/35504550026),
+verified during S4a. Do not repeat owner commands below. Current work is
+[S4a](session-csrf-pr.md); the dated pre-merge and Docker incident record is retained.
+
 Branch: `feature/david.subotin_docker-compose-baseline`. Default branch remains
 `master`. The branch already existed with a clean tree at freshly fetched master,
 so it was reused without resetting/recreating it. No commits, pushes, PRs, merges

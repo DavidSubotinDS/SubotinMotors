@@ -2,6 +2,7 @@ package lithan.autostrada.auctions;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -49,7 +50,7 @@ class VehicleGalleryIntegrationTests {
     mockMvc.perform(multipart("/api/user/auctions")
             .file(image("imageFiles", "front.png"))
             .file(image("imageFiles", "side.png"))
-            .with(user("demo_newcomer").roles("USER"))
+            .with(csrf()).with(user("demo_newcomer").roles("USER"))
             .param("make", "Gallery")
             .param("model", "Auction")
             .param("year", "2025")
@@ -69,7 +70,7 @@ class VehicleGalleryIntegrationTests {
 
     mockMvc.perform(multipart("/api/user/auctions/{idCar}/pictures", car.getIdCar())
             .file(image("imageFiles", "interior.png"))
-            .with(user("demo_newcomer").roles("USER")))
+            .with(csrf()).with(user("demo_newcomer").roles("USER")))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.message").value("Auction gallery updated."));
 
@@ -83,7 +84,7 @@ class VehicleGalleryIntegrationTests {
             .file(image("imageFiles", "front.png"))
             .file(image("imageFiles", "rear.png"))
             .file(image("imageFiles", "interior.png"))
-            .with(user("demo_newcomer").roles("USER"))
+            .with(csrf()).with(user("demo_newcomer").roles("USER"))
             .param("title", "Gallery listing")
             .param("make", "Gallery")
             .param("model", "Listing")

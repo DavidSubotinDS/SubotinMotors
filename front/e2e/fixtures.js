@@ -31,7 +31,11 @@ export const test = base.extend({
       await page.goto('/');
       throw new Error('Intentional browser failure to verify artifacts and Compose cleanup');
     }
-    await use({ ...data, setTime: async (instant) => {
+    await use({ ...data, mail: async (recipient) => {
+      const response = await control.get('/__e2e/mail', { params: { recipient } });
+      expect(response.status()).toBe(200);
+      return (await response.json()).body;
+    }, setTime: async (instant) => {
       await expect(await control.post('/__e2e/clock', { data: { instant } })).toBeOK();
       await page.clock.setFixedTime(new Date(instant));
     } });
@@ -68,7 +72,17 @@ export async function json(page, path) {
 }
 
 export async function saveAddress(page) {
-  await expect(await page.request.put('/api/user/profile', { data: address })).toBeOK();
+  await expect(await mutate(page, 'PUT', '/api/user/profile', { data: address })).toBeOK();
+}
+
+// API setup/authorization probes must pass CSRF first. Negative CSRF scenarios
+// deliberately use the raw request context instead. Never retries a mutation.
+export async function mutate(page, method, path, options = {}) {
+  const response = await page.request.get('/api/csrf');
+  expect(response.status()).toBe(200);
+  const { token } = await response.json();
+  return page.request.fetch(path, { ...options, method,
+    headers: { ...options.headers, 'X-CSRF-TOKEN': token } });
 }
 
 // Only this test-owned provider page is mocked; no application API response is intercepted.

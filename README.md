@@ -1,5 +1,11 @@
 # Autostrada Auctions
 
+IROIT S4a adds [session/CSRF protection](docs/session-csrf.md) inside the existing
+backend: anonymous `GET /api/csrf`, protected unsafe requests, login session
+rotation and frontend token recovery without automatic mutation retries. Deploy
+frontend/backend/gateway together. [S4a evidence and owner commands](docs/session-csrf-pr.md)
+record actual gates; S4b identity boundary preparation is next.
+
 IROIT S3 adds a reproducible Docker Compose baseline: gateway, private Nginx
 frontend assets, backend and persistent MySQL. Use the [container runbook](docs/docker-compose.md)
 for deliberate demo initialization, configuration, backup/restore and isolated
@@ -144,6 +150,7 @@ React-facing endpoints now cover the former JSP page surface:
 - `GET /api/public/parts/{id}`
 - `GET /api/public/part-categories`
 - `GET /api/session`
+- `GET /api/csrf` (non-cacheable `{token}`; header required on unsafe requests)
 - `/api/auth/**` for login, logout, registration, and password reset
 - `/api/user/**` for profile, auctions, listings, bids, appointments, watchlists, notifications, and deposits
 - `/api/store/**` for cart, checkout, and orders
@@ -180,7 +187,8 @@ Never commit database passwords.
 
 ## Mail And Password Reset
 
-Local development logs reset links by default:
+Default development mail mode logs only a suppression notice, without reset
+links or message contents. Use SMTP below for functional password recovery:
 
 ```powershell
 $env:APP_MAIL_MODE = "log"

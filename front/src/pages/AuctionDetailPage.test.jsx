@@ -14,6 +14,7 @@ test('explains an invalid bid and submits a valid bid', async () => {
 
   vi.spyOn(globalThis, 'fetch').mockImplementation(async (request, options = {}) => {
     const url = request.toString();
+    if (url.includes('/api/csrf')) return jsonResponse({ token: 'component-fixture' });
     if (url.includes('/api/session')) {
       return jsonResponse({ authenticated: true, username: 'demo_bidder', roles: ['ROLE_USER'] });
     }

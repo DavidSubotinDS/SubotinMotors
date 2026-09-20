@@ -224,7 +224,7 @@ class CarListingAndAddressIntegrationTests {
         "admin123", "Test ride estate", "Volvo", "V60");
     long count = listingTestRideRepository.count();
 
-    mockMvc.perform(post("/api/user/listings/{listingId}/test-rides", listing.getIdListing())
+    mockMvc.perform(post("/api/user/listings/{listingId}/test-rides", listing.getIdListing()).with(csrf())
             .with(user("user123").roles("USER"))
             .contentType(MediaType.APPLICATION_JSON)
             .content("{\"scheduledAt\":\"" + LocalDateTime.now().minusHours(1).withNano(0) + "\"}"))
@@ -233,7 +233,7 @@ class CarListingAndAddressIntegrationTests {
     assertEquals(count, listingTestRideRepository.count());
 
     LocalDateTime future = LocalDateTime.now().plusDays(3).withSecond(0).withNano(0);
-    mockMvc.perform(post("/api/user/listings/{listingId}/test-rides", listing.getIdListing())
+    mockMvc.perform(post("/api/user/listings/{listingId}/test-rides", listing.getIdListing()).with(csrf())
             .with(user("user123").roles("USER"))
             .contentType(MediaType.APPLICATION_JSON)
             .content("{\"scheduledAt\":\"" + future + "\"}"))

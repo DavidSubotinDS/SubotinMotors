@@ -1,5 +1,19 @@
 # IROIT application baseline
 
+S4a prerequisite verification (2026-09-20): freshly fetched `origin/master` and
+local master identify `8d131049a8f8ed4b96f7d664eb57e3c52e934dc3`. Public GitHub API
+confirms [S3 PR #20](https://github.com/DavidSubotinDS/SubotinMotors/pull/20) merged
+to master at 2026-09-20T10:15:21Z. Its exact merged commit passed
+[Backend](https://github.com/DavidSubotinDS/SubotinMotors/actions/runs/35504550026/job/106062035971)
+and [Frontend](https://github.com/DavidSubotinDS/SubotinMotors/actions/runs/35504550026/job/106062036117).
+GitHub CLI was unauthenticated; verification used public REST. Default branch
+remains master. No applicable AGENTS.md was found; `.agents` was empty. Initial
+working tree was clean on `feature/david.subotin_session-csrf-hardening`; it was
+preserved. Created `feature/david.subotin_session-csrf-foundation` from verified
+origin/master only after confirming these checks. Local and remote tag lists
+were empty. No commit/stage/push/PR/merge/tag was performed. See
+[S4a handoff](session-csrf-pr.md) for new local evidence, separate from S3 CI.
+
 S3 prerequisite verification (2026-09-19): freshly fetched `origin/master`, local
 master and the already-existing clean requested S3 branch all point to
 `a08cb14d781464cc8a7008f7cb837e896d56f48e`, the merged S2 [PR #19](https://github.com/DavidSubotinDS/SubotinMotors/pull/19).

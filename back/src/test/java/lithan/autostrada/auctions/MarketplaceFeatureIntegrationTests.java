@@ -235,7 +235,7 @@ class MarketplaceFeatureIntegrationTests {
   @Test
   void invalidRegistrationReturnsFieldErrorsWithoutCreatingAccount() throws Exception {
     long accountCount = userRepository.count();
-    mockMvc.perform(post("/api/auth/register")
+    mockMvc.perform(post("/api/auth/register").with(csrf())
             .contentType(MediaType.APPLICATION_JSON)
             .content("""
                 {"username":"ab","email":"invalid","password":"123",
@@ -264,7 +264,7 @@ class MarketplaceFeatureIntegrationTests {
             .param("model", "")
             .param("year", "1885")
             .param("price", "0")
-            .with(user("user123").roles("USER"))
+            .with(csrf()).with(user("user123").roles("USER"))
             .with(csrf()))
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.fieldErrors.make").isNotEmpty())
@@ -272,14 +272,14 @@ class MarketplaceFeatureIntegrationTests {
         .andExpect(jsonPath("$.fieldErrors.year").isNotEmpty())
         .andExpect(jsonPath("$.fieldErrors.price").isNotEmpty());
 
-    mockMvc.perform(post("/api/user/auctions/{idCar}/bid", car.getIdCar())
+    mockMvc.perform(post("/api/user/auctions/{idCar}/bid", car.getIdCar()).with(csrf())
             .contentType(MediaType.APPLICATION_JSON).content("{\"bidPrice\":0}")
             .with(user("user123").roles("USER"))
             .with(csrf()))
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.message").isNotEmpty());
 
-    mockMvc.perform(post("/api/user/auctions/{idCar}/test-drives", car.getIdCar())
+    mockMvc.perform(post("/api/user/auctions/{idCar}/test-drives", car.getIdCar()).with(csrf())
             .contentType(MediaType.APPLICATION_JSON)
             .content("{\"date\":\"" + LocalDate.now() + "\"}")
             .with(user("user123").roles("USER"))
@@ -300,7 +300,7 @@ class MarketplaceFeatureIntegrationTests {
     LocalDate originalDate = LocalDate.now().plusDays(5);
     LocalDate rescheduledDate = originalDate.plusDays(2);
 
-    mockMvc.perform(post("/api/user/auctions/{idCar}/test-drives", car.getIdCar())
+    mockMvc.perform(post("/api/user/auctions/{idCar}/test-drives", car.getIdCar()).with(csrf())
             .contentType(MediaType.APPLICATION_JSON)
             .content("{\"date\":\"" + originalDate + "\"}")
             .with(user("user123").roles("USER"))
@@ -320,7 +320,7 @@ class MarketplaceFeatureIntegrationTests {
         .andExpect(jsonPath("$.bookedTestDrives[*].idTestDrive",
             org.hamcrest.Matchers.hasItem(testDrive.getIdTestDrive())));
 
-    mockMvc.perform(post("/api/user/test-drives/{idTestDrive}/accept", testDrive.getIdTestDrive())
+    mockMvc.perform(post("/api/user/test-drives/{idTestDrive}/accept", testDrive.getIdTestDrive()).with(csrf())
             .with(user("admin123").roles("USER", "ADMIN"))
             .with(csrf()))
         .andExpect(status().isOk())
@@ -328,7 +328,7 @@ class MarketplaceFeatureIntegrationTests {
     assertEquals(TestDriveStatus.ACCEPTED,
         testDriveRepository.findById(testDrive.getIdTestDrive()).orElseThrow().getStatus());
 
-    mockMvc.perform(post("/api/user/test-drives/{idTestDrive}/reschedule", testDrive.getIdTestDrive())
+    mockMvc.perform(post("/api/user/test-drives/{idTestDrive}/reschedule", testDrive.getIdTestDrive()).with(csrf())
             .param("date", rescheduledDate.toString())
             .with(user("user123").roles("USER"))
             .with(csrf()))
@@ -339,7 +339,7 @@ class MarketplaceFeatureIntegrationTests {
     assertEquals(rescheduledDate, rescheduled.getDate());
     assertEquals(TestDriveStatus.PENDING, rescheduled.getStatus());
 
-    mockMvc.perform(post("/api/user/test-drives/{idTestDrive}/cancel", testDrive.getIdTestDrive())
+    mockMvc.perform(post("/api/user/test-drives/{idTestDrive}/cancel", testDrive.getIdTestDrive()).with(csrf())
             .with(user("user123").roles("USER"))
             .with(csrf()))
         .andExpect(status().isOk())

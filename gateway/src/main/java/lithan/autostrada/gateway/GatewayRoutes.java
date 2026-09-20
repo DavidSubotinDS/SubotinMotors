@@ -36,6 +36,8 @@ class GatewayRoutes {
       @Value("${gateway.backend-url}") String backend,
       @Value("${gateway.frontend-url}") String frontend) {
     return builder.routes()
+        .route("csrf", r -> r.path("/api/csrf").and().method(HttpMethod.GET)
+            .filters(f -> f.preserveHostHeader()).uri(backend))
         .route("api", r -> r.path("/api", "/api/**")
             .filters(f -> f.preserveHostHeader()).uri(backend))
         .route("stripe-webhook", r -> r.predicate(e -> "/webhooks/stripe".equals(e.getRequest().getURI().getRawPath()))

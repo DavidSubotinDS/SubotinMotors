@@ -1,5 +1,14 @@
 # Autostrada Auctions React Frontend
 
+S4a: the shared request client obtains `GET /api/csrf`, keeps the token in memory
+and sends `X-CSRF-TOKEN` on unsafe JSON/multipart requests. It refreshes after
+login/logout and stale-token rejection; it never replays a mutation automatically.
+Queued mutations are cancelled after an unexpected session change. Reload
+reacquires a token using the session cookie. FormData boundaries remain browser
+owned. See [contract and coordinated rollout](../docs/session-csrf.md) and
+[actual evidence](../docs/session-csrf-pr.md). The new frontend needs the matching
+backend; do not deploy either half alone.
+
 S3: the [Compose baseline](../docs/docker-compose.md) builds an empty-API-base
 bundle and serves it using non-root Nginx, with SPA fallback and private ingress.
 From this directory `npm run test:compose` builds a unique disposable MySQL stack

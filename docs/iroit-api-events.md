@@ -1,5 +1,15 @@
 # IROIT API, event contracts and business flows
 
+S4a implemented browser contract: `GET /api/csrf` returns only `{token}` with
+`Cache-Control: no-store`, creating/reusing an anonymous backend session.
+All unsafe API/form/multipart requests now require CSRF; exact signed
+`POST /webhooks/stripe` alone is exempt. API rejection is `403` with
+`code: CSRF_INVALID`, `message` and `fieldErrors`. `/api/session` is unchanged.
+Frontend refreshes tokens after authentication transitions and never replays
+mutations automatically. [Full request inventory](session-csrf.md) includes
+legacy compatibility and coordinated rollout. Internal APIs/events below remain
+proposed; there is no extraction or checkout redesign in S4a.
+
 S3 implements the same S2 route contracts over Compose DNS (`backend`, `frontend`)
 and Nginx SPA assets. A single configured public origin supplies redirects, reset
 links and Stripe returns. Exact webhook routing and byte preservation remain S2
@@ -276,7 +286,8 @@ status/attempts locally; no extra delivery event is required without a consumer.
 Identity keeps reset token hash and validity; encrypt the sensitive reset payload
 at rest in outbox/delivery storage, restrict broker access, suppress payload logs,
 and purge at expiry. Use a dedicated TTL/DLQ policy that cannot re-send expired
-reset links. Existing development log-mail behavior is opt-in only.
+reset links. S4a's current development log mode suppresses message contents and
+reset links; SMTP is required for delivery. The future delivery service is proposed.
 
 Outbox polling publishes committed rows with publisher confirms and mandatory
 routing; mark delivered only after confirmation and successful routing. Lost

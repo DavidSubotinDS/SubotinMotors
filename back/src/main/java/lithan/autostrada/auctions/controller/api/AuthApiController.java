@@ -1,6 +1,5 @@
 package lithan.autostrada.auctions.controller.api;
 
-import java.util.List;
 import java.util.Objects;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -14,6 +13,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.authentication.logout.SecurityContextLogoutHandler;
+import org.springframework.security.web.authentication.session.SessionAuthenticationStrategy;
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -41,32 +41,36 @@ public class AuthApiController {
   private final PasswordResetService passwordResetService;
   private final SessionApiController sessionApiController;
   private final UserService userService;
+  private final SessionAuthenticationStrategy apiSessionAuthenticationStrategy;
+  private final HttpSessionSecurityContextRepository securityContextRepository = new HttpSessionSecurityContextRepository();
 
   public AuthApiController(
       AuthenticationManager authenticationManager,
       PasswordResetService passwordResetService,
       SessionApiController sessionApiController,
-      UserService userService) {
+      UserService userService,
+      SessionAuthenticationStrategy apiSessionAuthenticationStrategy) {
     this.authenticationManager = authenticationManager;
     this.passwordResetService = passwordResetService;
     this.sessionApiController = sessionApiController;
     this.userService = userService;
+    this.apiSessionAuthenticationStrategy = apiSessionAuthenticationStrategy;
   }
 
   @PostMapping("/login")
   public UserSessionResponse login(
       @RequestBody LoginRequest request,
-      HttpServletRequest httpRequest) {
+      HttpServletRequest httpRequest,
+      HttpServletResponse httpResponse) {
     requireText(request.username(), "Username is required");
     requireText(request.password(), "Password is required");
     Authentication authentication = authenticationManager.authenticate(
         new UsernamePasswordAuthenticationToken(request.username(), request.password()));
+    apiSessionAuthenticationStrategy.onAuthentication(authentication, httpRequest, httpResponse);
     SecurityContext context = SecurityContextHolder.createEmptyContext();
     context.setAuthentication(authentication);
     SecurityContextHolder.setContext(context);
-    httpRequest.getSession(true).setAttribute(
-        HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY,
-        context);
+    securityContextRepository.saveContext(context, httpRequest, httpResponse);
     return sessionApiController.session(authentication);
   }
 

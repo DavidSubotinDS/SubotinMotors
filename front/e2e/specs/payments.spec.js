@@ -1,4 +1,4 @@
-import { test, expect, login, fill, json, address, saveAddress, startStoreCheckout,
+import { test, expect, mutate, login, fill, json, address, saveAddress, startStoreCheckout,
   signedEvent, sendEvent, providerPage, gateway } from '../fixtures.js';
 
 test('shipping address, cart, signed payment result, order snapshots and admin item details', async ({ page, fixtures }) => {
@@ -12,10 +12,10 @@ test('shipping address, cart, signed payment result, order snapshots and admin i
   await page.goto('/cart');
   await expect(page.getByText('Shipping address needed', { exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Checkout', exact: true })).toBeDisabled();
-  expect((await page.request.post('/api/store/checkout')).status()).toBe(400);
+  expect((await mutate(page, 'POST', '/api/store/checkout')).status()).toBe(400);
   const item = (await json(page, '/api/store/cart')).items[0];
   await login(page, 'other');
-  expect((await page.request.post(`/api/store/cart/items/${item.idCartItem}/remove`)).status()).toBe(404);
+  expect((await mutate(page, 'POST', `/api/store/cart/items/${item.idCartItem}/remove`)).status()).toBe(404);
   await login(page);
   await page.goto('/user/profile/edit');
   await fill(page, address);
@@ -51,7 +51,7 @@ test('shipping address, cart, signed payment result, order snapshots and admin i
   await expect(page.getByRole('heading', { name: `Order #${order.idOrder}` })).toBeVisible();
   await expect(page.getByRole('row').filter({ hasText: 'E2E-FILTER' })).toContainText('E2E Oil Filter');
   // Editing today's profile must not rewrite the order's shipping snapshot.
-  await expect(await page.request.put('/api/user/profile', { data: { ...address, streetAddress: '99 Changed Street' } })).toBeOK();
+  await expect(await mutate(page, 'PUT', '/api/user/profile', { data: { ...address, streetAddress: '99 Changed Street' } })).toBeOK();
   expect((await json(page, `/api/store/orders/${order.idOrder}`)).shippingAddress).toBe(order.shippingAddress);
   await login(page, 'other');
   expect((await page.request.get(lookup)).status()).toBe(404);
@@ -72,7 +72,7 @@ test('shipping address, cart, signed payment result, order snapshots and admin i
 test('cancel return and unpaid completion never pay; signed expiry restores stock and displays expired', async ({ page, fixtures }) => {
   await login(page);
   await saveAddress(page);
-  await expect(await page.request.post('/api/store/cart/items', { data: { idPart: 1, quantity: 1 } })).toBeOK();
+  await expect(await mutate(page, 'POST', '/api/store/cart/items', { data: { idPart: 1, quantity: 1 } })).toBeOK();
   const session = await startStoreCheckout(page);
   const lookup = `/api/store/checkout/success?session_id=${session}`;
   await page.getByRole('link', { name: 'Cancel checkout' }).click();
@@ -99,7 +99,7 @@ test('cancel return and unpaid completion never pay; signed expiry restores stoc
 
 test('listing deposit return is read-only; signed success reserves the listing without selling it', async ({ page, fixtures }) => {
   await login(page, 'seller');
-  expect((await page.request.post('/api/user/listings/1/deposit')).status()).toBe(400);
+  expect((await mutate(page, 'POST', '/api/user/listings/1/deposit')).status()).toBe(400);
   await login(page);
   await providerPage(page, { deposit: true });
   await page.goto('/listings/1');
@@ -113,7 +113,7 @@ test('listing deposit return is read-only; signed success reserves the listing w
   expect((await json(page, '/api/public/listings/1')).listing.status).toBe('RESERVED');
   await login(page, 'other');
   expect((await page.request.get(lookup)).status()).toBe(404);
-  expect((await page.request.post('/api/user/listings/1/deposit')).status()).toBe(400);
+  expect((await mutate(page, 'POST', '/api/user/listings/1/deposit')).status()).toBe(400);
   await login(page);
   const event = signedEvent(session, fixtures.stripeApiVersion, 'checkout.session.completed', 'paid', 'evt_e2e_deposit');
   await sendEvent(page, event);

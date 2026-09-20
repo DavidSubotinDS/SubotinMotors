@@ -13,6 +13,6 @@ public class LoggingEmailService implements EmailService {
 
   @Override
   public void send(String to, String subject, String body) {
-    logger.info("Local email to={} subject={} body={}", to, subject, body);
+    logger.info("Local email suppressed (log mode); configure SMTP to deliver account recovery mail.");
   }
 }

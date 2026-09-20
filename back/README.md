@@ -1,5 +1,13 @@
 # Autostrada Auctions Backend
 
+S4a: backend remains sole session owner. `GET /api/csrf` creates/reuses an
+anonymous session and returns non-cacheable `{token}`. All unsafe API/legacy
+requests require `X-CSRF-TOKEN` (or legacy `_csrf` body field); only exact signed
+`POST /webhooks/stripe` is exempt. API/form login rotate JSESSIONID and invalidate
+old tokens. `/api/session` stays unchanged. See [contract/runbook](../docs/session-csrf.md)
+and [evidence](../docs/session-csrf-pr.md). No schema changes. Log-mail no longer
+prints reset links; configure SMTP to deliver mail. S4b remains next.
+
 S3: [container/MySQL runbook](../docs/docker-compose.md). `Dockerfile` defaults to
 the non-root production JAR target. Compose activates `mysql,gateway,container`
 on private ingress, uses MySQLDialect with Hibernate validation, and exposes

@@ -1,5 +1,13 @@
 # IROIT target architecture and decision record
 
+Current S4a working-tree status (2026-09-20): S3 is merged as `8d13104`; Backend
+and Frontend passed on that exact commit. [S4a](session-csrf.md) implements the
+session-backed CSRF endpoint, all unsafe request validation, API/form session
+rotation and coordinated frontend recovery in the existing backend. See
+[measured evidence](session-csrf-pr.md). No S4a commit/merge is claimed. Next is
+S4b identity boundary preparation; the five-service target remains proposed.
+The dated S3 and design-stage paragraphs below are historical records.
+
 Implementation status, S3 (2026-09-19): S2 merged as `a08cb14`, with successful
 Backend/Frontend checks on that exact master commit. [S3 container baseline](docker-compose.md)
 adds gateway, private frontend assets/backend and persistent MySQL; backend remains
@@ -52,7 +60,7 @@ requirements from their claims of readiness.
 | REST, RabbitMQ and meaningful nonblocking reactive service-to-service interaction | Explicit deliverable in this task; exact course wording unavailable | Demonstrate all three with business flows in the contracts document |
 | Preserve React functionality; gateway first is encouraged; explicit ownership; tests, containers, CI, observability per service; E2E before critical changes | Explicit user instructions | Migration gates, not optional cleanup after extraction |
 | Java 17, Boot 3.5.15, Maven, MVC/JPA/Flyway, React/Vite, H2 tests and MySQL profile | Verified code/configuration | Retain initially; choose compatible Spring Cloud versions in the gateway task |
-| Sessions, credentialed CORS, API CSRF exemption, signed Stripe webhooks | Verified code | Account for each explicitly in security and payment migration |
+| Sessions, credentialed CORS, signed Stripe webhooks | Verified code | S4a removes the historical API CSRF exemption; retain session/role/ownership boundaries |
 | Docker/Compose, CD and complete observability | Requested implementation planning; no course detail available | Plan concrete delivery/evidence stages; hosting platform and exact telemetry rubric remain open |
 | Required CI checks `Backend` and `Frontend` on `master` | User-reported protection; workflow job names verified | Preserve these names or migrate protection deliberately; never silently bypass new services |
 | Five schemas, outbox/inbox, session exchange, reactive checkout review | Design choices in this proposal | Review through implementation PRs; not claimed as course mandates |
@@ -153,9 +161,10 @@ approval directly accepts the bid and marks its car sold within marketplace.
 | Health and correlated logs from first container; metrics/traces when communication appears | Debug route/auth/message failures while extracting. Final small observability profile: Prometheus, Grafana and a trace backend such as Tempo |
 | Short write freeze for course data cutovers | Deterministic export/import and recovery are practical. Zero-downtime dual writes are not a requirement supplied here |
 
-No application behavior is changed in this task. Later PRs that introduce CSRF
-tokens, asynchronous pending states or a one-time re-login must ship matching
-frontend support and E2E evidence together. Keep familiar screens and actions;
+The original architecture task changed no application behavior. S4a now ships
+CSRF tokens with matching frontend and E2E evidence. Later asynchronous pending
+states or identity-cutover re-login must likewise ship matching frontend support.
+Keep familiar screens and actions;
 do not expose internal service terminology in the UI.
 
 ## Open questions to carry forward
@@ -175,5 +184,5 @@ do not expose internal service terminology in the UI.
 
 The [browser E2E implementation and evidence](browser-e2e.md) now tests the current
 monolith through the S2 gateway; the service target architecture remains proposed.
-After S3 merges and its remaining gates pass, next is S4 session/CSRF foundation.
+After S4a merges with successful merged-master checks, next is S4b identity boundary preparation.
 The owner can create the baseline tag independently using the verified SHA.

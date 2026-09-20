@@ -1,5 +1,11 @@
 # IROIT incremental migration and implementation backlog
 
+Current S4a status (2026-09-20): S3 merged as `8d13104` with successful exact-commit
+Backend/Frontend checks. S4a Phase B is implemented in the working tree; see
+[contract](session-csrf.md) and [verification/handoff](session-csrf-pr.md).
+No S4a commit/push/merge or remote check success is assumed. **Next: S4b identity
+boundary preparation**. Subsequent dated status paragraphs are historical.
+
 Current implementation status (2026-09-19): S1 and S2 are merged; fetched master
 is `a08cb14`, with successful merged-master Backend/Frontend CI including gateway
 container/browser checks. S3 is implemented on the requested Compose branch;
@@ -133,6 +139,14 @@ explicit health/readiness; bootstrap demo data only deliberately.
   added until S6 has its first consumer.
 
 ## S4 - Session/CSRF and identity boundary preparation
+
+S4a now implements the first bullet below only: backend-owned session CSRF,
+API/form login rotation, frontend lifecycle and negative/browser tests. It keeps
+all current tables, JPA relationships, services and the S3 deployment model.
+Common S4a gates are recorded in [its handoff](session-csrf-pr.md); identity
+repository isolation, scalar references and profile clients belong to **S4b** and
+are not claimed complete by CSRF tests. New service/schema criteria are not
+applicable to S4a; existing builds, topology, MySQL, browser and recovery remain.
 
 Use two focused PRs if needed: browser CSRF/session hardening, then identity
 reference adapters. Both precede identity data cutover.

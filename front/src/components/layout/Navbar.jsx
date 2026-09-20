@@ -1,13 +1,23 @@
 import { NavLink } from 'react-router-dom';
+import { useState } from 'react';
 import { LogIn, LogOut } from 'lucide-react';
 
 import { authApi } from '../../services/reactApi.js';
 import Button from '../ui/Button.jsx';
 
 export default function Navbar({ session }) {
+  const [error, setError] = useState('');
+  const [signingOut, setSigningOut] = useState(false);
   async function logout() {
-    await authApi.logout();
-    window.location.href = '/';
+    setSigningOut(true);
+    setError('');
+    try {
+      await authApi.logout();
+      window.location.href = '/';
+    } catch (failure) {
+      setError(failure.message);
+      setSigningOut(false);
+    }
   }
 
   return (
@@ -30,7 +40,7 @@ export default function Navbar({ session }) {
         {session.authenticated ? (
           <>
             <span className="session-pill">{session.displayName || session.username}</span>
-            <Button onClick={logout} icon={LogOut} variant="ghost">
+            <Button onClick={logout} disabled={signingOut} icon={LogOut} variant="ghost">
               Logout
             </Button>
           </>
@@ -40,6 +50,7 @@ export default function Navbar({ session }) {
           </Button>
         )}
       </div>
+      {error && <p role="alert">{error}</p>}
     </header>
   );
 }

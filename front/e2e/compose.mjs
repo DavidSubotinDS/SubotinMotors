@@ -135,11 +135,25 @@ try {
   await checkHttp('/webhooks/stripe/extra', 404, { method: 'POST' });
   await checkHttp('/webhooks/stripe', 404);
   await checkHttp('/assets/missing.js', 404);
+  const anonymous = await checkHttp('/api/csrf');
+  assert.equal(anonymous.headers.get('cache-control'), 'no-store');
+  const anonymousCookie = anonymous.headers.get('set-cookie').split(';')[0];
+  const anonymousToken = (await anonymous.json()).token;
+  await checkHttp('/api/auth/login', 403, { method: 'POST', headers: { Cookie: anonymousCookie,
+    'Content-Type': 'application/json' }, body: '{}' });
   const login = await checkHttp('/api/auth/login', 200, { method: 'POST',
-    headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: 'demo_bidder', password: 'demo123' }) });
+    headers: { 'Content-Type': 'application/json', Cookie: anonymousCookie, 'X-CSRF-TOKEN': anonymousToken },
+    body: JSON.stringify({ username: 'demo_bidder', password: 'demo123' }) });
   const cookie = login.headers.get('set-cookie');
   assert.match(cookie, /JSESSIONID=/); assert.match(cookie, /HttpOnly/i); assert.match(cookie, /SameSite=Lax/i);
   assert.match(cookie, /Path=\//i); assert.doesNotMatch(cookie, /Domain=|;\s*Secure/i);
+  assert.ok(cookie.split(';')[0] !== anonymousCookie, 'Login must rotate the anonymous session');
+  const oldSession = await checkHttp('/api/session', 200, { headers: { Cookie: anonymousCookie } });
+  assert.equal((await oldSession.json()).authenticated, false);
+  const signedInCookie = cookie.split(';')[0];
+  await checkHttp('/api/auth/logout', 403, { method: 'POST', headers: { Cookie: signedInCookie, 'X-CSRF-TOKEN': anonymousToken } });
+  const freshCsrf = await checkHttp('/api/csrf', 200, { headers: { Cookie: signedInCookie } });
+  const signedInToken = (await freshCsrf.json()).token;
   const cors = await checkHttp('/api/session', 200, { method: 'OPTIONS',
     headers: { Origin: env.PUBLIC_URL, 'Access-Control-Request-Method': 'GET' } });
   // Same-origin requests need no CORS response headers. Compose permits no
@@ -149,14 +163,15 @@ try {
   await checkHttp('/api/session', 403, { headers: { Origin: 'https://untrusted.invalid' } });
   const redirect = await checkHttp('/cars', 302, { headers: { 'X-Forwarded-Host': 'untrusted.invalid', 'X-Forwarded-Proto': 'https' } });
   assert.equal(new URL(redirect.headers.get('location')).origin, env.PUBLIC_URL);
-  await checkHttp('/api/auth/password-reset', 200, { method: 'POST', headers: { 'Content-Type': 'application/json' },
+  await checkHttp('/api/auth/password-reset', 200, { method: 'POST', headers: { 'Content-Type': 'application/json',
+    Cookie: signedInCookie, 'X-CSRF-TOKEN': signedInToken },
     body: JSON.stringify({ identifier: 'demo_bidder' }) });
   const resetLogs = (await compose(['logs', '--no-color', 'backend'], { log: false })).stdout;
-  const resetUrl = resetLogs.match(/https?:\/\/[^\s]+\/reset-password\?token=[^\s]+/)?.[0];
-  assert.ok(resetUrl, 'Log-mail reset link missing'); assert.equal(new URL(resetUrl).origin, env.PUBLIC_URL);
-  assert.equal((await (await checkHttp('/api/auth/password-reset/valid' + new URL(resetUrl).search)).json()).valid, true);
+  assert.ok(!/reset-password\?token=/.test(resetLogs), 'Reset links must not enter application logs');
+  assert.equal(await value('SELECT COUNT(*) FROM tb_password_reset_token'), '1');
+  await checkHttp('/api/auth/logout', 200, { method: 'POST', headers: { Cookie: signedInCookie, 'X-CSRF-TOKEN': signedInToken } });
   await record('Production images started non-root; private service ports, SPA/API/exact webhook routing and all 18 MySQL migrations verified.');
-  await record('Production cookie attributes, same-origin CORS/cross-origin refusal, trusted redirect origin and password-reset link verified.');
+  await record('Production cookie attributes, login rotation/old-session rejection, CSRF, logout, CORS, trusted redirects and reset request without secret logging verified.');
 
   // Real MySQL checks: grants, unique/FK/CHECK enforcement, and a competing row lock.
   assert.notEqual((await sql('SELECT * FROM mysql.user', { allowFailure: true })).code, 0);

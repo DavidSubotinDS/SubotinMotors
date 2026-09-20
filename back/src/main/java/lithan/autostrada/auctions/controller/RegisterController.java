@@ -88,14 +88,13 @@ public class RegisterController {
       return "redirect:/register/account?duplicate=" + duplicate;
     }
 
+    session.invalidate();
     return "redirect:/register/thank-you";
   }
 
   // Thank You
   @GetMapping("thank-you")
-  public String thankYou(HttpSession session) {
-    session.invalidate();
-
+  public String thankYou() {
     return "thank-you";
   }
 }

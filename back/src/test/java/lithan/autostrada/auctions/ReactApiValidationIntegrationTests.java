@@ -1,6 +1,7 @@
 package lithan.autostrada.auctions;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -49,7 +50,7 @@ class ReactApiValidationIntegrationTests {
 
   @Test
   void registrationLoginAndLogoutWorkThroughTheApiSession() throws Exception {
-    mockMvc.perform(post("/api/auth/register").contentType(MediaType.APPLICATION_JSON)
+    mockMvc.perform(post("/api/auth/register").with(csrf()).contentType(MediaType.APPLICATION_JSON)
             .content(objectMapper.writeValueAsBytes(registration())))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.redirectUrl").value("/login"));
@@ -60,7 +61,7 @@ class ReactApiValidationIntegrationTests {
     assertThat(account.getRoles()).extracting(role -> role.getRole()).containsExactly("ROLE_USER");
     assertThat(account.getProfile().getFirstName()).isEqualTo("Api");
 
-    var login = mockMvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON)
+    var login = mockMvc.perform(post("/api/auth/login").with(csrf()).contentType(MediaType.APPLICATION_JSON)
             .content("{\"username\":\"api_driver\",\"password\":\"secret123\"}"))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.authenticated").value(true))
@@ -71,7 +72,7 @@ class ReactApiValidationIntegrationTests {
     mockMvc.perform(get("/api/user/workspace").session(session))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.profile.username").value("api_driver"));
-    mockMvc.perform(post("/api/auth/logout").session(session))
+    mockMvc.perform(post("/api/auth/logout").with(csrf()).session(session))
         .andExpect(status().isOk());
     assertThat(session.isInvalid()).isTrue();
     mockMvc.perform(get("/api/user/workspace"))
@@ -84,7 +85,7 @@ class ReactApiValidationIntegrationTests {
     long count = userRepository.count();
     var request = registration();
     request.put(field, value);
-    mockMvc.perform(post("/api/auth/register").contentType(MediaType.APPLICATION_JSON)
+    mockMvc.perform(post("/api/auth/register").with(csrf()).contentType(MediaType.APPLICATION_JSON)
             .content(objectMapper.writeValueAsBytes(request)))
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.fieldErrors." + field).isNotEmpty());
@@ -100,7 +101,7 @@ class ReactApiValidationIntegrationTests {
     var creation = mockMvc.perform(multipart("/api/user/auctions").file(image)
             .param("make", "Api").param("model", "Roadster").param("year", "2025")
             .param("price", "10000").param("auctionEndTime", endTime.toString())
-            .with(user("user123").roles("USER")))
+            .with(csrf()).with(user("user123").roles("USER")))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.status").value("PENDING"))
         .andReturn();
@@ -108,18 +109,18 @@ class ReactApiValidationIntegrationTests {
     var request = new LinkedHashMap<String, Object>(Map.of(
         "make", "Api", "model", "Roadster", "year", "2025", "price", 0,
         "auctionEndTime", endTime.toString()));
-    mockMvc.perform(put("/api/user/auctions/{id}", id).with(user("user123").roles("USER"))
+    mockMvc.perform(put("/api/user/auctions/{id}", id).with(csrf()).with(user("user123").roles("USER"))
             .contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsBytes(request)))
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.fieldErrors.price").isNotEmpty());
     assertThat(carRepository.findById(id).orElseThrow().getPrice()).isEqualTo(10000);
 
     request.put("price", 11000);
-    mockMvc.perform(put("/api/user/auctions/{id}", id).with(user("demo_bidder").roles("USER"))
+    mockMvc.perform(put("/api/user/auctions/{id}", id).with(csrf()).with(user("demo_bidder").roles("USER"))
             .contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsBytes(request)))
         .andExpect(status().isForbidden());
     assertThat(carRepository.findById(id).orElseThrow().getPrice()).isEqualTo(10000);
-    mockMvc.perform(put("/api/user/auctions/{id}", id).with(user("user123").roles("USER"))
+    mockMvc.perform(put("/api/user/auctions/{id}", id).with(csrf()).with(user("user123").roles("USER"))
             .contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsBytes(request)))
         .andExpect(status().isOk()).andExpect(jsonPath("$.price").value(11000));
     assertThat(carRepository.findById(id).orElseThrow().getPrice()).isEqualTo(11000);

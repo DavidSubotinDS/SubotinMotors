@@ -1,12 +1,20 @@
 # IROIT authentication and authorization design
 
-S3 adds private container ingress, schema-scoped DB credentials, runtime secret
+Current S4a implementation (2026-09-20): **Phase B is implemented in the working
+tree**, with [contract/runbook](session-csrf.md) and [actual evidence](session-csrf-pr.md).
+S3 merged as `8d13104` with successful exact-commit Backend/Frontend checks.
+Backend remains sole session owner; JSESSIONID and the S3 topology are retained.
+S4b identity boundary work is next; Phase C, target cookie rename, session exchange
+and internal assertions remain proposed. Dated S2/S3 paragraphs describe history.
+
+Historical S3 added private container ingress, schema-scoped DB credentials, runtime secret
 injection and explicit demo-data acknowledgement. Production images exclude test
 controls; only the isolated harness publishes a random loopback control port.
 Compose makes current JSESSIONID HttpOnly/host-only/Path=/ and SameSite=Lax explicit,
 with Secure configurable for HTTPS (local HTTP default false). Backend is still
-the sole session/authorization owner. API CSRF exemptions and legacy enforcement
-are preserved; Phase B/C remain S4+ proposals. See [container runbook](docker-compose.md).
+the sole session/authorization owner. At S3, API CSRF exemptions and legacy
+enforcement were preserved; Phase B/C were proposals. S4a implements Phase B
+as described above. See [container runbook](docker-compose.md).
 
 S2 implementation status: Phase A below is implemented by the
 [pass-through gateway](../gateway/README.md). The backend remains the sole
@@ -15,25 +23,29 @@ behavior. Gateway sanitizes forwarding/identity headers and creates forwarding
 values from its configured public origin, owns precise API CORS, and streams
 webhook bytes untouched. Backend forwarding/log correlation are opt-in via the
 `gateway` profile on private ingress; test controls are not gateway-routable.
-Phase B/C, the target cookie name, JWT assertions and session exchange remain
-proposals for S4+, not protections claimed by S2.
+Phase B/C, the target cookie name, JWT assertions and session exchange were
+proposals at S2. Only Phase B is now implemented; no S2 protection is inferred.
 
-Status: proposed staged design. No security configuration changes are performed
-by this documentation task. See [migration stages](iroit-migration-plan.md).
+The original document was a proposed staged design. Phase A/B now have
+implementation evidence; Phase C remains proposed. See [migration stages](iroit-migration-plan.md).
 
-## Verified current boundary
+## Verified S4a boundary
 
 - [SecurityConfig](../back/src/main/java/lithan/autostrada/auctions/config/SecurityConfig.java)
   configures Spring Security sessions/form login, BCrypt, USER/ADMIN route
   permissions, credentialed CORS for configured React origins, API JSON 401/403,
-  and public signed webhooks. CSRF currently ignores **all `/api/**`** as well
-  as `/webhooks/stripe`; legacy unsafe forms otherwise use Spring CSRF behavior.
+  and public signed webhooks. CSRF uses HttpSession storage and default masked
+  tokens. Only exact `POST /webhooks/stripe` is exempt; all API and legacy unsafe
+  actions are protected, including anonymous login/registration/password reset.
 - [AuthApiController](../back/src/main/java/lithan/autostrada/auctions/controller/api/AuthApiController.java)
-  authenticates login and stores `SecurityContext` in `HttpSession`. API logout
-  invalidates it. The login method does not explicitly rotate the session ID;
-  add/verify session fixation protection in the security foundation stage.
+  invokes framework session-ID rotation and CSRF cleanup before explicitly saving
+  `SecurityContext`. API logout invalidates the session. Form login/logout retain
+  the framework lifecycle; old identifiers/tokens are rejected by regression tests.
 - [Frontend client](../front/src/api/client.js) sends cookies with
-  `credentials: 'include'` and currently supplies no CSRF header.
+  `credentials: 'include'` and `X-CSRF-TOKEN` on every unsafe request. It stores
+  the token only in memory, refreshes after login/logout/stale-token rejection,
+  and never automatically replays mutations. Queued work is cancelled on an
+  unexpected session change. Ordinary role/ownership failures remain distinct.
 - Existing session response is `{authenticated,username,displayName,roles}`.
   The browser must retain this contract and never receive password/email data
   through this DTO. Profile APIs have their own authorized fields.
@@ -59,6 +71,12 @@ internal authentication headers before constructing its own values. Preserve
 the raw Stripe body and `Stripe-Signature`; no JSON rewrite/body logging.
 
 ## Phase B: secure browser boundary before extraction
+
+Implemented by S4a; the following is the original design contract. Actual masked
+token format, explicit-user retry behavior and coordinated rollout are documented
+in [S4a](session-csrf.md). The legacy thank-you GET no longer invalidates sessions;
+that action moved to successful protected registration POST. Log-mail now omits
+message contents/reset links; use SMTP for delivery, or the private test mailbox.
 
 Add `GET /api/csrf` to the current session owner. It creates/uses an anonymous
 session and returns a CSRF token in a non-cacheable response; the expected token

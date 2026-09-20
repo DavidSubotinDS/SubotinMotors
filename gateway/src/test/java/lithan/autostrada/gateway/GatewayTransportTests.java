@@ -89,6 +89,16 @@ class GatewayTransportTests {
         .expectHeader().valueEquals("Set-Cookie", "JSESSIONID=; Path=/; Max-Age=0; HttpOnly");
   }
 
+  @Test void csrfEndpointAndHeaderReachTheBackend() throws Exception {
+    client.get().uri("/api/csrf").exchange().expectStatus().isOk();
+    assertThat(received().uri()).isEqualTo("/api/csrf");
+    client.post().uri("/api/auth/login").header("X-CSRF-TOKEN", "transport-fixture")
+        .header("Cookie", "JSESSIONID=fixture").bodyValue("{}").exchange().expectStatus().isOk();
+    var request = received();
+    assertThat(request.headers().get("X-CSRF-TOKEN")).isEqualTo("transport-fixture");
+    assertThat(request.headers().get("Cookie")).isEqualTo("JSESSIONID=fixture");
+  }
+
   @Test void preservesRawSignedWebhookIncludingWhitespaceUtf8AndChunkBoundaries() throws Exception {
     byte[] body = "{\r\n  \"name\":\"Đorđe\", \"number\":1.00\r\n}\n".getBytes(StandardCharsets.UTF_8);
     var buffers = new org.springframework.core.io.buffer.DefaultDataBufferFactory();
@@ -141,9 +151,10 @@ class GatewayTransportTests {
 
   @Test void corsHasOnePreciseCredentialCompatibleOwner() throws Exception {
     client.options().uri("/api/user/profile").header("Origin", "http://localhost:5173")
-        .header("Access-Control-Request-Method", "PUT").header("Access-Control-Request-Headers", "Content-Type")
+        .header("Access-Control-Request-Method", "PUT").header("Access-Control-Request-Headers", "Content-Type,X-CSRF-TOKEN")
         .exchange().expectStatus().isOk().expectHeader().valueEquals("Access-Control-Allow-Origin", "http://localhost:5173")
-        .expectHeader().valueEquals("Access-Control-Allow-Credentials", "true");
+        .expectHeader().valueEquals("Access-Control-Allow-Credentials", "true")
+        .expectHeader().value("Access-Control-Allow-Headers", value -> assertThat(value.toLowerCase()).contains("x-csrf-token"));
     assertThat(requests).isEmpty();
     client.get().uri("/api/session").header("Origin", "http://localhost:5173").exchange().expectStatus().isOk()
         .expectHeader().valueEquals("Access-Control-Allow-Origin", "http://localhost:5173");

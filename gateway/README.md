@@ -1,5 +1,11 @@
 # Autostrada pass-through gateway (IROIT S2)
 
+S4a: an explicit `GET /api/csrf` route reaches the existing backend session owner.
+All API/legacy unsafe requests are now backend-CSRF protected except exact signed
+`POST /webhooks/stripe`. Cookie and `X-CSRF-TOKEN` transport and CORS are tested;
+gateway still owns no session or token store. [Contract](../docs/session-csrf.md),
+[evidence and rollout](../docs/session-csrf-pr.md). S2/S3 passages below are historical.
+
 S3: [Compose startup and recovery](../docs/docker-compose.md) now supplies private
 backend/frontend/MySQL peers and reuses this image with pinned base digests.
 The native instructions below remain available; historical S2-only limits should
@@ -33,6 +39,7 @@ Queries are forwarded as received; no path rewriting or body filters are used.
 | Priority / route | Destination and methods |
 | --- | --- |
 | Local private guard | `/__*`, `/internal/**`, and actuator endpoints other than the three health URLs return 404; never proxy test controls |
+| `csrf` | GET `/api/csrf`, backend; precedes general API routing |
 | `api` | `/api`, `/api/**`, every method, backend; unknown API paths/errors never become SPA HTML |
 | `stripe-webhook` | **POST `/webhooks/stripe` only**, backend; other methods and suffixes are not routed |
 | `spa` | GET/HEAD canonical React pages: root/auth/static pages; `/auctions`, `/listings`, `/parts` and their detail IDs; cart/orders/details; profiles; both checkout success pages; canonical user/admin screens and supported edit pages |
@@ -65,8 +72,8 @@ Backend profile `gateway` opts into framework forwarding and binds to loopback.
 Only use forwarding support behind this private boundary. Container backends
 will need private-network binding in S3, not a public backend port.
 Cookie/Set-Cookie, including multiple headers and expiry attributes, pass through.
-Opaque JSESSIONID authentication, backend roles/ownership, API CSRF exemption,
-legacy CSRF enforcement and signed webhook verification remain unchanged.
+Opaque JSESSIONID authentication and backend roles/ownership remain. S4a enforces
+API/legacy CSRF and login rotation while preserving signed webhook verification.
 
 Gateway owns API CORS: exact `GATEWAY_ALLOWED_ORIGINS` plus public origin,
 credentials, explicit methods and Content-Type/X-CSRF-TOKEN/Idempotency-Key/

@@ -4,6 +4,7 @@ import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.nullValue;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -62,7 +63,7 @@ class ReactApiSmokeTests {
 
   @Test
   void apiAuthenticationFailuresReturnJsonErrors() throws Exception {
-    mockMvc.perform(post("/api/auth/login")
+    mockMvc.perform(post("/api/auth/login").with(csrf())
             .contentType(MediaType.APPLICATION_JSON)
             .content("{\"username\":\"admin123\",\"password\":\"wrong\"}"))
         .andExpect(status().isUnauthorized())

@@ -1,5 +1,11 @@
 # IROIT source inventory and data ownership
 
+S4a: backend still owns the only session, CSRF repository and security decisions.
+`SessionApiController` now also owns `GET /api/csrf`; API and form login rotate
+session ID and clear the old token. No entity/repository/table ownership or
+Flyway history changed. [Request inventory and lifecycle](session-csrf.md).
+S4b scalar identity references/profile clients remain unimplemented and next.
+
 S3 implemented topology: [Compose](docker-compose.md) places the same backend
 and unchanged V1-V18 migration history in one MySQL schema. Only backend receives
 that schema's credential; MySQL root credentials stay with MySQL. Gateway and

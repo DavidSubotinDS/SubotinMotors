@@ -1,5 +1,9 @@
 # S3 container and MySQL runbook
 
+S4a uses the same topology and adds [session/CSRF protection](session-csrf.md).
+Deploy frontend/backend/gateway as one compatible revision; preserve MySQL data.
+Current measured gates and Docker status are in [S4a handoff](session-csrf-pr.md).
+
 The implemented topology is browser -> gateway -> frontend assets or the existing
 backend -> MySQL. Backend alone owns sessions, authorization, business operations,
 Flyway and payments. There is one backend instance and one schema. No business
@@ -83,7 +87,7 @@ Use fresh terminals to avoid inherited environment variables overriding the env 
 | `APP_DEMO_DATA_ACK` | Exact `I_ACCEPT_EXISTING_DEMO_DATA` acknowledgement; production entrypoint refuses any other value |
 | `SESSION_COOKIE_SECURE` | False for local HTTP; true with an actual external HTTPS origin/terminator |
 | `STRIPE_ENABLED`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` | Disabled by default; sandbox runtime values only, no real provider needed for CI |
-| `APP_MAIL_MODE`, `APP_MAIL_FROM`, `SMTP_*` | Existing log-mail default or explicit SMTP. Log-mail contains reset links; keep logs private |
+| `APP_MAIL_MODE`, `APP_MAIL_FROM`, `SMTP_*` | Default log mode suppresses contents/links; use SMTP for actual recovery delivery |
 
 The gateway strips forged forwarding/identity headers and constructs forwarding
 from PUBLIC_URL. The backend enables trusted forwarding only on private ingress
@@ -91,8 +95,9 @@ with profiles `mysql,gateway,container`. API CORS permits exactly PUBLIC_URL,
 with credentials, using existing gateway rules. There is no wildcard and no
 duplicate backend CORS. Keep one host spelling; localhost and 127.0.0.1 differ.
 JSESSIONID remains host-only, Path=/, HttpOnly, SameSite=Lax; backend restart
-expires in-memory sessions and requires login again. API CSRF exemptions and
-legacy form CSRF checks remain unchanged. Session rotation/CSRF redesign is S4.
+expires in-memory sessions and requires login again. S4a requires CSRF tokens for
+all unsafe API/legacy actions and rotates session ID on login. Exact signed
+POST `/webhooks/stripe` alone is exempt. See [token lifecycle](session-csrf.md).
 
 Nginx serves SPA fallback for page navigation, never for API/webhook/private
 prefixes or missing assets. The gateway's explicit route catalogue still controls
@@ -123,8 +128,8 @@ startup. Investigate Flyway's version/checksum and first SQL exception instead.
 Health: `/actuator/health/liveness` checks gateway process; readiness checks both
 upstreams. Backend probes are private and distinguish process from DB readiness.
 Gateway/backend logs share a generated request ID and omit request bodies/queries.
-Full metrics/tracing dashboards remain S12. MySQL credentials and reset-link logs
-must not be shared in diagnostics.
+Full metrics/tracing dashboards remain S12. MySQL credentials must not be shared
+in diagnostics; reset links and mail contents are no longer logged.
 
 For intentional host diagnostics only, add `-f compose.yaml -f compose.diagnostics.yaml`
 to the same commands. This publishes backend 18080, frontend 15173 and MySQL 13306

@@ -1,4 +1,4 @@
-import { test, expect, login, fill, json, password, vehicleImage, gateway } from '../fixtures.js';
+import { test, expect, mutate, login, fill, json, password, vehicleImage, gateway } from '../fixtures.js';
 
 test('register, reject bad login, reuse the session across pages/reload, and invalidate logout', async ({ page }) => {
   expect((await page.request.get('/api/user/profile')).status()).toBe(401);
@@ -41,7 +41,7 @@ test('USER cannot use admin routes or another seller’s auction/listing mutatio
   // Existing legacy CSRF behavior is still enforced by Spring Security behind the proxy.
   expect((await page.request.post('/user/listings/1/deactivate', { form: {} })).status()).toBe(403);
   for (const path of ['/api/user/auctions/1/deactivate', '/api/user/listings/1/deactivate', '/api/admin/cars/1/deactivate']) {
-    expect((await page.request.post(path)).status(), path).toBe(403);
+    expect((await mutate(page, 'POST', path)).status(), path).toBe(403);
   }
   await page.goto('/user/auctions/1/edit');
   await expect(page.getByText('You do not have permission to perform this action.', { exact: true })).toBeVisible();
@@ -67,7 +67,7 @@ test('seller creates and edits an auction with an image; admin approves it', asy
   await fill(page, { model: 'Roadster Edited', auctionEndTime: '2030-06-21T12:00' });
   await page.getByRole('button', { name: 'Save', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Browser Roadster Edited', exact: true })).toBeVisible();
-  const oversized = await page.request.post('/api/user/profile/picture', { multipart: {
+  const oversized = await mutate(page, 'POST', '/api/user/profile/picture', { multipart: {
     imageFile: { name: 'too-large.png', mimeType: 'image/png',
       buffer: Buffer.concat([vehicleImage.buffer, Buffer.alloc(6 * 1024 * 1024)]) },
   } });
@@ -97,7 +97,7 @@ test('bid minimum, self-bid denial and exact auction deadline are enforced by th
   await page.getByRole('spinbutton', { name: 'Bid amount' }).fill('10000');
   await page.getByRole('button', { name: 'Bid', exact: true }).click();
   await expect(page.getByRole('alert')).toContainText('whole-number bid');
-  expect((await page.request.post('/api/user/auctions/1/bid', { data: { bidPrice: 10000 } })).status()).toBe(400);
+  expect((await mutate(page, 'POST', '/api/user/auctions/1/bid', { data: { bidPrice: 10000 } })).status()).toBe(400);
   await fixtures.setTime('2030-06-15T11:59:59Z');
   await page.getByRole('spinbutton', { name: 'Bid amount' }).fill('10001');
   await page.getByRole('button', { name: 'Bid', exact: true }).click();
@@ -109,9 +109,9 @@ test('bid minimum, self-bid denial and exact auction deadline are enforced by th
   await page.getByRole('spinbutton', { name: 'Bid amount' }).fill('10002');
   await page.getByRole('button', { name: 'Bid', exact: true }).click();
   await expect(page.getByRole('alert')).toContainText('This auction has ended');
-  expect((await page.request.post('/api/user/auctions/1/test-drives', { data: { date: '2030-06-16' } })).status()).toBe(400);
+  expect((await mutate(page, 'POST', '/api/user/auctions/1/test-drives', { data: { date: '2030-06-16' } })).status()).toBe(400);
   await fixtures.setTime('2030-06-15T12:00:01Z');
-  expect((await page.request.post('/api/user/auctions/1/bid', { data: { bidPrice: 10003 } })).status()).toBe(400);
+  expect((await mutate(page, 'POST', '/api/user/auctions/1/bid', { data: { bidPrice: 10003 } })).status()).toBe(400);
   expect((await json(page, '/api/user/bids'))).toHaveLength(1);
 });
 
@@ -151,7 +151,7 @@ test('buyer requests both appointment types; only the seller accepts and the buy
   await login(page, 'other');
   for (const path of [`/api/user/test-drives/${drive}/accept`, `/api/user/listing-test-rides/${ride}/accept`,
     `/api/user/test-drives/${drive}/cancel`, `/api/user/listing-test-rides/${ride}/cancel`]) {
-    expect((await page.request.post(path)).status()).toBe(403);
+    expect((await mutate(page, 'POST', path)).status()).toBe(403);
   }
   await login(page, 'seller');
   await page.goto('/user/appointments');
@@ -182,7 +182,7 @@ test('follow generates ending-soon notifications; recipient read/read-all persis
   const notifications = await json(page, '/api/user/notifications');
   expect(notifications).toHaveLength(2);
   await login(page, 'other');
-  expect((await page.request.post(`/api/user/notifications/${notifications[0].idNotification}/read`)).status()).toBe(403);
+  expect((await mutate(page, 'POST', `/api/user/notifications/${notifications[0].idNotification}/read`)).status()).toBe(403);
   expect(await json(page, '/api/user/notifications')).toEqual([]);
   await login(page);
   await page.goto('/user/notifications');

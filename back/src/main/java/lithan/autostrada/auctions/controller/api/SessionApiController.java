@@ -1,6 +1,11 @@
 package lithan.autostrada.auctions.controller.api;
 
 import java.util.List;
+import java.util.Map;
+
+import org.springframework.http.CacheControl;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.web.csrf.CsrfToken;
 
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -17,6 +22,14 @@ import lithan.autostrada.auctions.entity.UserProfile;
 @RestController
 @RequestMapping("/api")
 public class SessionApiController {
+
+  @GetMapping("/csrf")
+  public ResponseEntity<Map<String, String>> csrf(CsrfToken token) {
+    // Resolving the deferred (BREACH-masked) token creates the anonymous session.
+    // The expected token remains in HttpSession, never in a browser cookie.
+    return ResponseEntity.ok().cacheControl(CacheControl.noStore())
+        .body(Map.of("token", token.getToken()));
+  }
 
   @GetMapping("/session")
   public UserSessionResponse session(Authentication authentication) {

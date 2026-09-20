@@ -1,5 +1,13 @@
 # Browser regression baseline (IROIT S1 + S2)
 
+S4a extends the shared suite to 18 scenarios in native gateway/H2 and isolated
+Compose/MySQL. Six new scenarios cover API/form session rotation and old-ID/token
+rejection, missing/invalid/foreign JSON/form/multipart tokens, stale checkout
+without replay, expired sessions, and browser password reset through a private
+test mailbox. Existing direct API setup/authorization probes now obtain valid
+tokens so role/ownership checks are still reached. [Contract](session-csrf.md)
+and [actual results](session-csrf-pr.md) supersede historical S1/S2 limits below.
+
 S3 adds `npm run test:compose` in `front/`: the same scenarios run through the
 container gateway/Nginx/backend against a unique MySQL schema/volume. URLs and
 report destinations come only from the harness; test controls require its token
@@ -146,9 +154,9 @@ duplicate every CRUD permutation or claim full route/security coverage.
   Compose, real provider outages and race/load tests are not covered here.
   S2 adds gateway forwarding, stub transport/outage tests and native topology;
   S3 adds the container/MySQL baseline.
-- Current APIs intentionally have the existing blanket `/api/**` CSRF exemption.
-  Session rotation, CSRF enforcement and future internal-token security remain S4+
-  work. This suite is not evidence that those proposed protections are implemented.
+- S4a protects APIs/forms with session-backed CSRF and rotates session IDs on
+  API/form login. Future internal-token security remains proposed. See the S4a
+  handoff for actual positive/negative evidence and remaining gates.
 - S2 resolves the selected-item gap: `/car-listings/1` ends at `/listings/1`,
   `/store/parts/1` at `/parts/1`, and legacy auction URLs retain `/auctions/{id}`.
   Tests now assert the chosen detail and reload behavior. The backend resolver
@@ -165,7 +173,7 @@ duplicate every CRUD permutation or claim full route/security coverage.
   Orders/deposits display EXPIRED, but an expired success URL still uses the generic
   pending heading. These are current UX limitations, not the proposed S7 state
   machine. No pending-state redesign is included in this baseline.
-- Password reset/mail, all image-gallery permutations, every legacy form POST,
+- Actual SMTP delivery, all image-gallery permutations, every legacy form POST,
   and all provider event reorder/crash cases remain covered only where existing
   backend/component tests exercise them, or remain follow-up gaps. Scheduler
   delivery is disabled here; notification creation uses the real follow-inside-
@@ -177,7 +185,7 @@ duplicate every CRUD permutation or claim full route/security coverage.
 
 The existing **Backend** check runs backend and independent gateway `clean verify`,
 gateway image build and no-upstream container smoke. The existing
-**Frontend** check runs `npm ci`, 12 component tests, production build, browser
+**Frontend** check runs `npm ci`, frontend tests, production build, browser
 installation and this E2E command. An E2E failure therefore fails the already
 required Frontend check; no optional new check needs to be added to protection.
 Required protection remains owner-reported, not independently inspected here.

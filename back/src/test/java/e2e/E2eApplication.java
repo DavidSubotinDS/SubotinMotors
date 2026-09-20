@@ -24,6 +24,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.stripe.Stripe;
 import lithan.autostrada.auctions.AutostradaAuctionsApplication;
+import lithan.autostrada.auctions.service.EmailService;
 
 /** Test classpath only: never included in the deployable JAR or normal startup. */
 public class E2eApplication {
@@ -57,9 +58,12 @@ public class E2eApplication {
     @Bean @Primary
     SimulatedStripeGateway e2eStripeGateway() { return new SimulatedStripeGateway(); }
 
+    @Bean @Primary
+    Mailbox e2eMailbox() { return new Mailbox(); }
+
     @Bean
-    Controls e2eControls(JdbcTemplate jdbc, PasswordEncoder encoder, MutableClock clock) {
-      return new Controls(jdbc, encoder, clock);
+    Controls e2eControls(JdbcTemplate jdbc, PasswordEncoder encoder, MutableClock clock, Mailbox mailbox) {
+      return new Controls(jdbc, encoder, clock, mailbox);
     }
 
     @Bean @Order(0)
@@ -70,6 +74,11 @@ public class E2eApplication {
                   .equals(context.getRequest().getHeader("X-E2E-Control")))))
           .build();
     }
+  }
+
+  static class Mailbox implements EmailService {
+    final Map<String, String> messages = new java.util.concurrent.ConcurrentHashMap<>();
+    @Override public void send(String to, String subject, String body) { messages.put(to, body); }
   }
 
   static class MutableClock extends Clock {
@@ -84,16 +93,23 @@ public class E2eApplication {
     private final JdbcTemplate jdbc;
     private final String passwordHash;
     private final MutableClock clock;
+    private final Mailbox mailbox;
 
-    Controls(JdbcTemplate jdbc, PasswordEncoder encoder, MutableClock clock) {
+    Controls(JdbcTemplate jdbc, PasswordEncoder encoder, MutableClock clock, Mailbox mailbox) {
       this.jdbc = jdbc;
       this.passwordHash = encoder.encode("E2e-pass-123!");
       this.clock = clock;
+      this.mailbox = mailbox;
     }
 
     @GetMapping("/__e2e/ready")
     public Map<String, String> ready() {
       return Map.of("mode", "isolated-e2e", "stripeApiVersion", Stripe.API_VERSION);
+    }
+
+    @GetMapping("/__e2e/mail")
+    public Map<String, String> mail(@org.springframework.web.bind.annotation.RequestParam String recipient) {
+      return Map.of("body", mailbox.messages.getOrDefault(recipient, ""));
     }
 
     @PostMapping("/__e2e/clock")
@@ -104,6 +120,7 @@ public class E2eApplication {
 
     @PostMapping("/__e2e/reset")
     public Map<String, Object> reset() throws Exception {
+      mailbox.messages.clear();
       // Same connection for guard, reset and integrity restoration. Never reset normal databases.
       boolean mysql;
       try (var connection = jdbc.getDataSource().getConnection(); var statement = connection.createStatement()) {

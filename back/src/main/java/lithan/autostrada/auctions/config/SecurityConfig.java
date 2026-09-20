@@ -59,7 +59,7 @@ public class SecurityConfig {
     http.authorizeHttpRequests(configurer -> configurer
         .dispatcherTypeMatchers(DispatcherType.FORWARD, DispatcherType.ERROR).permitAll()
         .requestMatchers("/css/**", "/images/**", "/js/**").permitAll()
-        .requestMatchers("/actuator/health").permitAll()
+        .requestMatchers("/actuator/health", "/actuator/health/liveness", "/actuator/health/readiness").permitAll()
         .requestMatchers("/webhooks/stripe").permitAll()
         .requestMatchers("/api/auth/**").permitAll()
         .requestMatchers(HttpMethod.GET, "/api/session", "/api/public/**").permitAll()

@@ -1,5 +1,8 @@
 # Suggested PR title
 
+Current S3 container/MySQL evidence and owner commands are in
+[docker-compose-pr.md](docker-compose-pr.md); this file retains the original S1 handoff.
+
 Historical S1 handoff: PR #18 is now merged as `35007b5` and merged-master CI
 passed. Do not repeat its commit/PR commands. Current S2 commands and evidence
 are in [api-gateway-pr.md](api-gateway-pr.md).

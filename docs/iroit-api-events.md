@@ -1,5 +1,11 @@
 # IROIT API, event contracts and business flows
 
+S3 implements the same S2 route contracts over Compose DNS (`backend`, `frontend`)
+and Nginx SPA assets. A single configured public origin supplies redirects, reset
+links and Stripe returns. Exact webhook routing and byte preservation remain S2
+behavior. [Compose verification](docker-compose-pr.md) adds real MySQL evidence;
+the internal APIs, events and distributed checkout below are still proposed.
+
 S2 implemented transport: [`GatewayRoutes`](../gateway/src/main/java/lithan/autostrada/gateway/GatewayRoutes.java)
 routes `/api` and `/api/**` to the monolith for every method and the exact
 `POST /webhooks/stripe` without reading/rewriting its body. Canonical React

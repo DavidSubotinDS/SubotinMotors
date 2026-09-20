@@ -119,7 +119,7 @@ test('listing deposit return is read-only; signed success reserves the listing w
   await sendEvent(page, event);
   await sendEvent(page, event);
   await page.goto(`${gateway}/listing-deposits/success?session_id=${session}`);
-  await expect(page).toHaveURL(new RegExp(`18081/listing-deposits/success\\?session_id=${session}`));
+  await expect(page).toHaveURL(`${gateway}/listing-deposits/success?session_id=${session}`);
   await expect(page.getByRole('heading', { name: 'Deposit confirmed', exact: true })).toBeVisible();
   expect((await json(page, lookup)).status).toBe('PAID');
   expect((await json(page, '/api/public/listings/1')).listing.status).toBe('RESERVED');

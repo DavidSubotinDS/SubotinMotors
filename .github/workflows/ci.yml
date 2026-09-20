@@ -23,7 +23,7 @@ jobs:
   backend:
     name: Backend
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 40
 
     defaults:
       run:
@@ -102,6 +102,34 @@ jobs:
           if-no-files-found: warn
           retention-days: 7
 
+      - name: Set up Node.js for Compose orchestration
+        uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+
+      - name: Production containers and MySQL integration
+        working-directory: .
+        run: node front/e2e/compose.mjs --integration-only
+
+      - name: Clean up owned Compose resources after any outcome
+        if: ${{ always() }}
+        working-directory: .
+        run: node front/e2e/compose-cleanup.mjs
+
+      - name: Upload Compose and MySQL evidence
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: backend-compose-mysql
+          path: |
+            compose-results/**/evidence.json
+            compose-results/**/failure.txt
+            compose-results/**/*.log
+            compose-results/**/migrations.tsv
+            compose-results/**/project.json
+          if-no-files-found: warn
+          retention-days: 7
+
       - name: Upload backend JAR
         uses: actions/upload-artifact@v7
         with:
@@ -113,7 +141,7 @@ jobs:
   frontend:
     name: Frontend
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 45
 
     defaults:
       run:
@@ -177,6 +205,13 @@ jobs:
       - name: Browser E2E with isolated startup and teardown
         run: npm run test:e2e
 
+      - name: Browser E2E through Compose with isolated MySQL
+        run: npm run test:compose
+
+      - name: Clean up owned Compose resources after any outcome
+        if: ${{ always() }}
+        run: node e2e/compose-cleanup.mjs
+
       - name: Verify E2E servers stopped
         if: ${{ always() }}
         run: node e2e/assert-stopped.mjs
@@ -190,5 +225,11 @@ jobs:
             front/playwright-report/
             front/test-results/playwright/
             front/e2e-results/
+            compose-results/**/evidence.json
+            compose-results/**/failure.txt
+            compose-results/**/*.log
+            compose-results/**/migrations.tsv
+            compose-results/**/project.json
+            compose-results/**/browser/
           if-no-files-found: warn
           retention-days: 7

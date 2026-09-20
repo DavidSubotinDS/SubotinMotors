@@ -1,5 +1,11 @@
 # Autostrada Auctions Backend
 
+S3: [container/MySQL runbook](../docs/docker-compose.md). `Dockerfile` defaults to
+the non-root production JAR target. Compose activates `mysql,gateway,container`
+on private ingress, uses MySQLDialect with Hibernate validation, and exposes
+separate liveness/readiness (DB) probes. Existing migrations require deliberate
+demo acknowledgement. Target `e2e` is harness-only; it is never the production image.
+
 S2: backend remains the sole session and business owner behind the independent
 [`gateway/`](../gateway/README.md). The opt-in `gateway` profile binds backend to
 loopback, enables trusted forwarding/correlated logs and uses the public gateway

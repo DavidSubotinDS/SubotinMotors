@@ -1,4 +1,4 @@
-FROM eclipse-temurin:17-jdk-jammy AS build
+FROM eclipse-temurin:17-jdk-jammy@sha256:51d32af96fb8a13ffbc96c719d7b05447a04ca69f314627d64050a64ecd13057 AS build
 WORKDIR /build
 COPY .mvn .mvn
 COPY mvnw pom.xml ./
@@ -6,7 +6,7 @@ RUN sed -i 's/\r$//' mvnw && chmod +x mvnw
 COPY src src
 RUN ./mvnw --batch-mode --no-transfer-progress clean verify
 
-FROM eclipse-temurin:17-jre-jammy
+FROM eclipse-temurin:17-jre-jammy@sha256:e85989f3e4d136b3d7dde921e157fddb9c7016805a225c1ec483326b825b3ca5
 RUN groupadd --system gateway && useradd --system --gid gateway gateway \
     && apt-get update && apt-get install -y --no-install-recommends curl \
     && rm -rf /var/lib/apt/lists/*

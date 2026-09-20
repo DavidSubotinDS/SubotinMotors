@@ -1,5 +1,12 @@
 # IROIT source inventory and data ownership
 
+S3 implemented topology: [Compose](docker-compose.md) places the same backend
+and unchanged V1-V18 migration history in one MySQL schema. Only backend receives
+that schema's credential; MySQL root credentials stay with MySQL. Gateway and
+frontend have no DB credentials or ports into the database network. Test resets
+use a separate random schema/volume and explicit test image, never normal data.
+No table/entity ownership moved; extraction inventory below remains proposed.
+
 S2 implementation: [`gateway/`](../gateway/README.md) owns only routing and edge
 transport hygiene. Every existing business/API/webhook operation remains owned
 by `back/`, including sessions and the single business database. No entity,

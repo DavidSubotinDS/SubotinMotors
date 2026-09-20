@@ -25,7 +25,7 @@ final class SimulatedStripeGateway implements StripeGateway {
   }
   private StripeCheckoutResult checkout(String purpose, int id) {
     String session = "cs_e2e_" + purpose + "_" + id;
-    return new StripeCheckoutResult(session, "http://127.0.0.1:18081/__provider/checkout?session_id=" + session);
+    return new StripeCheckoutResult(session, System.getenv().getOrDefault("APP_BASE_URL", "http://127.0.0.1:18081") + "/__provider/checkout?session_id=" + session);
   }
   @Override public StripeWebhookEvent verifyAndParseWebhook(String payload, String signature) {
     return verifier.verifyAndParseWebhook(payload, signature);

@@ -1,7 +1,7 @@
 import { test as base, expect } from '@playwright/test';
 import { createHmac } from 'node:crypto';
 
-export const gateway = 'http://127.0.0.1:18081';
+export const gateway = process.env.E2E_GATEWAY_URL || 'http://127.0.0.1:18081';
 export const password = 'E2e-pass-123!';
 export const address = { email: 'buyer@e2e.invalid', firstName: 'Buyer', lastName: 'Fixture', phoneNumber: '+381641234567',
   address: 'Novi Sad', streetAddress: '12 Test Street', city: 'Novi Sad', postalCode: '21000', country: 'Serbia', about: '' };
@@ -10,7 +10,7 @@ export const vehicleImage = { name: 'vehicle.png', mimeType: 'image/png',
 
 export const test = base.extend({
   fixtures: [async ({ playwright, page }, use) => {
-    const control = await playwright.request.newContext({ baseURL: 'http://127.0.0.1:18080',
+    const control = await playwright.request.newContext({ baseURL: process.env.E2E_CONTROL_URL || 'http://127.0.0.1:18080',
       extraHTTPHeaders: { 'X-E2E-Control': process.env.E2E_CONTROL_TOKEN } });
     const response = await control.post('/__e2e/reset');
     await expect(response).toBeOK();
@@ -19,12 +19,18 @@ export const test = base.extend({
     const errors = [];
     const bypasses = [];
     page.on('request', request => {
-      if (/^http:\/\/127\.0\.0\.1:(18080|15173)(\/|$)/.test(request.url())) bypasses.push(request.url());
+      const url = new URL(request.url());
+      if (['127.0.0.1', 'localhost', 'backend', 'frontend', 'mysql'].includes(url.hostname)
+          && url.origin !== gateway) bypasses.push(request.url());
     });
     const probe = await page.request.get('/api/session');
     expect(probe.headers()['x-request-id'], 'Real gateway handled the API request').toMatch(/^[a-f0-9-]{36}$/);
     expect((await page.request.get('/__e2e/ready')).status()).toBe(404);
     page.on('pageerror', (error) => errors.push(error.message));
+    if (process.env.E2E_FAILURE_PROBE === 'true') {
+      await page.goto('/');
+      throw new Error('Intentional browser failure to verify artifacts and Compose cleanup');
+    }
     await use({ ...data, setTime: async (instant) => {
       await expect(await control.post('/__e2e/clock', { data: { instant } })).toBeOK();
       await page.clock.setFixedTime(new Date(instant));
@@ -40,7 +46,11 @@ export async function login(page, username = 'buyer') {
   await page.goto('/login');
   await page.getByLabel('Username', { exact: true }).fill(username);
   await page.getByLabel('Password', { exact: true }).fill(password);
+  // Login navigates to / and explicitly reloads. Wait for that document before
+  // a caller starts another navigation, especially when changing an existing user.
+  const reloaded = page.waitForEvent('load');
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+  await reloaded;
   await expect(page.getByRole('button', { name: 'Logout', exact: true })).toBeVisible();
   await expect.poll(async () => (await (await page.request.get('/api/session')).json()).username).toBe(username);
 }

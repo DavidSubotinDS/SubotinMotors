@@ -1,5 +1,16 @@
 # IROIT application baseline
 
+S3 prerequisite verification (2026-09-19): freshly fetched `origin/master`, local
+master and the already-existing clean requested S3 branch all point to
+`a08cb14d781464cc8a7008f7cb837e896d56f48e`, the merged S2 [PR #19](https://github.com/DavidSubotinDS/SubotinMotors/pull/19).
+Its tree equals S2 branch `db53120`. [Merged-master run 35399306269](https://github.com/DavidSubotinDS/SubotinMotors/actions/runs/35399306269)
+passed Backend (including gateway build/container smoke) and Frontend (including
+gateway browser E2E and cleanup). Public API confirms merge at 2026-09-18T21:57:21Z.
+Remote HEAD/default branch is master. Local/remote tag lists are empty; no baseline
+tag was created. Other branches, including unpushed architecture work, were preserved.
+No applicable AGENTS.md was found. GitHub CLI remains unauthenticated; verification
+used public REST. [S3 evidence](docker-compose-pr.md) is separate from this S2 CI.
+
 S2 prerequisite verification (2026-09-14): freshly fetched master is
 `35007b5eb71e602afa96e09f1c5f9d38e3f7406b`, the squash merge of S1 PR #18.
 Its tree exactly matches S1 `fc59eb6`; an ancestry check alone would not detect

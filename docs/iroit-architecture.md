@@ -1,11 +1,18 @@
 # IROIT target architecture and decision record
 
-Implementation status, S2 (2026-09-14): S1 merged as `35007b5`; the new
+Implementation status, S3 (2026-09-19): S2 merged as `a08cb14`, with successful
+Backend/Frontend checks on that exact master commit. [S3 container baseline](docker-compose.md)
+adds gateway, private frontend assets/backend and persistent MySQL; backend remains
+the sole business/session owner. Local evidence and remaining remote/manual gates
+are in [the S3 handoff](docker-compose-pr.md). S4+ and the five-service target below
+remain proposed. No S3 commit/push/merge or baseline tag is claimed.
+
+Historical S2 implementation (2026-09-14): S1 merged as `35007b5`; the new
 [`gateway/`](../gateway/README.md) proxies the monolith and serves the frontend
 through one public origin. Backend still owns sessions, permissions, persistence
 and payments. Browser regression now traverses the gateway. See
 [S2 verification and handoff](api-gateway-pr.md). The five-service diagram and
-session exchange below remain **proposed**; S3+ is not implemented.
+session exchange below remain **proposed**; see the current S3 status above.
 
 Status: proposed implementation baseline for review, 2026-09-13. The user's
 constraints below are agreed inputs; the selected architecture is a design
@@ -168,5 +175,5 @@ do not expose internal service terminology in the UI.
 
 The [browser E2E implementation and evidence](browser-e2e.md) now tests the current
 monolith through the S2 gateway; the service target architecture remains proposed.
-After S2 merges and its remaining gates pass, next is S3 container/MySQL baseline.
+After S3 merges and its remaining gates pass, next is S4 session/CSRF foundation.
 The owner can create the baseline tag independently using the verified SHA.

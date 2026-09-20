@@ -9,6 +9,7 @@
     "preview": "vite preview --host 0.0.0.0",
     "test": "vitest run",
     "test:e2e": "node e2e/run.mjs",
+    "test:compose": "node e2e/compose.mjs",
     "test:e2e:install": "playwright install chromium",
     "test:e2e:report": "playwright show-report"
   },

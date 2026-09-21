@@ -70,8 +70,26 @@ jobs:
             -e IDENTITY_GATEWAY_SECRET=ci-gateway-secret-000000000000000000 \
             -e IDENTITY_BACKEND_SECRET=ci-backend-secret-000000000000000000 \
             autostrada-identity-service:ci
-          sleep 5
-          test "$(docker inspect --format '{{.State.Running}}' identity-ci)" = "false"
+          stopped=false
+          for attempt in {1..30}; do
+            state="$(docker inspect --format '{{.State.Status}}' identity-ci 2>/dev/null || true)"
+            if [[ "$state" == "exited" || "$state" == "dead" ]]; then
+              stopped=true
+              break
+            fi
+            sleep 2
+          done
+          if [[ "$stopped" != true ]]; then
+            echo "Identity service did not stop within the startup-failure timeout"
+            docker logs identity-ci || true
+            exit 1
+          fi
+          exit_code="$(docker inspect --format '{{.State.ExitCode}}' identity-ci)"
+          if [[ "$exit_code" == "0" ]]; then
+            echo "Identity service unexpectedly started successfully"
+            docker logs identity-ci || true
+            exit 1
+          fi
 
       - name: Identity service container logs and cleanup
         if: ${{ always() }}

@@ -104,6 +104,22 @@ async function checkHttp(path, status = 200, options = {}) {
 }
 async function record(message) { evidence.push(message); console.log(message); await writeFile(resolve(directory, 'evidence.json'), JSON.stringify({ project, evidence }, null, 2)); }
 function mysqlLiteral(value) { return `'${String(value).replaceAll("'", "''")}'`; }
+async function captureFailureDiagnostics(error) {
+  await writeFile(resolve(directory, 'failure.txt'), error?.stack || String(error));
+  const captures = [
+    ['failure-compose-ps.log', ['ps', '--all']],
+    ['failure-mysql.log', ['logs', '--no-color', 'mysql']],
+    ['failure-compose.log', ['logs', '--no-color']],
+  ];
+  for (const [file, args] of captures) {
+    try {
+      const result = await compose(args, { allowFailure: true, log: false, timeout: 60000 });
+      await writeFile(resolve(directory, file), `${result.stdout}${result.stderr}`);
+    } catch (captureError) {
+      await writeFile(resolve(directory, file), `Unable to collect diagnostics:\n${captureError?.stack || captureError}`);
+    }
+  }
+}
 async function identitySnapshot() {
   const tables = ['tb_user', 'tb_role', 'tb_user_profile', 'tb_profile_picture', 'tb_password_reset_token'];
   const source = await rootValue(tables.map(table => `SELECT '${table}',COUNT(*) FROM \`${schema}\`.\`${table}\``).join(';'));
@@ -442,7 +458,7 @@ try {
   }
 } catch (error) {
   console.error(error.message); process.exitCode = 1;
-  await writeFile(resolve(directory, 'failure.txt'), error.stack || error.message);
+  await captureFailureDiagnostics(error);
 } finally {
   try { if (config) await cleanup(); } catch (error) { console.error(`Cleanup failed: ${error.message}`); process.exitCode = 1; }
 }

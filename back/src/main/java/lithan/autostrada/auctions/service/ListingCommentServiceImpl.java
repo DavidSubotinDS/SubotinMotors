@@ -15,7 +15,7 @@ import lithan.autostrada.auctions.dto.ListingCommentView;
 import lithan.autostrada.auctions.entity.Car;
 import lithan.autostrada.auctions.entity.CarPart;
 import lithan.autostrada.auctions.entity.ListingComment;
-import lithan.autostrada.auctions.entity.UserAccount;
+import lithan.autostrada.auctions.identity.CurrentIdentity;
 import lithan.autostrada.auctions.repository.ListingCommentRepository;
 import lithan.autostrada.auctions.validation.ImageUploadValidator;
 import lithan.autostrada.auctions.validation.ImageUploadValidator.ValidatedImage;
@@ -29,32 +29,40 @@ public class ListingCommentServiceImpl implements ListingCommentService {
   private final ListingCommentRepository commentRepository;
   private final CarService carService;
   private final CarPartService partService;
-  private final UserService userService;
+  private final CurrentIdentity currentIdentity;
+  @org.springframework.beans.factory.annotation.Autowired
+  private lithan.autostrada.auctions.identity.ProfileClient profiles;
 
   public ListingCommentServiceImpl(
       ListingCommentRepository commentRepository,
       CarService carService,
       CarPartService partService,
-      UserService userService) {
+      CurrentIdentity currentIdentity) {
     this.commentRepository = commentRepository;
     this.carService = carService;
     this.partService = partService;
-    this.userService = userService;
+    this.currentIdentity = currentIdentity;
   }
 
   @Override
   @Transactional(readOnly = true)
   public List<ListingCommentView> commentsForCar(Car car) {
-    return commentRepository.findByCarOrderByCreatedAtAscIdCommentAsc(car).stream()
-        .map(comment -> toCarView(comment, car))
+    var comments = commentRepository.findByCarOrderByCreatedAtAscIdCommentAsc(car);
+    var authors = profiles.findAll(comments.stream().map(ListingComment::getAuthorId).toList());
+    return comments.stream()
+        .map(comment -> toCarView(comment, car, authors.getOrDefault(comment.getAuthorId(),
+            lithan.autostrada.auctions.identity.PublicProfile.missing(comment.getAuthorId()))))
         .toList();
   }
 
   @Override
   @Transactional(readOnly = true)
   public List<ListingCommentView> commentsForPart(CarPart part) {
-    return commentRepository.findByPartOrderByCreatedAtAscIdCommentAsc(part).stream()
-        .map(this::toPartView)
+    var comments = commentRepository.findByPartOrderByCreatedAtAscIdCommentAsc(part);
+    var authors = profiles.findAll(comments.stream().map(ListingComment::getAuthorId).toList());
+    return comments.stream()
+        .map(comment -> toPartView(comment, authors.getOrDefault(comment.getAuthorId(),
+            lithan.autostrada.auctions.identity.PublicProfile.missing(comment.getAuthorId()))))
         .toList();
   }
 
@@ -67,7 +75,7 @@ public class ListingCommentServiceImpl implements ListingCommentService {
     }
 
     ListingComment comment = new ListingComment();
-    comment.setAuthor(userService.getUserLogin());
+    comment.setAuthorId(currentIdentity.requireUserId());
     comment.setCar(car);
     comment.setBody(normalizeBody(body));
     attachImage(comment, imageFile);
@@ -81,7 +89,7 @@ public class ListingCommentServiceImpl implements ListingCommentService {
     CarPart part = partService.getActivePart(idPart);
 
     ListingComment comment = new ListingComment();
-    comment.setAuthor(userService.getUserLogin());
+    comment.setAuthorId(currentIdentity.requireUserId());
     comment.setPart(part);
     comment.setBody(normalizeBody(body));
     attachImage(comment, imageFile);
@@ -89,33 +97,29 @@ public class ListingCommentServiceImpl implements ListingCommentService {
     commentRepository.save(comment);
   }
 
-  private ListingCommentView toCarView(ListingComment comment, Car car) {
-    UserAccount author = comment.getAuthor();
-    if (isAdmin(author)) {
-      return view(comment, "Admin", "listing-comment--admin");
+  private ListingCommentView toCarView(ListingComment comment, Car car, lithan.autostrada.auctions.identity.PublicProfile author) {
+    if (author.adminBadge()) {
+      return view(comment, author, "Admin", "listing-comment--admin");
     }
-    if (author.getIdUser() == car.getUser().getIdUser()) {
-      return view(comment, "Seller", "listing-comment--seller");
+    if (comment.getAuthorId() == car.getUserId()) {
+      return view(comment, author, "Seller", "listing-comment--seller");
     }
-    return view(comment, null, "");
+    return view(comment, author, null, "");
   }
 
-  private ListingCommentView toPartView(ListingComment comment) {
-    if (isAdmin(comment.getAuthor())) {
-      return view(comment, "Store team", "listing-comment--admin");
+  private ListingCommentView toPartView(ListingComment comment, lithan.autostrada.auctions.identity.PublicProfile author) {
+    if (author.adminBadge()) {
+      return view(comment, author, "Store team", "listing-comment--admin");
     }
-    return view(comment, null, "");
+    return view(comment, author, null, "");
   }
 
   private ListingCommentView view(
       ListingComment comment,
+      lithan.autostrada.auctions.identity.PublicProfile author,
       String badgeLabel,
       String highlightClass) {
-    UserAccount author = comment.getAuthor();
-    String authorName = author.getUsername();
-    if (author.getProfile() != null) {
-      authorName = author.getProfile().getFirstName() + " " + author.getProfile().getLastName();
-    }
+    String authorName = author.displayName();
     String createdAt = COMMENT_TIME.format(
         comment.getCreatedAt().atZone(ZoneId.systemDefault()));
     return new ListingCommentView(
@@ -128,10 +132,6 @@ public class ListingCommentServiceImpl implements ListingCommentService {
         comment.getImageFileName(),
         comment.getImageFileType(),
         comment.getImageData());
-  }
-
-  private boolean isAdmin(UserAccount user) {
-    return user.getRoles().stream().anyMatch(role -> "ROLE_ADMIN".equals(role.getRole()));
   }
 
   private String normalizeBody(String body) {

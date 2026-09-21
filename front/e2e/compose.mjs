@@ -16,6 +16,7 @@ const emptyEnv = resolve(directory, 'empty.env');
 const token = randomBytes(32).toString('hex');
 const schema = `e2e_${id}`;
 const browser = !process.argv.includes('--integration-only');
+const upgradeFrom = process.argv.find(arg => arg.startsWith('--upgrade-from='))?.slice('--upgrade-from='.length);
 const env = Object.fromEntries(Object.entries(process.env).filter(([key]) =>
   !/^(COMPOSE_|MYSQL_|DB_|E2E_|SPRING_|STRIPE_|APP_|SMTP_|PAYMENTS_|AUCTION_|VITE_|GATEWAY_|PUBLIC_URL$|SESSION_|SERVER_|MANAGEMENT_|LOGGING_|JAVA_TOOL_OPTIONS$|JDK_JAVA_OPTIONS$|_JAVA_OPTIONS$)/i.test(key)));
 Object.assign(env, { MYSQL_DATABASE: schema, MYSQL_USER: 'e2e', MYSQL_PASSWORD: randomBytes(32).toString('hex'),
@@ -103,6 +104,10 @@ try {
   const port = await freePort();
   env.GATEWAY_PORT = String(port); env.PUBLIC_URL = `http://127.0.0.1:${port}`; env.E2E_GATEWAY_URL = env.PUBLIC_URL;
   config = { services: { backend: { environment: { AUCTION_NOTIFICATION_SCHEDULING: 'false' } } } };
+  if (upgradeFrom) {
+    assert.ok(!browser, '--upgrade-from requires --integration-only');
+    config.services.backend.build = { context: resolve(root, upgradeFrom), target: 'production' };
+  }
   await saveConfig();
   // Refuse a collision before creating anything, even though the name has 128 random bits.
   for (const kind of ['container', 'volume', 'network']) {
@@ -119,6 +124,23 @@ try {
   assert.equal(seedGuard.code, 1, 'Production startup must refuse missing demo acknowledgement');
   assert.match(seedGuard.stderr + seedGuard.stdout, /I_ACCEPT_EXISTING_DEMO_DATA/);
   await compose(['up', '--detach', '--wait', '--wait-timeout', '240'], { timeout: 300000 });
+  if (upgradeFrom) {
+    // Start the old production binary first, then replace only the backend on
+    // the same isolated MySQL volume. Never import a developer database.
+    await sql("UPDATE tb_user_profile SET about='S4b upgrade sentinel' WHERE id_profile=1");
+    const tables = (await value('SHOW TABLES')).split(/\r?\n/);
+    assert.ok(tables.length > 0 && tables.every(table => /^[a-zA-Z0-9_]+$/.test(table)));
+    const checksumQuery = `CHECKSUM TABLE ${tables.map(table => `\`${table}\``).join(',')}`;
+    const beforeUpgrade = await value(checksumQuery);
+    assert.ok(!beforeUpgrade.includes('NULL'), 'Every table must support checksum comparison');
+    await compose(['stop', 'gateway', 'backend']);
+    config.services.backend.build = { context: resolve(root, 'back'), target: 'production' };
+    await saveConfig();
+    await compose(['build', 'backend']);
+    await compose(['up', '--detach', '--wait', '--wait-timeout', '240'], { timeout: 300000 });
+    assert.equal(await value(checksumQuery), beforeUpgrade, 'Old-runtime data changed during S4b startup');
+    await record('Old production backend to current production backend upgrade passed on the same MySQL volume: every table checksum preserved.');
+  }
   await compose(['images', '--format', 'json']);
   assert.equal(await value('SELECT COUNT(*) FROM flyway_schema_history WHERE success=1 AND version BETWEEN 1 AND 18'), '18');
   assert.equal(await value('SELECT COUNT(*) FROM flyway_schema_history WHERE success=0'), '0');
@@ -180,6 +202,36 @@ try {
     'UPDATE tb_car_part SET stock_quantity=-1 WHERE id_part=1']) {
     assert.notEqual((await sql(query, { allowFailure: true })).code, 0, 'MySQL constraint did not reject invalid data');
   }
+  // S4b changes Java mappings only. The original MySQL FKs, nullability and
+  // owner indexes remain enforceable during preparation, including on old rows.
+  const identityReferences = [
+    ['tb_car', 'id_car', 'id_user'], ['tb_car_bid', 'id_bid', 'id_user'],
+    ['tb_test_drive', 'id_test_drive', 'id_user'], ['tb_car_listing', 'id_listing', 'id_seller'],
+    ['tb_listing_test_ride', 'id_test_ride', 'id_user'], ['tb_listing_deposit', 'id_deposit', 'id_buyer'],
+    ['tb_auction_follow', 'id_follow', 'id_user'], ['tb_auction_notification', 'id_notification', 'id_user'],
+    ['tb_listing_comment', 'id_comment', 'id_user'], ['tb_cart_item', 'id_cart_item', 'id_user'],
+    ['tb_store_order', 'id_order', 'id_user'], ['tb_payment_account', 'id_payment_account', 'id_user'],
+    ['tb_payment_order', 'id_payment', 'id_buyer'], ['tb_payment_order', 'id_payment', 'id_seller'],
+  ];
+  for (const [table, , column] of identityReferences) {
+    assert.equal(await value(`SELECT COUNT(*) FROM information_schema.KEY_COLUMN_USAGE WHERE TABLE_SCHEMA=DATABASE()
+      AND TABLE_NAME='${table}' AND COLUMN_NAME='${column}' AND REFERENCED_TABLE_NAME='tb_user' AND REFERENCED_COLUMN_NAME='id_user'`), '1');
+    assert.equal(await value(`SELECT IS_NULLABLE FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE()
+      AND TABLE_NAME='${table}' AND COLUMN_NAME='${column}'`), 'NO');
+    assert.ok(Number(await value(`SELECT COUNT(*) FROM information_schema.STATISTICS WHERE TABLE_SCHEMA=DATABASE()
+      AND TABLE_NAME='${table}' AND COLUMN_NAME='${column}' AND SEQ_IN_INDEX=1`)) > 0);
+    if (Number(await value(`SELECT COUNT(*) FROM ${table}`)) > 0) {
+      const orphan = await sql(`UPDATE ${table} SET ${column}=2147483647 LIMIT 1`, { allowFailure: true });
+      assert.notEqual(orphan.code, 0); assert.match(orphan.stderr, /1452/);
+    }
+  }
+  const deletion = await sql('DELETE FROM tb_user WHERE id_user=(SELECT id_user FROM tb_car LIMIT 1)', { allowFailure: true });
+  assert.notEqual(deletion.code, 0); assert.match(deletion.stderr, /1451/);
+  const identitySnapshotQuery = identityReferences.map(([table, key, column]) =>
+    `SELECT '${table}.${column}',${key},${column} FROM ${table} ORDER BY ${key}`).join(';');
+  const identitySnapshot = await value(identitySnapshotQuery);
+  await record('S4b: all 14 scalar identity columns retain non-null FKs and owner indexes; orphan writes and account deletion rejected.');
+
   // Named-lock handshake establishes that the holder owns the row before contender runs.
   const holder = sql("START TRANSACTION; SELECT id_part FROM tb_car_part WHERE id_part=1 FOR UPDATE; SELECT GET_LOCK('s3_row_locked',0); DO SLEEP(6); ROLLBACK; SELECT RELEASE_LOCK('s3_row_locked');");
   // Observe an early failure immediately; the await below still propagates it.
@@ -202,6 +254,7 @@ try {
   await compose(['down', '--timeout', '20']); // Intentionally preserve volume.
   await compose(['up', '--detach', '--wait', '--wait-timeout', '240'], { timeout: 300000 });
   assert.equal(await value(snapshotQuery), snapshot);
+  assert.equal(await value(identitySnapshotQuery), identitySnapshot);
   await record('Preserved-volume recreation passed: IDs, password hashes, profile sentinel, image hashes and Flyway checksums unchanged.');
   await compose(['stop', 'gateway', 'backend']);
   // Only the generated schema in our generated container can be restored.
@@ -209,6 +262,8 @@ try {
   await sql(await readFile(resolve(directory, 'backup.sql'), 'utf8'));
   await compose(['up', '--detach', '--wait', '--wait-timeout', '240'], { timeout: 300000 });
   assert.equal(await value(snapshotQuery), snapshot);
+  assert.equal(await value(identitySnapshotQuery), identitySnapshot);
+  await record('S4b: all business row IDs and scalar identity references survived restart and restore unchanged.');
   await record('Logical backup restored to the isolated schema; Flyway/Hibernate startup and data parity passed.');
 
   await compose(['stop', 'mysql']);

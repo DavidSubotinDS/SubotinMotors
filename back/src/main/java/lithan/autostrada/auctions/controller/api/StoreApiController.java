@@ -20,7 +20,7 @@ import lithan.autostrada.auctions.dto.api.ApiModels.StoreOrderResponse;
 import lithan.autostrada.auctions.dto.api.PageResponse;
 import lithan.autostrada.auctions.service.CartService;
 import lithan.autostrada.auctions.service.StoreOrderService;
-import lithan.autostrada.auctions.service.UserService;
+import lithan.autostrada.auctions.identity.CheckoutProfileClient;
 
 @RestController
 @RequestMapping("/api/store")
@@ -28,17 +28,17 @@ public class StoreApiController {
 
   private final CartService cartService;
   private final StoreOrderService orderService;
-  private final UserService userService;
+  private final CheckoutProfileClient checkoutProfiles;
   private final ApiModelMapper mapper;
 
   public StoreApiController(
       CartService cartService,
       StoreOrderService orderService,
-      UserService userService,
+      CheckoutProfileClient checkoutProfiles,
       ApiModelMapper mapper) {
     this.cartService = cartService;
     this.orderService = orderService;
-    this.userService = userService;
+    this.checkoutProfiles = checkoutProfiles;
     this.mapper = mapper;
   }
 
@@ -49,7 +49,7 @@ public class StoreApiController {
         cartService.totalMinor(),
         cartService.itemCount(),
         orderService.isStripeEnabled(),
-        userService.getUserLogin().getProfile().hasCompleteShippingAddress());
+        checkoutProfiles.current().hasCompleteShippingAddress());
   }
 
   @PostMapping("/cart/items")
@@ -92,7 +92,7 @@ public class StoreApiController {
   public PageResponse<StoreOrderResponse> orders(@RequestParam(defaultValue = "0") int page) {
     var orders = orderService.currentUserOrders(
         PageRequest.of(Math.max(page, 0), 10, Sort.by(Sort.Direction.DESC, "createdAt")));
-    return PageResponse.from(orders.map(mapper::storeOrder));
+    return PageResponse.from(mapper.map(orders, mapper::storeOrder));
   }
 
   @GetMapping("/orders/{idOrder}")

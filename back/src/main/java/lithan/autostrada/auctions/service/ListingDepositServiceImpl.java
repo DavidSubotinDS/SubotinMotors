@@ -13,7 +13,7 @@ import lithan.autostrada.auctions.entity.CarListing;
 import lithan.autostrada.auctions.entity.CarListingStatus;
 import lithan.autostrada.auctions.entity.ListingDeposit;
 import lithan.autostrada.auctions.entity.PaymentWebhookEvent;
-import lithan.autostrada.auctions.entity.UserAccount;
+import lithan.autostrada.auctions.identity.CurrentIdentity;
 import lithan.autostrada.auctions.error.ResourceNotFoundException;
 import lithan.autostrada.auctions.payment.StripeCheckoutResult;
 import lithan.autostrada.auctions.payment.StripeGateway;
@@ -31,7 +31,10 @@ public class ListingDepositServiceImpl implements ListingDepositService {
   private final ListingDepositRepository depositRepository;
   private final CarListingRepository listingRepository;
   private final PaymentWebhookEventRepository webhookEventRepository;
-  private final UserService userService;
+  private final CurrentIdentity currentIdentity;
+  @org.springframework.beans.factory.annotation.Autowired
+  private lithan.autostrada.auctions.identity.CheckoutProfileClient checkoutProfiles;
+
   private final StripeGateway stripeGateway;
   private final StripeProperties stripeProperties;
 
@@ -39,13 +42,13 @@ public class ListingDepositServiceImpl implements ListingDepositService {
       ListingDepositRepository depositRepository,
       CarListingRepository listingRepository,
       PaymentWebhookEventRepository webhookEventRepository,
-      UserService userService,
+      CurrentIdentity currentIdentity,
       StripeGateway stripeGateway,
       StripeProperties stripeProperties) {
     this.depositRepository = depositRepository;
     this.listingRepository = listingRepository;
     this.webhookEventRepository = webhookEventRepository;
-    this.userService = userService;
+    this.currentIdentity = currentIdentity;
     this.stripeGateway = stripeGateway;
     this.stripeProperties = stripeProperties;
   }
@@ -63,14 +66,14 @@ public class ListingDepositServiceImpl implements ListingDepositService {
     }
     CarListing listing = listingRepository.findByIdForUpdate(listingId)
         .orElseThrow(ResourceNotFoundException::new);
-    UserAccount buyer = userService.getUserLogin();
-    if (listing.getSeller().getIdUser() == buyer.getIdUser()) {
+    int buyer = currentIdentity.requireUserId();
+    if (listing.getSellerId() == buyer) {
       throw new IllegalStateException("You cannot reserve your own listing");
     }
     if (listing.getStatus() != CarListingStatus.ACTIVE) {
       throw new IllegalStateException("This listing is no longer available for reservation");
     }
-    if (depositRepository.existsByListingAndBuyerAndStatusIn(
+    if (depositRepository.existsByListingAndBuyerIdAndStatusIn(
         listing, buyer, ACTIVE_DEPOSIT_STATUSES)) {
       throw new IllegalStateException("You already have an active deposit for this listing");
     }
@@ -78,7 +81,7 @@ public class ListingDepositServiceImpl implements ListingDepositService {
     Instant now = Instant.now();
     ListingDeposit deposit = new ListingDeposit();
     deposit.setListing(listing);
-    deposit.setBuyer(buyer);
+    deposit.setBuyerId(buyer);
     deposit.setAmountMinor(listing.getDepositAmountMinor());
     deposit.setCurrency(stripeProperties.getCurrency().toLowerCase());
     deposit.setStatus("PENDING_CHECKOUT");
@@ -90,7 +93,7 @@ public class ListingDepositServiceImpl implements ListingDepositService {
     listing.setUpdatedAt(now);
     listingRepository.save(listing);
 
-    StripeCheckoutResult checkout = stripeGateway.createListingDepositCheckoutSession(deposit);
+    StripeCheckoutResult checkout = stripeGateway.createListingDepositCheckoutSession(deposit, checkoutProfiles.current().email());
     deposit.setCheckoutSessionId(checkout.sessionId());
     deposit.setCheckoutUrl(checkout.checkoutUrl());
     deposit.setStatus("CHECKOUT_CREATED");
@@ -101,14 +104,14 @@ public class ListingDepositServiceImpl implements ListingDepositService {
 
   @Override
   public Page<ListingDeposit> currentUserDeposits(Pageable pageable) {
-    return depositRepository.findByBuyer(userService.getUserLogin(), pageable);
+    return depositRepository.findByBuyerId(currentIdentity.requireUserId(), pageable);
   }
 
   @Override
   public ListingDeposit currentUserDepositBySession(String sessionId) {
     ListingDeposit deposit = depositRepository.findByCheckoutSessionId(sessionId)
         .orElseThrow(ResourceNotFoundException::new);
-    if (deposit.getBuyer().getIdUser() != userService.getUserLogin().getIdUser()) {
+    if (deposit.getBuyerId() != currentIdentity.requireUserId()) {
       throw new ResourceNotFoundException();
     }
     return deposit;

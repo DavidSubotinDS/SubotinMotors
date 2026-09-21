@@ -8,7 +8,7 @@ import lithan.autostrada.auctions.entity.Car;
 import lithan.autostrada.auctions.entity.CarListing;
 import lithan.autostrada.auctions.entity.CarPart;
 import lithan.autostrada.auctions.entity.StoreOrder;
-import lithan.autostrada.auctions.entity.UserProfile;
+import lithan.autostrada.auctions.identity.PublicProfile;
 import lithan.autostrada.auctions.dto.CarListingForm;
 import lithan.autostrada.auctions.dto.CarPartForm;
 
@@ -114,8 +114,8 @@ public class ReactFrontendRedirectConfig {
             if (viewName.equals("store/order-details")) selected = "/orders/" + order.getIdOrder();
             if (viewName.equals("admin/store-order-details")) selected = "/admin/store/orders/" + order.getIdOrder();
           }
-          if (viewName.equals("view-user") && model.get("profile") instanceof UserProfile profile)
-            selected = "/profiles/" + profile.getIdProfile();
+          if (viewName.equals("view-user") && model.get("profile") instanceof PublicProfile profile)
+            selected = "/profiles/" + profile.profileId();
           if (viewName.equals("user/listing-form") && model.get("listingForm") instanceof CarListingForm form)
             selected = form.getIdListing() > 0 ? "/user/listings/" + form.getIdListing() + "/edit" : "/user/listings/new";
           if (viewName.equals("admin/store-part-form") && model.get("partForm") instanceof CarPartForm form)

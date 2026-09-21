@@ -26,9 +26,8 @@ public class AuctionFollow {
   @Column(name = "id_follow")
   private int idFollow;
 
-  @ManyToOne(fetch = FetchType.EAGER, optional = false)
-  @JoinColumn(name = "id_user")
-  private UserAccount user;
+  @Column(name = "id_user", nullable = false)
+  private int userId;
 
   @ManyToOne(fetch = FetchType.EAGER, optional = false)
   @JoinColumn(name = "id_car")
@@ -41,12 +40,12 @@ public class AuctionFollow {
     return idFollow;
   }
 
-  public UserAccount getUser() {
-    return user;
+  public int getUserId() {
+    return userId;
   }
 
-  public void setUser(UserAccount user) {
-    this.user = user;
+  public void setUserId(int userId) {
+    this.userId = userId;
   }
 
   public Car getCar() {

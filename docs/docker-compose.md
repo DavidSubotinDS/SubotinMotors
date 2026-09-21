@@ -223,3 +223,22 @@ and Compose/MySQL browser scenarios. Both retain their original check names,
 have always-run fallback cleanup and artifact uploads, and fail on any test or
 cleanup error. Current local and remote evidence is in the handoff; adding CI
 steps does not itself prove they have passed remotely.
+
+## S4b identity-reference checks
+
+The disposable integration harness now checks all 14 account reference columns
+for existing FK/nullability/index guarantees, rejects orphan writes and deletion
+of an account with business history, and compares every existing business row ID
+and account reference across preserved-volume restart and logical restore. No
+migration changes or extra services are introduced. These MySQL assertions
+passed after Docker became available, along with the 20 browser scenarios. An
+additional S4a-to-S4b upgrade on the same disposable volume preserved every table
+checksum. Both runs verified cleanup. See [S4b evidence](identity-boundary-pr.md).
+
+For an old-runtime upgrade rehearsal, archive the verified old backend into an
+ignored directory, then run `node front/e2e/compose.mjs --integration-only
+--upgrade-from=target/s4b/s4a-source/back` (on one command line). The option selects
+only the initial backend build context; the harness still creates its own random
+project/schema/volume, replaces the old backend with current `back/`, compares all
+table checksums and runs the remaining integration checks. It never imports or
+connects to a normal developer database.

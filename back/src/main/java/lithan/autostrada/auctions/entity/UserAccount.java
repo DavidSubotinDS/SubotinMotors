@@ -47,11 +47,7 @@ public class UserAccount {
   @OneToMany(fetch = FetchType.EAGER, cascade = CascadeType.ALL, mappedBy = "user")
   private List<Role> roles;
 
-  @OneToMany(fetch = FetchType.LAZY, cascade = CascadeType.ALL, mappedBy = "user")
-  private List<Car> cars;
 
-  @OneToMany(fetch = FetchType.LAZY, cascade = CascadeType.ALL, mappedBy = "user")
-  private List<CarBidding> carBiddings;
 
   public UserAccount() {
   }
@@ -109,20 +105,8 @@ public class UserAccount {
     this.profile = profile;
   }
 
-  public List<Car> getCars() {
-    return cars;
-  }
 
-  public void setCars(List<Car> cars) {
-    this.cars = cars;
-  }
 
-  public List<CarBidding> getCarBiddings() {
-    return carBiddings;
-  }
 
-  public void setCarBiddings(List<CarBidding> carBiddings) {
-    this.carBiddings = carBiddings;
-  }
 
 }

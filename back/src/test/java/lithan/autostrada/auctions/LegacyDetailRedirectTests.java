@@ -20,7 +20,7 @@ class LegacyDetailRedirectTests {
     CarListing listing = new CarListing(); org.springframework.test.util.ReflectionTestUtils.setField(listing, "idListing", 42);
     CarPart part = new CarPart(); org.springframework.test.util.ReflectionTestUtils.setField(part, "idPart", 43);
     StoreOrder order = new StoreOrder(); org.springframework.test.util.ReflectionTestUtils.setField(order, "idOrder", 44);
-    UserProfile profile = new UserProfile(); profile.setIdProfile(45);
+    var profile = new lithan.autostrada.auctions.identity.PublicProfile(99, 45, "seller", "Test", "Seller", null, null, null, null, null, false);
     CarListingForm listingForm = new CarListingForm(); listingForm.setIdListing(46);
     CarPartForm partForm = new CarPartForm(); partForm.setIdPart(47);
     return Stream.of(

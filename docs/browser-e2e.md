@@ -323,3 +323,11 @@ after cleanup. Gateway clean verify passed 17 tests; frontend passed 12 tests an
 its build. Backend clean verify passed 105 tests on 2026-09-14; its production
 code has not changed since that run. S2 container runtime and remote CI remain
 unverified; see the handoff for the Docker engine failure and existing S1 CI evidence.
+
+## S4b additions (2026-09-21)
+
+`identity-boundary.spec.js` adds public profile/upload/display privacy and scalar
+cart/bid ownership scenarios. The suite now contains 20 scenarios. All 20 passed
+through both the native gateway with disposable H2 and Compose gateway with
+isolated MySQL. Docker was started after the initial unavailable-engine attempt.
+Current S4b evidence and verified cleanup are in the [S4b handoff](identity-boundary-pr.md).

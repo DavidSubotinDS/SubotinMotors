@@ -6,17 +6,16 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 import lithan.autostrada.auctions.entity.AuctionNotification;
 import lithan.autostrada.auctions.entity.Car;
-import lithan.autostrada.auctions.entity.UserAccount;
 
 public interface AuctionNotificationRepository
     extends JpaRepository<AuctionNotification, Integer> {
 
-  boolean existsByUserAndCarAndNotificationType(
-      UserAccount user, Car car, String notificationType);
+  boolean existsByUserIdAndCarAndNotificationType(
+      int userId, Car car, String notificationType);
 
-  List<AuctionNotification> findByUserOrderByCreatedAtDesc(UserAccount user);
+  List<AuctionNotification> findByUserIdOrderByCreatedAtDesc(int userId);
 
-  long countByUserAndReadAtIsNull(UserAccount user);
+  long countByUserIdAndReadAtIsNull(int userId);
 
-  List<AuctionNotification> findByUserAndReadAtIsNull(UserAccount user);
+  List<AuctionNotification> findByUserIdAndReadAtIsNull(int userId);
 }

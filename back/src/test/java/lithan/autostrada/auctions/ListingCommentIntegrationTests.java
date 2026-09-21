@@ -3,7 +3,7 @@ package lithan.autostrada.auctions;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
+import static lithan.autostrada.auctions.TestIdentity.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -44,6 +44,9 @@ class ListingCommentIntegrationTests {
 
   @Autowired
   private CarRepository carRepository;
+
+  @Autowired
+  private lithan.autostrada.auctions.repository.UserRepository userRepository;
 
   @Autowired
   private CarPartRepository partRepository;
@@ -165,7 +168,7 @@ class ListingCommentIntegrationTests {
     return carRepository.findAll().stream()
         .filter(car -> make.equals(car.getMake()))
         .filter(car -> model.equals(car.getModel()))
-        .filter(car -> owner.equals(car.getUser().getUsername()))
+        .filter(car -> owner.equals(userRepository.findById(car.getUserId()).orElseThrow().getUsername()))
         .findFirst()
         .orElseThrow();
   }

@@ -56,7 +56,7 @@ class PaymentWorkflowIntegrationTests {
     UserAccount buyer = userRepository.findByUsername("user123").orElseThrow();
 
     PaymentAccount account = new PaymentAccount();
-    account.setUser(seller);
+    account.setUserId(seller.getIdUser());
     account.setProviderAccountId("acct_test_seller");
     account.setStatus("ACTIVE");
     account.setTransfersEnabled(true);
@@ -70,12 +70,12 @@ class PaymentWorkflowIntegrationTests {
     car.setYear("2025");
     car.setPrice(10000);
     car.setStatus("ACTIVE");
-    car.setUser(seller);
+    car.setUserId(seller.getIdUser());
     carRepository.save(car);
 
     CarBidding bid = new CarBidding();
     bid.setCar(car);
-    bid.setUser(buyer);
+    bid.setUserId(buyer.getIdUser());
     bid.setBidPrice(12000);
     bid.setStatus("ONGOING");
     bidRepository.save(bid);
@@ -114,7 +114,7 @@ class PaymentWorkflowIntegrationTests {
     UserAccount buyer = userRepository.findByUsername("user123").orElseThrow();
 
     PaymentAccount account = new PaymentAccount();
-    account.setUser(seller);
+    account.setUserId(seller.getIdUser());
     account.setProviderAccountId("acct_test_idempotent");
     account.setStatus("ACTIVE");
     account.setTransfersEnabled(true);
@@ -128,12 +128,12 @@ class PaymentWorkflowIntegrationTests {
     car.setYear("2025");
     car.setPrice(20000);
     car.setStatus("ACTIVE");
-    car.setUser(seller);
+    car.setUserId(seller.getIdUser());
     carRepository.save(car);
 
     CarBidding bid = new CarBidding();
     bid.setCar(car);
-    bid.setUser(buyer);
+    bid.setUserId(buyer.getIdUser());
     bid.setBidPrice(21000);
     bid.setStatus("ONGOING");
     bidRepository.save(bid);

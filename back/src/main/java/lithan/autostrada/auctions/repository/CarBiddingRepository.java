@@ -9,7 +9,6 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import lithan.autostrada.auctions.entity.CarBidding;
-import lithan.autostrada.auctions.entity.UserAccount;
 
 public interface CarBiddingRepository extends JpaRepository<CarBidding, Integer> {
   @Query("SELECT MAX(b.bidPrice) FROM CarBidding b WHERE b.car.idCar = :id AND b.status = 'ONGOING'")
@@ -21,5 +20,5 @@ public interface CarBiddingRepository extends JpaRepository<CarBidding, Integer>
 
   List<CarBidding> findByCarIdCar(int carId);
 
-  List<CarBidding> findByUserOrderByIdBidDesc(UserAccount user);
+  List<CarBidding> findByUserIdOrderByIdBidDesc(int userId);
 }

@@ -29,7 +29,7 @@ import lithan.autostrada.auctions.service.ListingCommentService;
 import lithan.autostrada.auctions.service.ListingDepositService;
 import lithan.autostrada.auctions.service.AuctionFollowService;
 import lithan.autostrada.auctions.service.UserCarService;
-import lithan.autostrada.auctions.service.UserService;
+import lithan.autostrada.auctions.identity.ProfileClient;
 
 @RestController
 @RequestMapping("/api/public")
@@ -41,7 +41,7 @@ public class MarketplaceApiController {
   private final CarListingService listingService;
   private final CarPartService partService;
   private final UserCarService userCarService;
-  private final UserService userService;
+  private final ProfileClient profiles;
   private final ListingDepositService depositService;
   private final ListingCommentService commentService;
   private final AuctionFollowService followService;
@@ -52,7 +52,7 @@ public class MarketplaceApiController {
       CarListingService listingService,
       CarPartService partService,
       UserCarService userCarService,
-      UserService userService,
+      ProfileClient profiles,
       ListingDepositService depositService,
       ListingCommentService commentService,
       AuctionFollowService followService,
@@ -61,7 +61,7 @@ public class MarketplaceApiController {
     this.listingService = listingService;
     this.partService = partService;
     this.userCarService = userCarService;
-    this.userService = userService;
+    this.profiles = profiles;
     this.depositService = depositService;
     this.commentService = commentService;
     this.followService = followService;
@@ -70,17 +70,15 @@ public class MarketplaceApiController {
 
   @GetMapping("/summary")
   public MarketplaceSummaryResponse summary() {
-    var featuredAuctions = carService.findCatalogCars(
+    var featuredAuctions = mapper.map(carService.findCatalogCars(
         null,
         null,
         null,
-        PageRequest.of(0, 3, Sort.by(Sort.Direction.DESC, "idCar")))
-        .map(mapper::auction)
+        PageRequest.of(0, 3, Sort.by(Sort.Direction.DESC, "idCar"))), mapper::auction)
         .getContent();
-    var fixedPriceListings = listingService.browse(
+    var fixedPriceListings = mapper.map(listingService.browse(
         null,
-        PageRequest.of(0, 3, Sort.by(Sort.Direction.DESC, "createdAt")))
-        .map(mapper::listing)
+        PageRequest.of(0, 3, Sort.by(Sort.Direction.DESC, "createdAt"))), mapper::listing)
         .getContent();
     var storeParts = partService.browse(
         null,
@@ -113,7 +111,7 @@ public class MarketplaceApiController {
             safePage(page),
             safePageSize(size),
             Sort.by(sortDirection(direction), auctionSort(sort))));
-    return PageResponse.from(cars.map(mapper::auction));
+    return PageResponse.from(mapper.map(cars, mapper::auction));
   }
 
   @GetMapping("/auctions/{idCar}")
@@ -139,7 +137,7 @@ public class MarketplaceApiController {
             safePage(page),
             safePageSize(size),
             Sort.by(sortDirection(direction), listingSort(sort))));
-    return PageResponse.from(listings.map(mapper::listing));
+    return PageResponse.from(mapper.map(listings, mapper::listing));
   }
 
   @GetMapping("/listings/{listingId}")
@@ -179,16 +177,17 @@ public class MarketplaceApiController {
 
   @GetMapping("/profiles/{idProfile}")
   public ProfileResponse profile(@PathVariable int idProfile) {
-    return mapper.profile(userService.getProfile(idProfile), null);
+    return mapper.publicProfile(profiles.findByProfileId(idProfile).orElseThrow(lithan.autostrada.auctions.error.ResourceNotFoundException::new));
   }
 
   @GetMapping("/profiles/{idProfile}/auctions")
   public java.util.List<AuctionSummaryResponse> profileAuctions(@PathVariable int idProfile) {
-    return carService.listCar().stream()
-        .filter(car -> car.getUser().getProfile().getIdProfile() == idProfile)
+    var profile = profiles.findByProfileId(idProfile);
+    if (profile.isEmpty()) return java.util.List.of();
+    return mapper.map(carService.listCar().stream()
+        .filter(car -> car.getUserId() == profile.get().userId())
         .filter(car -> !"DEACTIVE".equals(car.getStatus()))
-        .filter(car -> !"PENDING".equals(car.getStatus()))
-        .map(mapper::auction)
+        .filter(car -> !"PENDING".equals(car.getStatus())), mapper::auction)
         .toList();
   }
 

@@ -23,7 +23,6 @@ import lithan.autostrada.auctions.entity.PaymentOrder;
 import lithan.autostrada.auctions.entity.ListingDeposit;
 import lithan.autostrada.auctions.entity.StoreOrder;
 import lithan.autostrada.auctions.entity.StoreOrderItem;
-import lithan.autostrada.auctions.entity.UserAccount;
 
 @Component
 @ConditionalOnProperty(name = "payments.stripe.enabled", havingValue = "true")
@@ -44,7 +43,7 @@ public class StripeConnectGateway implements StripeGateway {
   }
 
   @Override
-  public String createConnectedAccount(UserAccount seller) {
+  public String createConnectedAccount(int sellerId, String displayName) {
     try {
       AccountCreateParams.Configuration.Recipient.Capabilities.StripeBalance.StripeTransfers transfers =
           AccountCreateParams.Configuration.Recipient.Capabilities.StripeBalance.StripeTransfers.builder()
@@ -64,7 +63,7 @@ public class StripeConnectGateway implements StripeGateway {
               .build();
 
       AccountCreateParams params = AccountCreateParams.builder()
-          .setDisplayName(seller.getProfile().getFirstName() + " " + seller.getProfile().getLastName())
+          .setDisplayName(displayName)
           .setDashboard(AccountCreateParams.Dashboard.EXPRESS)
           .setConfiguration(AccountCreateParams.Configuration.builder().setRecipient(recipient).build())
           .setDefaults(AccountCreateParams.Defaults.builder()
@@ -74,7 +73,7 @@ public class StripeConnectGateway implements StripeGateway {
                   .setLossesCollector(AccountCreateParams.Defaults.Responsibilities.LossesCollector.APPLICATION)
                   .build())
               .build())
-          .putMetadata("autostrada_user_id", Integer.toString(seller.getIdUser()))
+          .putMetadata("autostrada_user_id", Integer.toString(sellerId))
           .build();
 
       return stripeClient.v2().core().accounts().create(params).getId();
@@ -173,12 +172,12 @@ public class StripeConnectGateway implements StripeGateway {
   }
 
   @Override
-  public StripeCheckoutResult createStoreCheckoutSession(StoreOrder order) {
+  public StripeCheckoutResult createStoreCheckoutSession(StoreOrder order, String customerEmail) {
     try {
       SessionCreateParams.Builder builder = SessionCreateParams.builder()
           .setMode(SessionCreateParams.Mode.PAYMENT)
           .setClientReferenceId("store-order-" + order.getIdOrder())
-          .setCustomerEmail(order.getUser().getEmail())
+          .setCustomerEmail(customerEmail)
           .setSuccessUrl(properties.getBaseUrl() + "/store/checkout/success?session_id={CHECKOUT_SESSION_ID}")
           .setCancelUrl(properties.getBaseUrl() + "/cart?checkoutCanceled")
           .addPaymentMethodType(SessionCreateParams.PaymentMethodType.CARD)
@@ -210,7 +209,7 @@ public class StripeConnectGateway implements StripeGateway {
   }
 
   @Override
-  public StripeCheckoutResult createListingDepositCheckoutSession(ListingDeposit deposit) {
+  public StripeCheckoutResult createListingDepositCheckoutSession(ListingDeposit deposit, String customerEmail) {
     try {
       SessionCreateParams.LineItem.PriceData.ProductData productData =
           SessionCreateParams.LineItem.PriceData.ProductData.builder()
@@ -229,7 +228,7 @@ public class StripeConnectGateway implements StripeGateway {
       SessionCreateParams params = SessionCreateParams.builder()
           .setMode(SessionCreateParams.Mode.PAYMENT)
           .setClientReferenceId("listing-deposit-" + deposit.getIdDeposit())
-          .setCustomerEmail(deposit.getBuyer().getEmail())
+          .setCustomerEmail(customerEmail)
           .setSuccessUrl(
               properties.getBaseUrl()
                   + "/listing-deposits/success?session_id={CHECKOUT_SESSION_ID}")

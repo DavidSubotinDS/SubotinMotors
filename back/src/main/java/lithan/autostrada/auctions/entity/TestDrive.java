@@ -33,9 +33,8 @@ public class TestDrive {
   @Column(nullable = false, length = 20)
   private TestDriveStatus status = TestDriveStatus.PENDING;
 
-  @ManyToOne(fetch = FetchType.EAGER, optional = false)
-  @JoinColumn(name = "id_user")
-  private UserAccount user;
+  @Column(name = "id_user", nullable = false)
+  private int userId;
 
   @ManyToOne(fetch = FetchType.EAGER, optional = false)
   @JoinColumn(name = "id_car")
@@ -88,12 +87,12 @@ public class TestDrive {
     return isReschedulable();
   }
 
-  public UserAccount getUser() {
-    return user;
+  public int getUserId() {
+    return userId;
   }
 
-  public void setUser(UserAccount user) {
-    this.user = user;
+  public void setUserId(int userId) {
+    this.userId = userId;
   }
 
   public Car getCar() {

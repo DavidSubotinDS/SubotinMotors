@@ -24,9 +24,8 @@ public class CartItem {
   @Column(name = "id_cart_item")
   private int idCartItem;
 
-  @ManyToOne(fetch = FetchType.EAGER, optional = false)
-  @JoinColumn(name = "id_user", nullable = false)
-  private UserAccount user;
+  @Column(name = "id_user", nullable = false)
+  private int userId;
 
   @ManyToOne(fetch = FetchType.EAGER, optional = false)
   @JoinColumn(name = "id_part", nullable = false)
@@ -45,12 +44,12 @@ public class CartItem {
     return idCartItem;
   }
 
-  public UserAccount getUser() {
-    return user;
+  public int getUserId() {
+    return userId;
   }
 
-  public void setUser(UserAccount user) {
-    this.user = user;
+  public void setUserId(int userId) {
+    this.userId = userId;
   }
 
   public CarPart getPart() {

@@ -7,12 +7,11 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import lithan.autostrada.auctions.entity.StoreOrder;
-import lithan.autostrada.auctions.entity.UserAccount;
 
 public interface StoreOrderRepository extends JpaRepository<StoreOrder, Integer> {
-  Page<StoreOrder> findByUser(UserAccount user, Pageable pageable);
+  Page<StoreOrder> findByUserId(int userId, Pageable pageable);
 
-  Optional<StoreOrder> findByIdOrderAndUser(int idOrder, UserAccount user);
+  Optional<StoreOrder> findByIdOrderAndUserId(int idOrder, int userId);
 
   Optional<StoreOrder> findByCheckoutSessionId(String checkoutSessionId);
 }

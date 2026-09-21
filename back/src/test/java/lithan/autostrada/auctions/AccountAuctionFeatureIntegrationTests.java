@@ -12,7 +12,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.transaction.annotation.Transactional;
 
 import lithan.autostrada.auctions.entity.AuctionNotification;
@@ -103,7 +102,7 @@ class AccountAuctionFeatureIntegrationTests {
   }
 
   @Test
-  @WithMockUser(username = "user123", roles = "USER")
+  @WithIdentity(username = "user123", roles = "USER")
   void bidsAreRejectedAfterAuctionEnd() {
     Car car = saveCar("admin123", "Ended", "Auction", LocalDateTime.now().minusMinutes(1));
 
@@ -133,14 +132,14 @@ class AccountAuctionFeatureIntegrationTests {
   }
 
   @Test
-  @WithMockUser(username = "user123", roles = "USER")
+  @WithIdentity(username = "user123", roles = "USER")
   void followingIsUniqueAndCanBeRemoved() {
     Car car = saveCar("admin123", "Watch", "Target", LocalDateTime.now().plusDays(2));
     UserAccount user = userRepository.findByUsername("user123").orElseThrow();
 
     assertTrue(followService.follow(car.getIdCar()));
     assertFalse(followService.follow(car.getIdCar()));
-    assertEquals(1, followRepository.findByUserOrderByCarAuctionEndTimeAsc(user).stream()
+    assertEquals(1, followRepository.findByUserIdOrderByCarAuctionEndTimeAsc(user.getIdUser()).stream()
         .filter(follow -> follow.getCar().getIdCar() == car.getIdCar())
         .count());
 
@@ -149,24 +148,22 @@ class AccountAuctionFeatureIntegrationTests {
   }
 
   @Test
-  @WithMockUser(username = "user123", roles = "USER")
+  @WithIdentity(username = "user123", roles = "USER")
   void nearingEndNotificationIsCreatedOnceForFollowers() {
     Car car = saveCar("admin123", "Notify", "Target", LocalDateTime.now().plusDays(2));
     UserAccount user = userRepository.findByUsername("user123").orElseThrow();
     followService.follow(car.getIdCar());
-    assertFalse(notificationRepository.existsByUserAndCarAndNotificationType(
-        user, car, AuctionNotification.ENDING_SOON));
+    assertFalse(notificationRepository.existsByUserIdAndCarAndNotificationType(user.getIdUser(), car, AuctionNotification.ENDING_SOON));
 
     car.setAuctionEndTime(LocalDateTime.now().plusHours(2));
     carRepository.saveAndFlush(car);
     assertTrue(notificationService.createEndingSoonNotifications() >= 1);
     assertEquals(0, notificationService.createEndingSoonNotifications());
-    assertTrue(notificationRepository.existsByUserAndCarAndNotificationType(
-        user, car, AuctionNotification.ENDING_SOON));
+    assertTrue(notificationRepository.existsByUserIdAndCarAndNotificationType(user.getIdUser(), car, AuctionNotification.ENDING_SOON));
     assertEquals(1, notificationService.unreadCount());
 
     AuctionNotification notification =
-        notificationRepository.findByUserOrderByCreatedAtDesc(user).get(0);
+        notificationRepository.findByUserIdOrderByCreatedAtDesc(user.getIdUser()).get(0);
     notificationService.markRead(notification.getIdNotification());
     assertEquals(0, notificationService.unreadCount());
   }
@@ -183,7 +180,7 @@ class AccountAuctionFeatureIntegrationTests {
     car.setPrice(10_000);
     car.setStatus("ACTIVE");
     car.setAuctionEndTime(auctionEndTime);
-    car.setUser(userRepository.findByUsername(ownerUsername).orElseThrow());
+    car.setUserId(userRepository.findByUsername(ownerUsername).orElseThrow().getIdUser());
     return carRepository.saveAndFlush(car);
   }
 }

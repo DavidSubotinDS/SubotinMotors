@@ -7,17 +7,16 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 import lithan.autostrada.auctions.entity.CarListing;
 import lithan.autostrada.auctions.entity.ListingTestRide;
-import lithan.autostrada.auctions.entity.UserAccount;
 
 public interface ListingTestRideRepository extends JpaRepository<ListingTestRide, Integer> {
 
-  List<ListingTestRide> findByUserOrderByScheduledAtAsc(UserAccount user);
+  List<ListingTestRide> findByUserIdOrderByScheduledAtAsc(int userId);
 
-  List<ListingTestRide> findByListingSellerOrderByScheduledAtAsc(UserAccount seller);
+  List<ListingTestRide> findByListingSellerIdOrderByScheduledAtAsc(int sellerId);
 
-  boolean existsByUserAndListingAndScheduledAt(
-      UserAccount user, CarListing listing, LocalDateTime scheduledAt);
+  boolean existsByUserIdAndListingAndScheduledAt(
+      int userId, CarListing listing, LocalDateTime scheduledAt);
 
-  boolean existsByUserAndListingAndScheduledAtAndIdTestRideNot(
-      UserAccount user, CarListing listing, LocalDateTime scheduledAt, int idTestRide);
+  boolean existsByUserIdAndListingAndScheduledAtAndIdTestRideNot(
+      int userId, CarListing listing, LocalDateTime scheduledAt, int idTestRide);
 }

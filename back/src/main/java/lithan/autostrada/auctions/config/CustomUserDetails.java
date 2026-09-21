@@ -1,6 +1,5 @@
 package lithan.autostrada.auctions.config;
 
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
@@ -8,38 +7,40 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
-import lithan.autostrada.auctions.entity.Role;
 import lithan.autostrada.auctions.entity.UserAccount;
 
-public class CustomUserDetails implements UserDetails {
+public class CustomUserDetails implements UserDetails, org.springframework.security.core.CredentialsContainer {
 
-  private UserAccount user;
+  private final int userId;
+  private final String username;
+  private final String displayName;
+  private String password;
+  private final List<SimpleGrantedAuthority> authorities;
 
   public CustomUserDetails(UserAccount user) {
     super();
-    this.user = user;
+    this.userId = user.getIdUser();
+    this.username = user.getUsername();
+    this.password = user.getPassword();
+    this.displayName = user.getProfile() == null ? username
+        : (user.getProfile().getFirstName() + " " + user.getProfile().getLastName()).trim();
+    this.authorities = user.getRoles() == null ? List.of()
+        : user.getRoles().stream().map(role -> new SimpleGrantedAuthority(role.getRole())).toList();
   }
 
   @Override
   public Collection<? extends GrantedAuthority> getAuthorities() {
-    List<Role> roles = user.getRoles();
-
-    List<SimpleGrantedAuthority> authorities = new ArrayList<>();
-
-    for (Role role : roles) {
-      authorities.add(new SimpleGrantedAuthority(role.getRole()));
-    }
     return authorities;
   }
 
   @Override
   public String getPassword() {
-    return user.getPassword();
+    return password;
   }
 
   @Override
   public String getUsername() {
-    return user.getUsername();
+    return username;
   }
 
   @Override
@@ -62,8 +63,8 @@ public class CustomUserDetails implements UserDetails {
     return true;
   }
 
-  public UserAccount getUser() {
-    return user;
-  }
+  public int getUserId() { return userId; }
+  public String getDisplayName() { return displayName; }
+  @Override public void eraseCredentials() { password = null; }
 
 }

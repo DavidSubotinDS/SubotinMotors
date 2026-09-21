@@ -283,3 +283,10 @@ webhook is the source of truth.
 
 CRUD coverage and authorization rules are documented in
 [`docs/crud-coverage.md`](docs/crud-coverage.md).
+
+## S4b identity boundary preparation
+
+Business records now keep scalar account IDs and use in-process profile clients.
+Identity/session ownership and topology remain in the backend. See the
+[boundary contract](docs/identity-boundary.md) and [owner handoff](docs/identity-boundary-pr.md)
+for permitted dependencies, privacy changes, local evidence and outstanding remote CI gates.

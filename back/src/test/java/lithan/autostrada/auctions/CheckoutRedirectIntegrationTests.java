@@ -1,6 +1,6 @@
 package lithan.autostrada.auctions;
 
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
+import static lithan.autostrada.auctions.TestIdentity.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -37,7 +37,7 @@ class CheckoutRedirectIntegrationTests {
   void checkoutSuccessRedirectPreservesStripeSessionIdForReact() throws Exception {
     UserAccount buyer = userRepository.findByUsername("user123").orElseThrow();
     StoreOrder order = new StoreOrder();
-    order.setUser(buyer);
+    order.setUserId(buyer.getIdUser());
     order.setTotalMinor(4999L);
     order.setCurrency("eur");
     order.setStatus("CHECKOUT_CREATED");

@@ -35,9 +35,8 @@ public class ListingTestRide {
   @JoinColumn(name = "id_listing", nullable = false)
   private CarListing listing;
 
-  @ManyToOne(fetch = FetchType.EAGER, optional = false)
-  @JoinColumn(name = "id_user", nullable = false)
-  private UserAccount user;
+  @Column(name = "id_user", nullable = false)
+  private int userId;
 
   @Column(name = "created_at", nullable = false)
   private Instant createdAt;
@@ -93,12 +92,12 @@ public class ListingTestRide {
     this.listing = listing;
   }
 
-  public UserAccount getUser() {
-    return user;
+  public int getUserId() {
+    return userId;
   }
 
-  public void setUser(UserAccount user) {
-    this.user = user;
+  public void setUserId(int userId) {
+    this.userId = userId;
   }
 
   public Instant getCreatedAt() {

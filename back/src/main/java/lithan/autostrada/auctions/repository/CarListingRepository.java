@@ -14,7 +14,6 @@ import org.springframework.data.repository.query.Param;
 
 import lithan.autostrada.auctions.entity.CarListing;
 import lithan.autostrada.auctions.entity.CarListingStatus;
-import lithan.autostrada.auctions.entity.UserAccount;
 
 public interface CarListingRepository extends JpaRepository<CarListing, Integer> {
 
@@ -28,7 +27,7 @@ public interface CarListingRepository extends JpaRepository<CarListing, Integer>
       @Param("keyword") String keyword,
       Pageable pageable);
 
-  List<CarListing> findBySellerOrderByCreatedAtDesc(UserAccount seller);
+  List<CarListing> findBySellerIdOrderByCreatedAtDesc(int sellerId);
 
   @Lock(LockModeType.PESSIMISTIC_WRITE)
   @Query("SELECT l FROM CarListing l WHERE l.idListing = :id")

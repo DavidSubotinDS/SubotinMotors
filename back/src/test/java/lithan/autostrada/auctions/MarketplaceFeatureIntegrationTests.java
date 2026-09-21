@@ -7,7 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.hamcrest.Matchers.contains;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
+import static lithan.autostrada.auctions.TestIdentity.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -308,7 +308,7 @@ class MarketplaceFeatureIntegrationTests {
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.message").value("Test drive requested."));
 
-    TestDrive testDrive = testDriveRepository.findByUserOrderByDateAsc(requester).stream()
+    TestDrive testDrive = testDriveRepository.findByUserIdOrderByDateAsc(requester.getIdUser()).stream()
         .filter(booking -> booking.getCar().getIdCar() == car.getIdCar())
         .findFirst()
         .orElseThrow();
@@ -397,7 +397,7 @@ class MarketplaceFeatureIntegrationTests {
     car.setYear("2025");
     car.setPrice(price);
     car.setStatus(status);
-    car.setUser(owner);
+    car.setUserId(owner.getIdUser());
     return carRepository.saveAndFlush(car);
   }
 
@@ -415,7 +415,7 @@ class MarketplaceFeatureIntegrationTests {
 
     CarBidding bid = new CarBidding();
     bid.setCar(car);
-    bid.setUser(buyer);
+    bid.setUserId(buyer.getIdUser());
     bid.setBidPrice(bidPrice);
     bid.setStatus("PAID");
     bidRepository.saveAndFlush(bid);
@@ -423,8 +423,8 @@ class MarketplaceFeatureIntegrationTests {
     Instant createdAt = Instant.parse("2026-06-18T09:00:00Z");
     PaymentOrder payment = new PaymentOrder();
     payment.setBid(bid);
-    payment.setBuyer(buyer);
-    payment.setSeller(seller);
+    payment.setBuyerId(buyer.getIdUser());
+    payment.setSellerId(seller.getIdUser());
     payment.setAmountMinor(amountMinor);
     payment.setPlatformFeeMinor(amountMinor / 40);
     payment.setCurrency("eur");

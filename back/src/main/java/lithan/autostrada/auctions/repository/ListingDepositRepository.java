@@ -9,14 +9,13 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 import lithan.autostrada.auctions.entity.CarListing;
 import lithan.autostrada.auctions.entity.ListingDeposit;
-import lithan.autostrada.auctions.entity.UserAccount;
 
 public interface ListingDepositRepository extends JpaRepository<ListingDeposit, Integer> {
 
-  boolean existsByListingAndBuyerAndStatusIn(
-      CarListing listing, UserAccount buyer, Collection<String> statuses);
+  boolean existsByListingAndBuyerIdAndStatusIn(
+      CarListing listing, int buyerId, Collection<String> statuses);
 
   Optional<ListingDeposit> findByCheckoutSessionId(String checkoutSessionId);
 
-  Page<ListingDeposit> findByBuyer(UserAccount buyer, Pageable pageable);
+  Page<ListingDeposit> findByBuyerId(int buyerId, Pageable pageable);
 }

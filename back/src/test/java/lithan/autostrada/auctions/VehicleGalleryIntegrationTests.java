@@ -3,7 +3,7 @@ package lithan.autostrada.auctions;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
+import static lithan.autostrada.auctions.TestIdentity.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -60,8 +60,7 @@ class VehicleGalleryIntegrationTests {
         .andExpect(jsonPath("$.imageUrls.length()").value(2))
         .andExpect(jsonPath("$.imageUrl").isNotEmpty());
 
-    Car car = carRepository.findByUser(
-        userRepository.findByUsername("demo_newcomer").orElseThrow()).stream()
+    Car car = carRepository.findByUserId(userRepository.findByUsername("demo_newcomer").orElseThrow().getIdUser()).stream()
         .filter(candidate -> "Gallery".equals(candidate.getMake()))
         .findFirst()
         .orElseThrow();
@@ -99,8 +98,7 @@ class VehicleGalleryIntegrationTests {
         .andExpect(jsonPath("$.imageUrls.length()").value(3))
         .andExpect(jsonPath("$.imageUrl").isNotEmpty());
 
-    CarListing listing = listingRepository.findBySellerOrderByCreatedAtDesc(
-        userRepository.findByUsername("demo_newcomer").orElseThrow()).stream()
+    CarListing listing = listingRepository.findBySellerIdOrderByCreatedAtDesc(userRepository.findByUsername("demo_newcomer").orElseThrow().getIdUser()).stream()
         .filter(candidate -> "Gallery listing".equals(candidate.getTitle()))
         .findFirst()
         .orElseThrow();

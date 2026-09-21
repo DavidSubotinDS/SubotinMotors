@@ -9,9 +9,9 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 
 import lithan.autostrada.auctions.entity.Car;
-import lithan.autostrada.auctions.entity.UserProfile;
+import lithan.autostrada.auctions.identity.PublicProfile;
 import lithan.autostrada.auctions.service.CarService;
-import lithan.autostrada.auctions.service.UserService;
+import lithan.autostrada.auctions.identity.ProfileClient;
 
 @Controller
 public class HomeController {
@@ -20,7 +20,7 @@ public class HomeController {
   private CarService carService;
 
   @Autowired
-  private UserService userService;
+  private ProfileClient profiles;
 
   @GetMapping("/")
   public String homePage(Model model) {
@@ -47,10 +47,10 @@ public class HomeController {
   // View User
   @GetMapping("/view-user/{firstName}/{idProfile}")
   public String viewUser(@PathVariable("idProfile") int idProfile, Model model) {
-    UserProfile profile = userService.getProfile(idProfile);
+    PublicProfile profile = profiles.findByProfileId(idProfile).orElseThrow(lithan.autostrada.auctions.error.ResourceNotFoundException::new);
     List<Car> listCar = carService.listCar();
 
-    listCar.removeIf(car -> car.getUser().getProfile().getIdProfile() != idProfile);
+    listCar.removeIf(car -> car.getUserId() != profile.userId());
     listCar.removeIf(car -> car.getStatus().equals("DEACTIVE"));
     listCar.removeIf(car -> car.getStatus().equals("PENDING"));
 

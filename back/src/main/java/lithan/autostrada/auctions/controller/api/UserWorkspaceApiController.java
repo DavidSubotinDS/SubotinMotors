@@ -7,7 +7,6 @@ import java.util.List;
 import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
 
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
@@ -21,7 +20,6 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 import lithan.autostrada.auctions.dto.CarListingForm;
-import lithan.autostrada.auctions.dto.UserProfileForm;
 import lithan.autostrada.auctions.dto.api.ApiModels.ApiMessageResponse;
 import lithan.autostrada.auctions.dto.api.ApiModels.AppointmentDashboardResponse;
 import lithan.autostrada.auctions.dto.api.ApiModels.AuctionRequest;
@@ -40,20 +38,18 @@ import lithan.autostrada.auctions.dto.api.ListingSummaryResponse;
 import lithan.autostrada.auctions.dto.api.PageResponse;
 import lithan.autostrada.auctions.entity.Car;
 import lithan.autostrada.auctions.entity.CarListing;
-import lithan.autostrada.auctions.entity.UserAccount;
 import lithan.autostrada.auctions.service.AuctionFollowService;
 import lithan.autostrada.auctions.service.AuctionNotificationService;
 import lithan.autostrada.auctions.service.CarListingService;
 import lithan.autostrada.auctions.service.CartService;
 import lithan.autostrada.auctions.service.ListingDepositService;
 import lithan.autostrada.auctions.service.UserCarService;
-import lithan.autostrada.auctions.service.UserService;
 
 @RestController
 @RequestMapping("/api/user")
 public class UserWorkspaceApiController {
 
-  private final UserService userService;
+  private final lithan.autostrada.auctions.identity.SelfProfileService selfProfiles;
   private final UserCarService userCarService;
   private final CarListingService listingService;
   private final ListingDepositService depositService;
@@ -63,7 +59,7 @@ public class UserWorkspaceApiController {
   private final ApiModelMapper mapper;
 
   public UserWorkspaceApiController(
-      UserService userService,
+      lithan.autostrada.auctions.identity.SelfProfileService selfProfiles,
       UserCarService userCarService,
       CarListingService listingService,
       ListingDepositService depositService,
@@ -71,7 +67,7 @@ public class UserWorkspaceApiController {
       AuctionNotificationService notificationService,
       CartService cartService,
       ApiModelMapper mapper) {
-    this.userService = userService;
+    this.selfProfiles = selfProfiles;
     this.userCarService = userCarService;
     this.listingService = listingService;
     this.depositService = depositService;
@@ -83,60 +79,32 @@ public class UserWorkspaceApiController {
 
   @GetMapping("/workspace")
   public UserWorkspaceResponse workspace() {
-    UserAccount user = userService.getUserLogin();
     return new UserWorkspaceResponse(
-        mapper.profile(user),
-        userCarService.listUserCar().stream().map(mapper::auction).toList(),
-        listingService.currentUserListings().stream().map(mapper::listing).toList(),
-        userCarService.listCurrentUserBids().stream().map(mapper::bid).toList(),
+        selfProfiles.profile(),
+        mapper.map(userCarService.listUserCar().stream(), mapper::auction).toList(),
+        mapper.map(listingService.currentUserListings().stream(), mapper::listing).toList(),
+        mapper.map(userCarService.listCurrentUserBids().stream(), mapper::bid).toList(),
         notificationService.unreadCount(),
         cartService.itemCount());
   }
 
   @GetMapping("/profile")
-  public ProfileResponse profile() {
-    return mapper.profile(userService.getUserLogin());
-  }
+  public ProfileResponse profile() { return selfProfiles.profile(); }
 
   @PutMapping("/profile")
-  public ProfileResponse updateProfile(
-      @RequestBody ProfileRequest request,
-      HttpSession session) {
-    UserProfileForm form = new UserProfileForm();
-    form.setIdProfile(userService.getUserLogin().getProfile().getIdProfile());
-    form.setEmail(request.email());
-    form.setFirstName(request.firstName());
-    form.setLastName(request.lastName());
-    form.setPhoneNumber(request.phoneNumber());
-    form.setAddress(request.address());
-    form.setStreetAddress(request.streetAddress());
-    form.setCity(request.city());
-    form.setPostalCode(request.postalCode());
-    form.setCountry(request.country());
-    form.setAbout(request.about());
-    try {
-      userService.editUserProfile(form);
-    } catch (DataIntegrityViolationException exception) {
-      throw new IllegalArgumentException("That email is already registered.");
-    }
-    UserAccount user = userService.getUserLogin();
-    session.setAttribute("profileLog", user.getProfile());
-    return mapper.profile(user);
+  public ProfileResponse updateProfile(@RequestBody ProfileRequest request, HttpSession session) {
+    return selfProfiles.updateProfile(request, session);
   }
 
   @PostMapping("/profile/picture")
-  public ProfileResponse updateProfilePicture(
-      @RequestParam("imageFile") MultipartFile imageFile,
+  public ProfileResponse updateProfilePicture(@RequestParam("imageFile") MultipartFile imageFile,
       HttpSession session) throws Exception {
-    UserAccount user = userService.getUserLogin();
-    userService.saveImage(imageFile, user.getProfile());
-    session.setAttribute("profileLog", user.getProfile());
-    return mapper.profile(userService.getUserLogin());
+    return selfProfiles.updateProfilePicture(imageFile, session);
   }
 
   @GetMapping("/auctions")
   public java.util.List<AuctionSummaryResponse> auctions() {
-    return userCarService.listUserCar().stream().map(mapper::auction).toList();
+    return mapper.map(userCarService.listUserCar().stream(), mapper::auction).toList();
   }
 
   @GetMapping("/auctions/{idCar}")
@@ -226,15 +194,13 @@ public class UserWorkspaceApiController {
 
   @GetMapping("/followed-auctions")
   public java.util.List<AuctionSummaryResponse> followedAuctions() {
-    return followService.listCurrentUserFollows().stream()
-        .map(follow -> mapper.auction(follow.getCar()))
+    return mapper.map(followService.listCurrentUserFollows().stream().map(lithan.autostrada.auctions.entity.AuctionFollow::getCar), mapper::auction)
         .toList();
   }
 
   @GetMapping("/notifications")
   public java.util.List<NotificationResponse> notifications() {
-    return notificationService.listCurrentUserNotifications().stream()
-        .map(mapper::notification)
+    return mapper.map(notificationService.listCurrentUserNotifications().stream(), mapper::notification)
         .toList();
   }
 
@@ -252,7 +218,7 @@ public class UserWorkspaceApiController {
 
   @GetMapping("/bids")
   public java.util.List<BidResponse> bids() {
-    return userCarService.listCurrentUserBids().stream().map(mapper::bid).toList();
+    return mapper.map(userCarService.listCurrentUserBids().stream(), mapper::bid).toList();
   }
 
   @PostMapping("/bids/{idBid}/cancel")
@@ -304,7 +270,7 @@ public class UserWorkspaceApiController {
 
   @GetMapping("/listings")
   public java.util.List<ListingSummaryResponse> listings() {
-    return listingService.currentUserListings().stream().map(mapper::listing).toList();
+    return mapper.map(listingService.currentUserListings().stream(), mapper::listing).toList();
   }
 
   @GetMapping("/listings/{listingId}")
@@ -400,7 +366,7 @@ public class UserWorkspaceApiController {
             org.springframework.data.domain.Sort.by(
                 org.springframework.data.domain.Sort.Direction.DESC,
                 "createdAt")));
-    return PageResponse.from(deposits.map(mapper::deposit));
+    return PageResponse.from(mapper.map(deposits, mapper::deposit));
   }
 
   @GetMapping("/listing-deposits/success")

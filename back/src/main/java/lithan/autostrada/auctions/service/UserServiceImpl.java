@@ -72,13 +72,12 @@ public class UserServiceImpl implements UserService {
     return userRepo.findByUsername(username).orElse(null);
   }
 
+  @Autowired
+  private lithan.autostrada.auctions.identity.CurrentIdentity currentIdentity;
+
   @Override
   public UserAccount getUserLogin() {
-    Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-
-    String username = authentication.getName();
-
-    return userRepo.findByUsername(username).orElseThrow(ResourceNotFoundException::new);
+    return userRepo.findById(currentIdentity.requireUserId()).orElseThrow(ResourceNotFoundException::new);
   }
 
   @Override

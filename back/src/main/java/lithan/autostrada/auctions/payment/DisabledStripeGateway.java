@@ -6,7 +6,6 @@ import org.springframework.stereotype.Component;
 import lithan.autostrada.auctions.entity.PaymentOrder;
 import lithan.autostrada.auctions.entity.ListingDeposit;
 import lithan.autostrada.auctions.entity.StoreOrder;
-import lithan.autostrada.auctions.entity.UserAccount;
 
 @Component
 @ConditionalOnProperty(name = "payments.stripe.enabled", havingValue = "false", matchIfMissing = true)
@@ -22,7 +21,7 @@ public class DisabledStripeGateway implements StripeGateway {
   }
 
   @Override
-  public String createConnectedAccount(UserAccount seller) {
+  public String createConnectedAccount(int sellerId, String displayName) {
     throw disabled();
   }
 
@@ -42,12 +41,12 @@ public class DisabledStripeGateway implements StripeGateway {
   }
 
   @Override
-  public StripeCheckoutResult createStoreCheckoutSession(StoreOrder order) {
+  public StripeCheckoutResult createStoreCheckoutSession(StoreOrder order, String customerEmail) {
     throw disabled();
   }
 
   @Override
-  public StripeCheckoutResult createListingDepositCheckoutSession(ListingDeposit deposit) {
+  public StripeCheckoutResult createListingDepositCheckoutSession(ListingDeposit deposit, String customerEmail) {
     throw disabled();
   }
 

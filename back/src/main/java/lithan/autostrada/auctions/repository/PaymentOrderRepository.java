@@ -9,18 +9,17 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 import lithan.autostrada.auctions.entity.CarBidding;
 import lithan.autostrada.auctions.entity.PaymentOrder;
-import lithan.autostrada.auctions.entity.UserAccount;
 
 public interface PaymentOrderRepository extends JpaRepository<PaymentOrder, Integer> {
   Optional<PaymentOrder> findByBid(CarBidding bid);
 
   Optional<PaymentOrder> findByCheckoutSessionId(String checkoutSessionId);
 
-  List<PaymentOrder> findByBuyerOrderByCreatedAtDesc(UserAccount buyer);
+  List<PaymentOrder> findByBuyerIdOrderByCreatedAtDesc(int buyerId);
 
-  List<PaymentOrder> findBySellerOrderByCreatedAtDesc(UserAccount seller);
+  List<PaymentOrder> findBySellerIdOrderByCreatedAtDesc(int sellerId);
 
-  Page<PaymentOrder> findByBuyer(UserAccount buyer, Pageable pageable);
+  Page<PaymentOrder> findByBuyerId(int buyerId, Pageable pageable);
 
-  Page<PaymentOrder> findBySeller(UserAccount seller, Pageable pageable);
+  Page<PaymentOrder> findBySellerId(int sellerId, Pageable pageable);
 }

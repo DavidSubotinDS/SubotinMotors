@@ -41,21 +41,20 @@ import lithan.autostrada.auctions.entity.ListingDeposit;
 import lithan.autostrada.auctions.entity.ListingTestRide;
 import lithan.autostrada.auctions.entity.PaymentOrder;
 import lithan.autostrada.auctions.entity.PaymentWebhookEvent;
-import lithan.autostrada.auctions.entity.ProfilePicture;
-import lithan.autostrada.auctions.entity.Role;
 import lithan.autostrada.auctions.entity.StoreOrder;
 import lithan.autostrada.auctions.entity.StoreOrderItem;
 import lithan.autostrada.auctions.entity.TestDrive;
-import lithan.autostrada.auctions.entity.UserAccount;
-import lithan.autostrada.auctions.entity.UserProfile;
 
 @Component
 public class ApiModelMapper {
 
   private final Clock clock;
+  private final lithan.autostrada.auctions.identity.ProfileClient profiles;
+  private final ThreadLocal<java.util.Map<Integer, lithan.autostrada.auctions.identity.PublicProfile>> batch = new ThreadLocal<>();
 
-  public ApiModelMapper(Clock clock) {
+  public ApiModelMapper(Clock clock, lithan.autostrada.auctions.identity.ProfileClient profiles) {
     this.clock = clock;
+    this.profiles = profiles;
   }
 
   public AuctionSummaryResponse auction(Car car) {
@@ -80,7 +79,7 @@ public class ApiModelMapper {
         car.getAuctionEndTimeEpochMillis(),
         imageUrls.isEmpty() ? null : imageUrls.get(0),
         List.copyOf(imageUrls),
-        displayName(car.getUser()));
+        displayName(car.getUserId()));
   }
 
   public ListingSummaryResponse listing(CarListing listing) {
@@ -106,7 +105,7 @@ public class ApiModelMapper {
         listing.getStatus().name(),
         imageUrls.isEmpty() ? null : imageUrls.get(0),
         List.copyOf(imageUrls),
-        displayName(listing.getSeller()));
+        displayName(listing.getSellerId()));
   }
 
   public ListingDetailResponse listingDetail(
@@ -140,43 +139,6 @@ public class ApiModelMapper {
         comments.stream().map(this::comment).toList());
   }
 
-  public ProfileResponse profile(UserAccount user) {
-    return profile(user.getProfile(), user);
-  }
-
-  public ProfileResponse profile(UserProfile profile, UserAccount user) {
-    ProfilePicture picture = profile.getProfilePicture();
-    return new ProfileResponse(
-        profile.getIdProfile(),
-        user == null ? null : user.getIdUser(),
-        user == null ? null : user.getUsername(),
-        user == null ? null : user.getEmail(),
-        profile.getFirstName(),
-        profile.getLastName(),
-        profile.getPhoneNumber(),
-        profile.getAddress(),
-        profile.getStreetAddress(),
-        profile.getCity(),
-        profile.getPostalCode(),
-        profile.getCountry(),
-        profile.getAbout(),
-        profile.hasCompleteShippingAddress(),
-        profile.getFormattedShippingAddress(),
-        profile.getDisplayLocation(),
-        picture == null ? null : imageDataUrl(picture.getFileType(), picture.getImage()));
-  }
-
-  public UserSummaryResponse user(UserAccount user) {
-    return new UserSummaryResponse(
-        user.getIdUser(),
-        user.getUsername(),
-        user.getEmail(),
-        user.getProfile() == null ? null : profile(user),
-        user.getRoles() == null
-            ? List.of()
-            : user.getRoles().stream().map(Role::getRole).toList());
-  }
-
   public CommentResponse comment(ListingCommentView comment) {
     return new CommentResponse(
         comment.getIdComment(),
@@ -196,7 +158,7 @@ public class ApiModelMapper {
         bid.getBidPrice(),
         bid.getStatus(),
         auction(bid.getCar()),
-        user(bid.getUser()));
+        user(bid.getUserId()));
   }
 
   public TestDriveResponse testDrive(TestDrive testDrive) {
@@ -210,7 +172,7 @@ public class ApiModelMapper {
         testDrive.isReschedulable(),
         testDrive.isCancellable(),
         auction(testDrive.getCar()),
-        user(testDrive.getUser()));
+        user(testDrive.getUserId()));
   }
 
   public ListingTestRideResponse listingTestRide(ListingTestRide testRide) {
@@ -224,7 +186,7 @@ public class ApiModelMapper {
         testRide.isReschedulable(),
         testRide.isCancellable(),
         listing(testRide.getListing()),
-        user(testRide.getUser()));
+        user(testRide.getUserId()));
   }
 
   public AppointmentDashboardResponse appointments(
@@ -233,10 +195,10 @@ public class ApiModelMapper {
       List<ListingTestRide> listingTestRideRequests,
       List<ListingTestRide> listingTestRides) {
     return new AppointmentDashboardResponse(
-        receivedTestDrives.stream().map(this::testDrive).toList(),
-        bookedTestDrives.stream().map(this::testDrive).toList(),
-        listingTestRideRequests.stream().map(this::listingTestRide).toList(),
-        listingTestRides.stream().map(this::listingTestRide).toList());
+        map(receivedTestDrives.stream(), this::testDrive).toList(),
+        map(bookedTestDrives.stream(), this::testDrive).toList(),
+        map(listingTestRideRequests.stream(), this::listingTestRide).toList(),
+        map(listingTestRides.stream(), this::listingTestRide).toList());
   }
 
   public NotificationResponse notification(AuctionNotification notification) {
@@ -287,7 +249,7 @@ public class ApiModelMapper {
         order.getCreatedAt(),
         order.getUpdatedAt(),
         order.getPaidAt(),
-        user(order.getUser()),
+        user(order.getUserId()),
         order.getItems().stream().map(this::storeOrderItem).toList());
   }
 
@@ -306,7 +268,7 @@ public class ApiModelMapper {
     return new DepositResponse(
         deposit.getIdDeposit(),
         listing(deposit.getListing()),
-        user(deposit.getBuyer()),
+        user(deposit.getBuyerId()),
         deposit.getAmountMinor(),
         deposit.getCurrency(),
         deposit.getStatus(),
@@ -319,8 +281,8 @@ public class ApiModelMapper {
     return new PaymentResponse(
         payment.getIdPayment(),
         bid(payment.getBid()),
-        user(payment.getBuyer()),
-        user(payment.getSeller()),
+        user(payment.getBuyerId()),
+        user(payment.getSellerId()),
         payment.getAmountMinor(),
         payment.getPlatformFeeMinor(),
         payment.getCurrency(),
@@ -368,15 +330,61 @@ public class ApiModelMapper {
     return "data:" + fileType + ";base64," + image;
   }
 
-  private String displayName(UserAccount user) {
-    if (user == null) {
-      return "";
+  private lithan.autostrada.auctions.identity.PublicProfile lookup(int id) {
+    var current = batch.get();
+    return current == null ? profiles.display(id)
+        : current.getOrDefault(id, lithan.autostrada.auctions.identity.PublicProfile.missing(id));
+  }
+
+  private String displayName(int id) { return lookup(id).displayName(); }
+
+  public ProfileResponse publicProfile(lithan.autostrada.auctions.identity.PublicProfile p) {
+    return publicProfile(p, false);
+  }
+
+  private ProfileResponse publicProfile(lithan.autostrada.auctions.identity.PublicProfile p, boolean nestedUser) {
+    if (p.profileId() == null) return null;
+    return new ProfileResponse(p.profileId(), nestedUser ? p.userId() : null, nestedUser ? p.username() : null, null,
+        p.firstName(), p.lastName(), null, null, null, p.city(), null, p.country(),
+        p.about(), false, "", p.displayLocation(), imageDataUrl(p.pictureType(), p.picture()));
+  }
+
+  private UserSummaryResponse user(int id) {
+    var p = lookup(id);
+    return new UserSummaryResponse(id, p.username(), null, publicProfile(p, true), List.of());
+  }
+
+  public <T, R> org.springframework.data.domain.Page<R> map(
+      org.springframework.data.domain.Page<T> source, java.util.function.Function<T, R> mapping) {
+    return withProfiles(source.getContent(), () -> source.map(mapping));
+  }
+
+  public <T, R> java.util.stream.Stream<R> map(
+      java.util.stream.Stream<T> source, java.util.function.Function<T, R> mapping) {
+    var values = source.toList();
+    return withProfiles(values, () -> values.stream().map(mapping).toList()).stream();
+  }
+
+  private <T> T withProfiles(java.util.Collection<?> values, java.util.function.Supplier<T> mapping) {
+    var ids = new java.util.HashSet<Integer>();
+    values.forEach(value -> collectIds(value, ids));
+    var previous = batch.get();
+    batch.set(profiles.findAll(ids));
+    try { return mapping.get(); }
+    finally { if (previous == null) batch.remove(); else batch.set(previous); }
+  }
+
+  private void collectIds(Object value, java.util.Set<Integer> ids) {
+    if (value instanceof Car car) ids.add(car.getUserId());
+    else if (value instanceof CarListing listing) ids.add(listing.getSellerId());
+    else if (value instanceof CarBidding bid) { ids.add(bid.getUserId()); collectIds(bid.getCar(), ids); }
+    else if (value instanceof TestDrive ride) { ids.add(ride.getUserId()); collectIds(ride.getCar(), ids); }
+    else if (value instanceof ListingTestRide ride) { ids.add(ride.getUserId()); collectIds(ride.getListing(), ids); }
+    else if (value instanceof AuctionNotification notification) collectIds(notification.getCar(), ids);
+    else if (value instanceof StoreOrder order) ids.add(order.getUserId());
+    else if (value instanceof ListingDeposit deposit) { ids.add(deposit.getBuyerId()); collectIds(deposit.getListing(), ids); }
+    else if (value instanceof PaymentOrder payment) {
+      ids.add(payment.getBuyerId()); ids.add(payment.getSellerId()); collectIds(payment.getBid(), ids);
     }
-    UserProfile profile = user.getProfile();
-    if (profile == null) {
-      return user.getUsername();
-    }
-    String fullName = (profile.getFirstName() + " " + profile.getLastName()).trim();
-    return fullName.isBlank() ? user.getUsername() : fullName;
   }
 }

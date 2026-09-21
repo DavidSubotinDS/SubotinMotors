@@ -12,7 +12,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -32,7 +31,7 @@ import lithan.autostrada.auctions.repository.PaymentOrderRepository;
 import lithan.autostrada.auctions.repository.PaymentWebhookEventRepository;
 import lithan.autostrada.auctions.repository.StoreOrderRepository;
 import lithan.autostrada.auctions.repository.UserRepository;
-import lithan.autostrada.auctions.service.AdminService;
+import lithan.autostrada.auctions.service.MarketplaceAdminService;
 import lithan.autostrada.auctions.service.CartService;
 import lithan.autostrada.auctions.service.StoreOrderService;
 
@@ -71,7 +70,7 @@ class StoreWorkflowIntegrationTests {
   private StoreOrderService orderService;
 
   @Autowired
-  private AdminService adminService;
+  private MarketplaceAdminService adminService;
 
   @MockitoBean
   private StripeGateway stripeGateway;
@@ -79,7 +78,7 @@ class StoreWorkflowIntegrationTests {
   @BeforeEach
   void configureStripeSandbox() {
     when(stripeGateway.isEnabled()).thenReturn(true);
-    when(stripeGateway.createStoreCheckoutSession(any(StoreOrder.class)))
+    when(stripeGateway.createStoreCheckoutSession(any(StoreOrder.class), org.mockito.ArgumentMatchers.anyString()))
         .thenAnswer(invocation -> {
           StoreOrder order = invocation.getArgument(0);
           return new StripeCheckoutResult(
@@ -96,20 +95,19 @@ class StoreWorkflowIntegrationTests {
   }
 
   @Test
-  @WithMockUser(username = "user123", roles = "USER")
+  @WithIdentity(username = "user123", roles = "USER")
   void addingSameProductTwiceMergesCartRows() {
     CarPart part = partRepository.findBySkuIgnoreCase("FLT-OIL-101").orElseThrow();
 
     cartService.add(part.getIdPart(), 2);
     cartService.add(part.getIdPart(), 3);
 
-    assertEquals(1, cartItemRepository.findByUserOrderByCreatedAtAsc(
-        userRepository.findByUsername("user123").orElseThrow()).size());
+    assertEquals(1, cartItemRepository.findByUserIdOrderByCreatedAtAsc(userRepository.findByUsername("user123").orElseThrow().getIdUser()).size());
     assertEquals(5, cartService.itemCount());
   }
 
   @Test
-  @WithMockUser(username = "user123", roles = "USER")
+  @WithIdentity(username = "user123", roles = "USER")
   void checkoutReservesInventoryAndPaidWebhookFinalizesOrder() {
     CarPart part = partRepository.findBySkuIgnoreCase("LGT-H7-PLUS").orElseThrow();
     int originalStock = part.getStockQuantity();
@@ -150,7 +148,7 @@ class StoreWorkflowIntegrationTests {
   }
 
   @Test
-  @WithMockUser(username = "user123", roles = "USER")
+  @WithIdentity(username = "user123", roles = "USER")
   void expiredCheckoutRestoresReservedInventory() {
     CarPart part = partRepository.findBySkuIgnoreCase("WPR-650-400").orElseThrow();
     int originalStock = part.getStockQuantity();
@@ -182,12 +180,12 @@ class StoreWorkflowIntegrationTests {
     car.setYear("2025");
     car.setPrice(9000);
     car.setStatus("ACTIVE");
-    car.setUser(seller);
+    car.setUserId(seller.getIdUser());
     carRepository.save(car);
 
     CarBidding bid = new CarBidding();
     bid.setCar(car);
-    bid.setUser(buyer);
+    bid.setUserId(buyer.getIdUser());
     bid.setBidPrice(9500);
     bid.setStatus("ONGOING");
     bidRepository.save(bid);

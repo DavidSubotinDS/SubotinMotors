@@ -2,8 +2,6 @@ package lithan.autostrada.auctions;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.hamcrest.Matchers.contains;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
@@ -25,9 +23,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
-import org.springframework.mock.web.MockHttpSession;
 import org.springframework.mock.web.MockMultipartFile;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.transaction.annotation.Transactional;
@@ -40,17 +36,17 @@ import lithan.autostrada.auctions.entity.Car;
 import lithan.autostrada.auctions.entity.CarBidding;
 import lithan.autostrada.auctions.entity.PaymentOrder;
 import lithan.autostrada.auctions.entity.PaymentWebhookEvent;
-import lithan.autostrada.auctions.entity.Role;
 import lithan.autostrada.auctions.entity.TestDrive;
 import lithan.autostrada.auctions.entity.TestDriveStatus;
-import lithan.autostrada.auctions.entity.UserAccount;
+import fixtures.identity.entity.UserAccount;
 import lithan.autostrada.auctions.repository.CarBiddingRepository;
 import lithan.autostrada.auctions.repository.CarRepository;
 import lithan.autostrada.auctions.repository.PaymentOrderRepository;
 import lithan.autostrada.auctions.repository.PaymentWebhookEventRepository;
 import lithan.autostrada.auctions.repository.TestDriveRepository;
-import lithan.autostrada.auctions.repository.UserRepository;
+import fixtures.identity.repository.UserRepository;
 
+@org.springframework.context.annotation.Import(BusinessIdentityFixtures.class)
 @SpringBootTest
 @AutoConfigureMockMvc
 @Transactional
@@ -79,103 +75,6 @@ class MarketplaceFeatureIntegrationTests {
 
   @Autowired
   private PaymentWebhookEventRepository webhookEventRepository;
-
-  @Autowired
-  private PasswordEncoder passwordEncoder;
-
-  @Test
-  void registrationCreatesAccountProfileAndUserRole() throws Exception {
-    MvcResult accountResult = mockMvc.perform(post("/register/accountProcess")
-            .with(csrf())
-            .param("username", "newdriver")
-            .param("email", "newdriver@example.com")
-            .param("password", "secret123"))
-        .andExpect(status().is3xxRedirection())
-        .andExpect(redirectedUrl("/register/profile"))
-        .andReturn();
-
-    MockHttpSession session = (MockHttpSession) accountResult.getRequest().getSession(false);
-    assertNotNull(session);
-    assertNotNull(session.getAttribute("registerAccount"));
-
-    mockMvc.perform(post("/register/profileProcess")
-            .session(session)
-            .with(csrf())
-            .param("firstName", "New")
-            .param("lastName", "Driver")
-            .param("phoneNumber", "+381601234567")
-            .param("address", "Novi Sad")
-            .param("about", "Test account"))
-        .andExpect(status().is3xxRedirection())
-        .andExpect(redirectedUrl("/register/thank-you"));
-
-    UserAccount registered = userRepository.findByUsername("newdriver").orElseThrow();
-    assertTrue(passwordEncoder.matches("secret123", registered.getPassword()));
-    assertEquals("newdriver@example.com", registered.getEmail());
-    assertEquals("New", registered.getProfile().getFirstName());
-    assertEquals("Driver", registered.getProfile().getLastName());
-    assertEquals(List.of("ROLE_USER"),
-        registered.getRoles().stream().map(Role::getRole).toList());
-  }
-
-  @Test
-  void duplicateUsernameIsRejectedCaseInsensitively() throws Exception {
-    long accountCount = userRepository.count();
-
-    MvcResult accountResult = mockMvc.perform(post("/register/accountProcess")
-            .with(csrf())
-            .param("username", "USER123")
-            .param("email", "duplicate-username@example.com")
-            .param("password", "secret123"))
-        .andExpect(status().is3xxRedirection())
-        .andExpect(redirectedUrl("/register/profile"))
-        .andReturn();
-
-    MockHttpSession session = (MockHttpSession) accountResult.getRequest().getSession(false);
-    assertNotNull(session);
-
-    mockMvc.perform(post("/register/profileProcess")
-            .session(session)
-            .with(csrf())
-            .param("firstName", "Duplicate")
-            .param("lastName", "User")
-            .param("phoneNumber", "0612345678")
-            .param("address", "Belgrade"))
-        .andExpect(status().is3xxRedirection())
-        .andExpect(redirectedUrl("/register/account?duplicate=username"));
-
-    assertEquals(accountCount, userRepository.count());
-    assertNull(session.getAttribute("registerAccount"));
-  }
-
-  @Test
-  void duplicateEmailIsRejectedCaseInsensitively() throws Exception {
-    long accountCount = userRepository.count();
-
-    MvcResult accountResult = mockMvc.perform(post("/register/accountProcess")
-            .with(csrf())
-            .param("username", "emailtestuser")
-            .param("email", "USER123@AUTOSTRADAAUCTIONS.LOCAL")
-            .param("password", "secret123"))
-        .andExpect(status().is3xxRedirection())
-        .andExpect(redirectedUrl("/register/profile"))
-        .andReturn();
-
-    MockHttpSession session = (MockHttpSession) accountResult.getRequest().getSession(false);
-    assertNotNull(session);
-
-    mockMvc.perform(post("/register/profileProcess")
-            .session(session)
-            .with(csrf())
-            .param("firstName", "Duplicate")
-            .param("lastName", "Email")
-            .param("phoneNumber", "0612345678")
-            .param("address", "Belgrade"))
-        .andExpect(status().is3xxRedirection())
-        .andExpect(redirectedUrl("/register/account?duplicate=email"));
-
-    assertEquals(accountCount, userRepository.count());
-  }
 
   @Test
   void catalogueSearchFiltersPaginatesAndSortsActualCars() throws Exception {
@@ -230,22 +129,6 @@ class MarketplaceFeatureIntegrationTests {
             .with(user("user123").roles("USER"))
             .with(csrf()))
         .andExpect(status().isForbidden());
-  }
-
-  @Test
-  void invalidRegistrationReturnsFieldErrorsWithoutCreatingAccount() throws Exception {
-    long accountCount = userRepository.count();
-    mockMvc.perform(post("/api/auth/register").with(csrf())
-            .contentType(MediaType.APPLICATION_JSON)
-            .content("""
-                {"username":"ab","email":"invalid","password":"123",
-                 "firstName":"New","lastName":"Driver","phoneNumber":"0612345678"}
-                """))
-        .andExpect(status().isBadRequest())
-        .andExpect(jsonPath("$.fieldErrors.username").isNotEmpty())
-        .andExpect(jsonPath("$.fieldErrors.email").isNotEmpty())
-        .andExpect(jsonPath("$.fieldErrors.password").isNotEmpty());
-    assertEquals(accountCount, userRepository.count());
   }
 
   @Test

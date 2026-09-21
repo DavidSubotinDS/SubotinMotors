@@ -19,7 +19,7 @@ import lithan.autostrada.auctions.entity.Car;
 import lithan.autostrada.auctions.entity.CarBidding;
 import lithan.autostrada.auctions.entity.CarPart;
 import lithan.autostrada.auctions.entity.StoreOrder;
-import lithan.autostrada.auctions.entity.UserAccount;
+import fixtures.identity.entity.UserAccount;
 import lithan.autostrada.auctions.payment.StripeCheckoutResult;
 import lithan.autostrada.auctions.payment.StripeGateway;
 import lithan.autostrada.auctions.payment.StripeWebhookEvent;
@@ -30,11 +30,12 @@ import lithan.autostrada.auctions.repository.CartItemRepository;
 import lithan.autostrada.auctions.repository.PaymentOrderRepository;
 import lithan.autostrada.auctions.repository.PaymentWebhookEventRepository;
 import lithan.autostrada.auctions.repository.StoreOrderRepository;
-import lithan.autostrada.auctions.repository.UserRepository;
+import fixtures.identity.repository.UserRepository;
 import lithan.autostrada.auctions.service.MarketplaceAdminService;
 import lithan.autostrada.auctions.service.CartService;
 import lithan.autostrada.auctions.service.StoreOrderService;
 
+@org.springframework.context.annotation.Import(BusinessIdentityFixtures.class)
 @SpringBootTest
 @Transactional
 class StoreWorkflowIntegrationTests {

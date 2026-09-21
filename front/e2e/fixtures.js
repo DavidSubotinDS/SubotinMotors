@@ -12,9 +12,13 @@ export const test = base.extend({
   fixtures: [async ({ playwright, page }, use) => {
     const control = await playwright.request.newContext({ baseURL: process.env.E2E_CONTROL_URL || 'http://127.0.0.1:18080',
       extraHTTPHeaders: { 'X-E2E-Control': process.env.E2E_CONTROL_TOKEN } });
+    const identityControl = await playwright.request.newContext({ baseURL: process.env.E2E_IDENTITY_CONTROL_URL || 'http://127.0.0.1:18082',
+      extraHTTPHeaders: { 'X-E2E-Control': process.env.E2E_CONTROL_TOKEN } });
+    const identityReset = await identityControl.post('/__e2e/reset');
+    await expect(identityReset).toBeOK();
     const response = await control.post('/__e2e/reset');
     await expect(response).toBeOK();
-    const data = await response.json();
+    const data = { ...(await identityReset.json()), ...(await response.json()) };
     await page.clock.setFixedTime(new Date(data.instant));
     const errors = [];
     const bypasses = [];
@@ -32,13 +36,15 @@ export const test = base.extend({
       throw new Error('Intentional browser failure to verify artifacts and Compose cleanup');
     }
     await use({ ...data, mail: async (recipient) => {
-      const response = await control.get('/__e2e/mail', { params: { recipient } });
+      const response = await identityControl.get('/__e2e/mail', { params: { recipient } });
       expect(response.status()).toBe(200);
       return (await response.json()).body;
     }, setTime: async (instant) => {
+      await expect(await identityControl.post('/__e2e/clock', { data: { instant } })).toBeOK();
       await expect(await control.post('/__e2e/clock', { data: { instant } })).toBeOK();
       await page.clock.setFixedTime(new Date(instant));
     } });
+    await identityControl.dispose();
     await control.dispose();
     expect(errors, 'No uncaught browser exceptions').toEqual([]);
     expect(bypasses, 'Browser must not bypass gateway').toEqual([]);

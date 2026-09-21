@@ -41,8 +41,8 @@ import lithan.autostrada.auctions.entity.ListingDeposit;
 import lithan.autostrada.auctions.entity.ListingTestRide;
 import lithan.autostrada.auctions.entity.StoreOrder;
 import lithan.autostrada.auctions.entity.TestDriveStatus;
-import lithan.autostrada.auctions.entity.UserAccount;
-import lithan.autostrada.auctions.entity.UserProfile;
+import fixtures.identity.entity.UserAccount;
+import fixtures.identity.entity.UserProfile;
 import lithan.autostrada.auctions.payment.StripeCheckoutResult;
 import lithan.autostrada.auctions.payment.StripeGateway;
 import lithan.autostrada.auctions.repository.CarListingRepository;
@@ -51,9 +51,10 @@ import lithan.autostrada.auctions.repository.CartItemRepository;
 import lithan.autostrada.auctions.repository.ListingDepositRepository;
 import lithan.autostrada.auctions.repository.ListingTestRideRepository;
 import lithan.autostrada.auctions.repository.StoreOrderRepository;
-import lithan.autostrada.auctions.repository.UserProfileRepository;
-import lithan.autostrada.auctions.repository.UserRepository;
+import fixtures.identity.repository.UserProfileRepository;
+import fixtures.identity.repository.UserRepository;
 
+@org.springframework.context.annotation.Import(BusinessIdentityFixtures.class)
 @SpringBootTest
 @AutoConfigureMockMvc
 @Transactional
@@ -111,59 +112,7 @@ class CarListingAndAddressIntegrationTests {
         });
   }
 
-  @Test
-  void addressIsOptionalDuringRegistration() throws Exception {
-    MvcResult accountResult = mockMvc.perform(post("/register/accountProcess")
-            .with(csrf())
-            .param("username", "noaddress")
-            .param("email", "noaddress@example.com")
-            .param("password", "secret123"))
-        .andExpect(status().is3xxRedirection())
-        .andExpect(redirectedUrl("/register/profile"))
-        .andReturn();
 
-    MockHttpSession session = (MockHttpSession) accountResult.getRequest().getSession(false);
-    assertNotNull(session);
-
-    mockMvc.perform(post("/register/profileProcess")
-            .session(session)
-            .with(csrf())
-            .param("firstName", "No")
-            .param("lastName", "Address")
-            .param("phoneNumber", "0612345678"))
-        .andExpect(status().is3xxRedirection())
-        .andExpect(redirectedUrl("/register/thank-you"));
-
-    UserProfile profile = userRepository.findByUsername("noaddress").orElseThrow().getProfile();
-    assertFalse(profile.hasCompleteShippingAddress());
-  }
-
-  @Test
-  void profileCanAddAndUpdateStructuredAddress() throws Exception {
-    UserAccount userAccount = userRepository.findByUsername("user123").orElseThrow();
-
-    mockMvc.perform(post("/user/editProfileProcess")
-            .with(user("user123").roles("USER"))
-            .with(csrf())
-            .param("idProfile", Integer.toString(userAccount.getProfile().getIdProfile()))
-            .param("email", userAccount.getEmail())
-            .param("firstName", userAccount.getProfile().getFirstName())
-            .param("lastName", userAccount.getProfile().getLastName())
-            .param("phoneNumber", userAccount.getProfile().getPhoneNumber())
-            .param("streetAddress", "12 Market Street")
-            .param("city", "Budapest")
-            .param("postalCode", "1051")
-            .param("country", "Hungary")
-            .param("about", "Updated profile"))
-        .andExpect(status().is3xxRedirection())
-        .andExpect(redirectedUrl("/user/my-profile"));
-
-    UserProfile updated = profileRepository.findById(
-        userAccount.getProfile().getIdProfile()).orElseThrow();
-    assertTrue(updated.hasCompleteShippingAddress());
-    assertEquals("12 Market Street, 1051 Budapest, Hungary",
-        updated.getFormattedShippingAddress());
-  }
 
   @Test
   void partsCheckoutPromptsForMissingAddressWithoutCreatingOrder() throws Exception {

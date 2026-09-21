@@ -175,11 +175,6 @@ public class MarketplaceApiController {
     return partService.categories();
   }
 
-  @GetMapping("/profiles/{idProfile}")
-  public ProfileResponse profile(@PathVariable int idProfile) {
-    return mapper.publicProfile(profiles.findByProfileId(idProfile).orElseThrow(lithan.autostrada.auctions.error.ResourceNotFoundException::new));
-  }
-
   @GetMapping("/profiles/{idProfile}/auctions")
   public java.util.List<AuctionSummaryResponse> profileAuctions(@PathVariable int idProfile) {
     var profile = profiles.findByProfileId(idProfile);

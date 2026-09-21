@@ -27,6 +27,9 @@ public class ComposeE2eApplication {
         "--spring.datasource.username=e2e", "--spring.flyway.user=e2e",
         "--spring.flyway.password=" + System.getenv("DB_PASSWORD"),
         "--payments.stripe.enabled=false", "--app.mail.mode=log",
-        "--auction.notifications.scheduling-enabled=false");
+        "--auction.notifications.scheduling-enabled=false",
+        "--identity.base-url=" + System.getenv("IDENTITY_URL"),
+        "--identity.service-secret=" + System.getenv("IDENTITY_BACKEND_SECRET"),
+        "--identity.verification-jwks=" + System.getenv("IDENTITY_VERIFICATION_JWKS"));
   }
 }

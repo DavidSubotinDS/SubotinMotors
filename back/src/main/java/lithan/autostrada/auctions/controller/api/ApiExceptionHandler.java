@@ -23,6 +23,12 @@ import lithan.autostrada.auctions.payment.PaymentProviderException;
 @RestControllerAdvice(basePackages = "lithan.autostrada.auctions.controller.api")
 public class ApiExceptionHandler {
 
+  @ExceptionHandler(lithan.autostrada.auctions.identity.IdentityUnavailableException.class)
+  @ResponseStatus(HttpStatus.SERVICE_UNAVAILABLE)
+  public ApiErrorResponse identityUnavailable() {
+    return new ApiErrorResponse("Account information is temporarily unavailable. Try again later.", Map.of());
+  }
+
   @ExceptionHandler(ResourceNotFoundException.class)
   @ResponseStatus(HttpStatus.NOT_FOUND)
   public ApiErrorResponse notFound() {

@@ -24,8 +24,8 @@ import lithan.autostrada.auctions.dto.CarSearchCriteria;
 import lithan.autostrada.auctions.dto.TestDriveRequest;
 import lithan.autostrada.auctions.entity.Car;
 import lithan.autostrada.auctions.entity.CarBidding;
-import lithan.autostrada.auctions.entity.UserProfile;
-import lithan.autostrada.auctions.entity.UserAccount;
+import fixtures.identity.entity.UserProfile;
+import fixtures.identity.entity.UserAccount;
 import lithan.autostrada.auctions.validation.ImageUploadValidator;
 
 class ValidationImprovementsTests {

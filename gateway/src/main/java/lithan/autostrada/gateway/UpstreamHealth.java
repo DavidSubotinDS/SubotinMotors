@@ -13,8 +13,10 @@ class UpstreamHealth implements ReactiveHealthIndicator {
   private final WebClient client = WebClient.create();
   private final String backend;
   private final String frontend;
-  UpstreamHealth(@Value("${gateway.backend-url}") String backend, @Value("${gateway.frontend-url}") String frontend) {
-    this.backend = backend; this.frontend = frontend;
+  private final String identity;
+  UpstreamHealth(@Value("${gateway.backend-url}") String backend, @Value("${gateway.frontend-url}") String frontend,
+      @Value("${gateway.identity-url:http://127.0.0.1:8082}") String identity) {
+    this.backend = backend; this.frontend = frontend; this.identity=identity;
   }
   private Mono<Boolean> available(String url) {
     return client.get().uri(url).exchangeToMono(response ->
@@ -22,7 +24,7 @@ class UpstreamHealth implements ReactiveHealthIndicator {
         .timeout(Duration.ofSeconds(2)).onErrorReturn(false);
   }
   @Override public Mono<Health> health() {
-    return Mono.zip(available(backend + "/actuator/health"), available(frontend + "/"))
-        .map(states -> states.getT1() && states.getT2() ? Health.up().build() : Health.down().build());
+    return Mono.zip(available(backend + "/actuator/health"), available(frontend + "/"), available(identity + "/actuator/health/readiness"))
+        .map(states -> states.getT1() && states.getT2() && states.getT3() ? Health.up().build() : Health.down().build());
   }
 }

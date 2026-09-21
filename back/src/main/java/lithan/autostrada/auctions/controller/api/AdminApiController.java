@@ -11,7 +11,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import lithan.autostrada.auctions.dto.UserProfileForm;
 import lithan.autostrada.auctions.dto.api.ApiModels.AdminCarManagementResponse;
 import lithan.autostrada.auctions.dto.api.ApiModels.AdminDashboardResponse;
 import lithan.autostrada.auctions.dto.api.ApiModels.AdminTransactionsResponse;
@@ -20,8 +19,6 @@ import lithan.autostrada.auctions.dto.api.ApiModels.AuctionDetailResponse;
 import lithan.autostrada.auctions.dto.api.ApiModels.ProfileRequest;
 import lithan.autostrada.auctions.dto.api.ApiModels.ProfileResponse;
 import lithan.autostrada.auctions.dto.api.PageResponse;
-import lithan.autostrada.auctions.entity.UserProfile;
-import lithan.autostrada.auctions.service.AdminService;
 import lithan.autostrada.auctions.service.MarketplaceAdminService;
 import lithan.autostrada.auctions.service.PaymentService;
 import lithan.autostrada.auctions.service.UserCarService;
@@ -33,86 +30,18 @@ public class AdminApiController {
   @org.springframework.beans.factory.annotation.Autowired
   private MarketplaceAdminService marketplaceAdminService;
 
-  private final AdminService adminService;
   private final UserCarService userCarService;
   private final PaymentService paymentService;
-  @org.springframework.beans.factory.annotation.Autowired
-  private lithan.autostrada.auctions.identity.IdentityApiMapper identityMapper;
 
   private final ApiModelMapper mapper;
 
   public AdminApiController(
-      AdminService adminService,
       UserCarService userCarService,
       PaymentService paymentService,
       ApiModelMapper mapper) {
-    this.adminService = adminService;
     this.userCarService = userCarService;
     this.paymentService = paymentService;
     this.mapper = mapper;
-  }
-
-  @GetMapping("/dashboard")
-  public AdminDashboardResponse dashboard(
-      @RequestParam(defaultValue = "0") int userPage,
-      @RequestParam(defaultValue = "idUser") String userSort,
-      @RequestParam(defaultValue = "asc") String userDirection,
-      @RequestParam(defaultValue = "0") int adminPage,
-      @RequestParam(defaultValue = "idUser") String adminSort,
-      @RequestParam(defaultValue = "asc") String adminDirection) {
-    var users = adminService.listUser(PageRequest.of(
-        Math.max(userPage, 0),
-        5,
-        Sort.by(sortDirection(userDirection), userSortProperty(userSort))));
-    var admins = adminService.listAdmin(PageRequest.of(
-        Math.max(adminPage, 0),
-        5,
-        Sort.by(sortDirection(adminDirection), userSortProperty(adminSort))));
-    return mapper.adminDashboard(
-        PageResponse.from(users.map(identityMapper::user)),
-        PageResponse.from(admins.map(identityMapper::user)));
-  }
-
-  @GetMapping("/users/{idProfile}")
-  public ProfileResponse userProfile(@PathVariable int idProfile) {
-    return identityMapper.profile(adminService.getProfileById(idProfile), null);
-  }
-
-  @PutMapping("/users/{idProfile}")
-  public ProfileResponse updateUserProfile(
-      @PathVariable int idProfile,
-      @RequestBody ProfileRequest request) {
-    UserProfileForm form = new UserProfileForm();
-    form.setIdProfile(idProfile);
-    form.setEmail(request.email());
-    form.setFirstName(request.firstName());
-    form.setLastName(request.lastName());
-    form.setPhoneNumber(request.phoneNumber());
-    form.setAddress(request.address());
-    form.setStreetAddress(request.streetAddress());
-    form.setCity(request.city());
-    form.setPostalCode(request.postalCode());
-    form.setCountry(request.country());
-    form.setAbout(request.about());
-    UserProfile profile = new UserProfile();
-    profile.setIdProfile(form.getIdProfile());
-    profile.setFirstName(form.getFirstName());
-    profile.setLastName(form.getLastName());
-    profile.setPhoneNumber(form.getPhoneNumber());
-    profile.setAddress(form.getAddress());
-    profile.setStreetAddress(form.getStreetAddress());
-    profile.setCity(form.getCity());
-    profile.setPostalCode(form.getPostalCode());
-    profile.setCountry(form.getCountry());
-    profile.setAbout(form.getAbout());
-    adminService.editUser(profile);
-    return identityMapper.profile(adminService.getProfileById(idProfile), null);
-  }
-
-  @PostMapping("/users/{idUser}/mark-admin")
-  public ApiMessageResponse markAdmin(@PathVariable int idUser) {
-    adminService.markAsAdmin(idUser);
-    return new ApiMessageResponse("User promoted to admin.", null);
   }
 
   @GetMapping("/cars")

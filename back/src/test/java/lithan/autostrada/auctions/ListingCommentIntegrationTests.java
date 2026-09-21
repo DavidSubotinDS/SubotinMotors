@@ -34,6 +34,7 @@ import lithan.autostrada.auctions.repository.CarPartRepository;
 import lithan.autostrada.auctions.repository.CarRepository;
 import lithan.autostrada.auctions.repository.ListingCommentRepository;
 
+@org.springframework.context.annotation.Import(BusinessIdentityFixtures.class)
 @SpringBootTest
 @AutoConfigureMockMvc
 @Transactional
@@ -46,7 +47,7 @@ class ListingCommentIntegrationTests {
   private CarRepository carRepository;
 
   @Autowired
-  private lithan.autostrada.auctions.repository.UserRepository userRepository;
+  private fixtures.identity.repository.UserRepository userRepository;
 
   @Autowired
   private CarPartRepository partRepository;

@@ -18,6 +18,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.web.servlet.MockMvc;
 
+@org.springframework.context.annotation.Import(BusinessIdentityFixtures.class)
 @SpringBootTest
 @AutoConfigureMockMvc
 class AutostradaAuctionsApplicationTests {
@@ -75,22 +76,6 @@ class AutostradaAuctionsApplicationTests {
   @Test
   @WithIdentity(username = "admin123", roles = "ADMIN")
   void adminListsSupportIndependentPaginationAndSorting() throws Exception {
-    var dashboardResult = mockMvc.perform(get("/api/admin/dashboard")
-            .param("userPage", "1").param("adminPage", "0")
-            .param("userSort", "profile.lastName").param("userDirection", "desc")
-            .param("adminSort", "username").param("adminDirection", "asc"))
-        .andExpect(status().isOk())
-        .andExpect(jsonPath("$.users.page").value(1))
-        .andExpect(jsonPath("$.admins.page").value(0))
-        .andReturn();
-    var dashboard = objectMapper.readValue(dashboardResult.getResponse().getContentAsByteArray(),
-        AdminDashboardResponse.class);
-    assertThat(dashboard.users().content()).isNotEmpty();
-    assertThat(dashboard.users().content().stream().map(user -> user.profile().lastName()).toList())
-        .isSortedAccordingTo(Comparator.reverseOrder());
-    assertThat(dashboard.admins().content().stream().map(user -> user.username()).toList())
-        .isNotEmpty().isSorted();
-
     var carsResult = mockMvc.perform(get("/api/admin/cars")
             .param("carPage", "1").param("carSize", "2").param("bidPage", "0")
             .param("carSort", "price").param("carDirection", "asc")
@@ -136,17 +121,5 @@ class AutostradaAuctionsApplicationTests {
         .andExpect(status().is3xxRedirection()).andExpect(redirectedUrlPattern("**/login"));
   }
 
-  @Test
-  void seededUserCanAuthenticate() throws Exception {
-    mockMvc.perform(post("/loginUser").with(csrf())
-            .param("username", "user123").param("password", "user123"))
-        .andExpect(status().is3xxRedirection()).andExpect(redirectedUrl("/user"));
-  }
 
-  @Test
-  void seededAdminCanAuthenticate() throws Exception {
-    mockMvc.perform(post("/loginUser").with(csrf())
-            .param("username", "admin123").param("password", "admin123"))
-        .andExpect(status().is3xxRedirection()).andExpect(redirectedUrl("/admin"));
-  }
 }

@@ -24,7 +24,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.stripe.Stripe;
 import lithan.autostrada.auctions.AutostradaAuctionsApplication;
-import lithan.autostrada.auctions.service.EmailService;
+
 
 /** Test classpath only: never included in the deployable JAR or normal startup. */
 public class E2eApplication {
@@ -37,6 +37,11 @@ public class E2eApplication {
     }
     String databaseUrl = "jdbc:h2:mem:e2e_" + UUID.randomUUID()
         + ";MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1";
+    org.flywaydb.core.Flyway.configure().dataSource(databaseUrl,"sa","").target("18").load().migrate();
+    try(var connection=java.sql.DriverManager.getConnection(databaseUrl,"sa","");var statement=connection.createStatement()) {
+      statement.execute("CREATE TABLE identity_cutover(id INT PRIMARY KEY,state VARCHAR(40),manifest VARCHAR(4096))");
+      statement.execute("INSERT INTO identity_cutover VALUES(1,'PARITY_VERIFIED','synthetic disposable browser fixtures; not copy evidence')");
+    } catch(java.sql.SQLException ex) {throw new IllegalStateException("Disposable fixture setup failed");}
     // CLI properties override inherited Spring environment settings. Never read normal config.
     new SpringApplication(AutostradaAuctionsApplication.class, Configuration.class).run(
         "--spring.config.location=classpath:/application-e2e.properties",
@@ -47,7 +52,10 @@ public class E2eApplication {
         "--spring.flyway.url=" + databaseUrl, "--spring.flyway.user=sa", "--spring.flyway.password=",
         "--server.address=127.0.0.1", "--server.port=18080",
         "--payments.stripe.enabled=false", "--app.mail.mode=log",
-        "--auction.notifications.scheduling-enabled=false");
+        "--auction.notifications.scheduling-enabled=false",
+        "--identity.base-url=" + System.getenv("IDENTITY_URL"),
+        "--identity.service-secret=" + System.getenv("IDENTITY_BACKEND_SECRET"),
+        "--identity.verification-jwks=" + System.getenv("IDENTITY_VERIFICATION_JWKS"));
   }
 
   @TestConfiguration(proxyBeanMethods = false)
@@ -58,12 +66,10 @@ public class E2eApplication {
     @Bean @Primary
     SimulatedStripeGateway e2eStripeGateway() { return new SimulatedStripeGateway(); }
 
-    @Bean @Primary
-    Mailbox e2eMailbox() { return new Mailbox(); }
 
     @Bean
-    Controls e2eControls(JdbcTemplate jdbc, PasswordEncoder encoder, MutableClock clock, Mailbox mailbox) {
-      return new Controls(jdbc, encoder, clock, mailbox);
+    Controls e2eControls(JdbcTemplate jdbc, MutableClock clock) {
+      return new Controls(jdbc, clock);
     }
 
     @Bean @Order(0)
@@ -76,11 +82,6 @@ public class E2eApplication {
     }
   }
 
-  static class Mailbox implements EmailService {
-    final Map<String, String> messages = new java.util.concurrent.ConcurrentHashMap<>();
-    @Override public void send(String to, String subject, String body) { messages.put(to, body); }
-  }
-
   static class MutableClock extends Clock {
     private volatile Instant time = START;
     @Override public ZoneId getZone() { return ZoneOffset.UTC; }
@@ -91,25 +92,16 @@ public class E2eApplication {
   @RestController
   static class Controls {
     private final JdbcTemplate jdbc;
-    private final String passwordHash;
     private final MutableClock clock;
-    private final Mailbox mailbox;
 
-    Controls(JdbcTemplate jdbc, PasswordEncoder encoder, MutableClock clock, Mailbox mailbox) {
+    Controls(JdbcTemplate jdbc, MutableClock clock) {
       this.jdbc = jdbc;
-      this.passwordHash = encoder.encode("E2e-pass-123!");
       this.clock = clock;
-      this.mailbox = mailbox;
     }
 
     @GetMapping("/__e2e/ready")
     public Map<String, String> ready() {
       return Map.of("mode", "isolated-e2e", "stripeApiVersion", Stripe.API_VERSION);
-    }
-
-    @GetMapping("/__e2e/mail")
-    public Map<String, String> mail(@org.springframework.web.bind.annotation.RequestParam String recipient) {
-      return Map.of("body", mailbox.messages.getOrDefault(recipient, ""));
     }
 
     @PostMapping("/__e2e/clock")
@@ -120,7 +112,6 @@ public class E2eApplication {
 
     @PostMapping("/__e2e/reset")
     public Map<String, Object> reset() throws Exception {
-      mailbox.messages.clear();
       // Same connection for guard, reset and integrity restoration. Never reset normal databases.
       boolean mysql;
       try (var connection = jdbc.getDataSource().getConnection(); var statement = connection.createStatement()) {
@@ -150,19 +141,6 @@ public class E2eApplication {
         }
       }
       clock.time = START;
-      for (int i = 1; i <= 4; i++) {
-        String username = new String[] {"buyer", "seller", "other", "admin"}[i - 1];
-        jdbc.update("INSERT INTO tb_user (id_user,username,password,email) VALUES (?,?,?,?)",
-            i, username, passwordHash, username + "@e2e.invalid");
-        jdbc.update("INSERT INTO tb_role (role,id_user) VALUES ('ROLE_USER',?)", i);
-        jdbc.update("INSERT INTO tb_user_profile (id_profile,first_name,last_name,phone_number,address,id_user) VALUES (?,?,?,'+381641234567','Novi Sad',?)",
-            i, username, "Fixture", i);
-      }
-      jdbc.update("INSERT INTO tb_role (role,id_user) VALUES ('ROLE_ADMIN',4)");
-      if (!mysql) {
-        jdbc.update("ALTER TABLE tb_user ALTER COLUMN id_user RESTART WITH 5");
-        jdbc.update("ALTER TABLE tb_user_profile ALTER COLUMN id_profile RESTART WITH 5");
-      }
       jdbc.update("INSERT INTO tb_car (make,model,production_year,status,price,id_user,auction_end_time) VALUES ('E2E','Roadster','2024','ACTIVE',10000,2,'2030-06-15 12:00:00')");
       jdbc.update("INSERT INTO tb_car (make,model,production_year,status,price,id_user,auction_end_time) VALUES ('E2E','Coupe','2023','ACTIVE',8000,2,'2030-06-15 13:00:00')");
       jdbc.update("INSERT INTO tb_car_listing (title,make,model,production_year,mileage,fuel_type,transmission,price_minor,deposit_amount_minor,description,status,id_seller,created_at,updated_at) VALUES ('E2E Touring','E2E','Touring','2024',12000,'Petrol','Manual',2500000,50000,'Deterministic test vehicle','ACTIVE',2,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)");

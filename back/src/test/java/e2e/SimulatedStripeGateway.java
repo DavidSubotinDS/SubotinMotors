@@ -2,6 +2,7 @@ package e2e;
 
 import lithan.autostrada.auctions.config.StripeProperties;
 import lithan.autostrada.auctions.entity.*;
+import fixtures.identity.entity.*;
 import lithan.autostrada.auctions.payment.*;
 
 /** Simulates outbound checkout creation only. Inbound verification uses production Stripe code. */

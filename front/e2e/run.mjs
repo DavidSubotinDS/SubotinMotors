@@ -4,11 +4,12 @@ import { mkdir, readFile } from 'node:fs/promises';
 import { createServer } from 'node:net';
 import { delimiter, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { randomBytes } from 'node:crypto';
+import { randomBytes, webcrypto } from 'node:crypto';
 
 const front = fileURLToPath(new URL('../', import.meta.url));
 const back = resolve(front, '../back');
 const gateway = resolve(front, '../gateway');
+const identity = resolve(front, '../services/identity-service');
 const windows = process.platform === 'win32';
 const children = new Set();
 // Do not inherit developer Spring/Stripe/mail/Vite configuration or .env files.
@@ -18,6 +19,25 @@ env.E2E_CONTROL_TOKEN = randomBytes(32).toString('hex');
 env.VITE_API_BASE_URL = '';
 env.TZ = 'UTC';
 let stopping;
+
+async function signingMaterial() {
+  const kid = `e2e-${randomBytes(8).toString('hex')}`;
+  const pair = await webcrypto.subtle.generateKey({
+    name: 'RSASSA-PKCS1-v1_5',
+    modulusLength: 2048,
+    publicExponent: new Uint8Array([1, 0, 1]),
+    hash: 'SHA-256',
+  }, true, ['sign', 'verify']);
+  const privateJwk = await webcrypto.subtle.exportKey('jwk', pair.privateKey);
+  const publicJwk = await webcrypto.subtle.exportKey('jwk', pair.publicKey);
+  for (const jwk of [privateJwk, publicJwk]) {
+    jwk.kid = kid;
+    jwk.alg = 'RS256';
+    jwk.use = 'sig';
+    delete jwk.key_ops;
+  }
+  return { signing: JSON.stringify(privateJwk), verification: JSON.stringify({ keys: [publicJwk] }) };
+}
 
 function start(command, args, cwd, log) {
   const output = log && createWriteStream(resolve(front, 'e2e-results', log));
@@ -89,21 +109,39 @@ async function ready(child, url, control = false) {
 try {
   await mkdir(resolve(front, 'e2e-results'), { recursive: true });
   await assertPortFree(18080);
+  await assertPortFree(18082);
   await assertPortFree(15173);
   await assertPortFree(18081);
-  console.log('Compiling test-only backend launcher and building isolated frontend...');
+  const keys = await signingMaterial();
+  env.IDENTITY_SIGNING_JWK = keys.signing;
+  env.IDENTITY_VERIFICATION_JWKS = keys.verification;
+  env.IDENTITY_GATEWAY_SECRET = 'gateway-e2e-secret-0000000000000000000000';
+  env.IDENTITY_BACKEND_SECRET = 'backend-e2e-secret-0000000000000000000000';
+  env.IDENTITY_URL = 'http://127.0.0.1:18082';
+  env.PUBLIC_URL = 'http://127.0.0.1:18081';
+  env.GATEWAY_IDENTITY_URL = env.IDENTITY_URL;
+  env.GATEWAY_IDENTITY_SECRET = env.IDENTITY_GATEWAY_SECRET;
+  env.E2E_IDENTITY_CONTROL_URL = env.IDENTITY_URL;
+  console.log('Compiling test-only identity/backend launchers and building isolated frontend...');
   const mavenArgs = ['--batch-mode', '--no-transfer-progress', 'test-compile', 'dependency:build-classpath',
     '-Dmdep.outputFile=target/e2e-classpath.txt', '-Dmdep.includeScope=test'];
+  if (windows) await run('cmd.exe', ['/d', '/s', '/c', 'mvnw.cmd', ...mavenArgs], identity, 'build-identity.log');
+  else await run('bash', ['./mvnw', ...mavenArgs], identity, 'build-identity.log');
   if (windows) await run('cmd.exe', ['/d', '/s', '/c', 'mvnw.cmd', ...mavenArgs], back, 'build-backend.log');
   else await run('bash', ['./mvnw', ...mavenArgs], back, 'build-backend.log');
   const gatewayArgs = ['--batch-mode', '--no-transfer-progress', '-DskipTests', 'package'];
   if (windows) await run('cmd.exe', ['/d', '/s', '/c', 'mvnw.cmd', ...gatewayArgs], gateway, 'build-gateway.log');
   else await run('bash', ['./mvnw', ...gatewayArgs], gateway, 'build-gateway.log');
   await run(process.execPath, ['node_modules/vite/bin/vite.js', 'build', '--config', 'vite.e2e.config.js'], front, 'build-frontend.log');
-  const classpath = [resolve(back, 'target/test-classes'), resolve(back, 'target/classes'),
+  const identityClasspath = [resolve(identity, 'target/test-classes'), resolve(identity, 'target/classes'),
+    (await readFile(resolve(identity, 'target/e2e-classpath.txt'), 'utf8')).trim()].join(delimiter);
+  const backendClasspath = [resolve(back, 'target/test-classes'), resolve(back, 'target/classes'),
     (await readFile(resolve(back, 'target/e2e-classpath.txt'), 'utf8')).trim()].join(delimiter);
   const java = env.JAVA_HOME ? resolve(env.JAVA_HOME, 'bin', windows ? 'java.exe' : 'java') : 'java';
-  const backend = start(java, ['-Duser.timezone=UTC', '-Dspring.devtools.restart.enabled=false', '-cp', classpath,
+  const identityServer = start(java, ['-Duser.timezone=UTC', '-Dspring.devtools.restart.enabled=false', '-cp', identityClasspath,
+    'e2e.E2eApplication'], identity, 'identity.log');
+  await ready(identityServer, 'http://127.0.0.1:18082/__e2e/ready', true);
+  const backend = start(java, ['-Duser.timezone=UTC', '-Dspring.devtools.restart.enabled=false', '-cp', backendClasspath,
     'e2e.E2eApplication'], back, 'backend.log');
   await ready(backend, 'http://127.0.0.1:18080/__e2e/ready', true);
   const frontend = start(process.execPath, ['node_modules/vite/bin/vite.js', 'preview', '--config', 'vite.e2e.config.js'], front, 'frontend.log');
@@ -111,6 +149,7 @@ try {
   const edge = start(java, ['-jar', resolve(gateway, 'target/gateway-0.0.1-SNAPSHOT.jar'),
     '--server.address=127.0.0.1', '--server.port=18081',
     '--gateway.backend-url=http://127.0.0.1:18080', '--gateway.frontend-url=http://127.0.0.1:15173',
+    '--gateway.identity-url=http://127.0.0.1:18082', '--gateway.identity-secret=' + env.IDENTITY_GATEWAY_SECRET,
     '--gateway.public-url=http://127.0.0.1:18081', '--gateway.allowed-origins=http://127.0.0.1:18081'], gateway, 'gateway.log');
   await ready(edge, 'http://127.0.0.1:18081/actuator/health/readiness');
   if (process.argv.includes('--verify-failure-cleanup')) throw new Error('Intentional failure to verify teardown');

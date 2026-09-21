@@ -25,6 +25,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import lithan.autostrada.auctions.repository.CarRepository;
 
+@org.springframework.context.annotation.Import(BusinessIdentityFixtures.class)
 @SpringBootTest
 @AutoConfigureMockMvc
 class ReactApiSmokeTests {
@@ -46,20 +47,6 @@ class ReactApiSmokeTests {
         .andExpect(jsonPath("$.featuredAuctions[0].sellerDisplayName", not(nullValue())));
   }
 
-  @Test
-  void sessionEndpointReturnsAnonymousOrSanitizedAuthenticatedUser() throws Exception {
-    mockMvc.perform(get("/api/session"))
-        .andExpect(status().isOk())
-        .andExpect(jsonPath("$.authenticated").value(false))
-        .andExpect(jsonPath("$.roles.length()").value(0));
-
-    mockMvc.perform(get("/api/session").with(user("demo_bidder").roles("USER")))
-        .andExpect(status().isOk())
-        .andExpect(jsonPath("$.authenticated").value(true))
-        .andExpect(jsonPath("$.username").value("demo_bidder"))
-        .andExpect(jsonPath("$.roles", hasItem("ROLE_USER")))
-        .andExpect(jsonPath("$.email").doesNotExist());
-  }
 
   @Test
   void apiAuthenticationFailuresReturnJsonErrors() throws Exception {
@@ -67,7 +54,7 @@ class ReactApiSmokeTests {
             .contentType(MediaType.APPLICATION_JSON)
             .content("{\"username\":\"admin123\",\"password\":\"wrong\"}"))
         .andExpect(status().isUnauthorized())
-        .andExpect(jsonPath("$.message").value("Invalid username or password."));
+        .andExpect(jsonPath("$.message").value("Authentication required."));
 
     mockMvc.perform(get("/api/user/workspace").accept(MediaType.APPLICATION_JSON))
         .andExpect(status().isUnauthorized())

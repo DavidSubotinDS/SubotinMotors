@@ -7,10 +7,18 @@ services:
       MYSQL_USER: ${MYSQL_USER:-autostrada}
       MYSQL_PASSWORD: ${MYSQL_PASSWORD:?Set a private database password}
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Set a distinct private root password}
+      DB_RUNTIME_USERNAME: ${DB_RUNTIME_USERNAME:?Set the backend runtime database username}
+      DB_RUNTIME_PASSWORD: ${DB_RUNTIME_PASSWORD:?Set the backend runtime database password}
+      DB_MIGRATION_USERNAME: ${DB_MIGRATION_USERNAME:?Set the backend migration database username}
+      DB_MIGRATION_PASSWORD: ${DB_MIGRATION_PASSWORD:?Set the backend migration database password}
+      IDENTITY_DB_NAME: ${IDENTITY_DB_NAME:-autostrada_identity}
+      IDENTITY_DB_USERNAME: ${IDENTITY_DB_USERNAME:?Set the identity database username}
+      IDENTITY_DB_PASSWORD: ${IDENTITY_DB_PASSWORD:?Set the identity database password}
       TZ: UTC
     command: ["--default-time-zone=+00:00"]
     volumes:
       - mysql-data:/var/lib/mysql
+      - ./back/scripts/mysql-init-users.sh:/docker-entrypoint-initdb.d/20-autostrada-users.sh:ro
     networks: [database]
     healthcheck:
       test: ["CMD-SHELL", "MYSQL_PWD=\"$$MYSQL_PASSWORD\" mysql --protocol=TCP -h 127.0.0.1 -u\"$$MYSQL_USER\" \"$$MYSQL_DATABASE\" --execute='SELECT 1' >/dev/null"]
@@ -27,16 +35,56 @@ services:
     environment:
       SPRING_PROFILES_ACTIVE: mysql,gateway,container
       DB_URL: jdbc:mysql://mysql:3306/${MYSQL_DATABASE:-autostrada}?serverTimezone=UTC&connectionTimeZone=UTC&forceConnectionTimeZoneToSession=true&allowPublicKeyRetrieval=true&useSSL=false
-      DB_USERNAME: ${MYSQL_USER:-autostrada}
-      DB_PASSWORD: ${MYSQL_PASSWORD:?Set a private database password}
+      DB_USERNAME: ${DB_RUNTIME_USERNAME:?Set the backend runtime database username}
+      DB_PASSWORD: ${DB_RUNTIME_PASSWORD:?Set the backend runtime database password}
+      DB_RUNTIME_USERNAME: ${DB_RUNTIME_USERNAME:?Set the backend runtime database username}
+      SPRING_FLYWAY_USER: ${DB_MIGRATION_USERNAME:?Set the backend migration database username}
+      SPRING_FLYWAY_PASSWORD: ${DB_MIGRATION_PASSWORD:?Set the backend migration database password}
       APP_DEMO_DATA_ACK: ${APP_DEMO_DATA_ACK:?Read docs/docker-compose.md and acknowledge existing demo migrations}
       APP_BASE_URL: ${PUBLIC_URL:-http://localhost:8081}
       APP_FRONTEND_BASE_URL: ${PUBLIC_URL:-http://localhost:8081}
       APP_CORS_ALLOWED_ORIGINS: ${PUBLIC_URL:-http://localhost:8081}
       SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE:-false}
+      IDENTITY_URL: http://identity:8080
+      IDENTITY_VERIFICATION_JWKS: ${IDENTITY_VERIFICATION_JWKS:?Set identity public verification JWKS}
+      IDENTITY_BACKEND_SECRET: ${IDENTITY_BACKEND_SECRET:?Set the backend identity service secret}
       STRIPE_ENABLED: ${STRIPE_ENABLED:-false}
       STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
       STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
+      APP_MAIL_MODE: ${APP_MAIL_MODE:-log}
+      APP_MAIL_FROM: ${APP_MAIL_FROM:-no-reply@autostradaauctions.local}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USERNAME: ${SMTP_USERNAME:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_AUTH: ${SMTP_AUTH:-true}
+      SMTP_STARTTLS: ${SMTP_STARTTLS:-true}
+      TZ: UTC
+      JAVA_TOOL_OPTIONS: -Duser.timezone=UTC
+    depends_on:
+      mysql: { condition: service_healthy }
+      identity: { condition: service_healthy }
+    networks: [edge, database, outbound]
+    read_only: true
+    tmpfs: [/tmp]
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    stop_grace_period: 30s
+
+  identity:
+    build:
+      context: ./services/identity-service
+      target: production
+    environment:
+      SPRING_PROFILES_ACTIVE: mysql,container
+      IDENTITY_DB_URL: ${IDENTITY_DB_URL:-jdbc:mysql://mysql:3306/${IDENTITY_DB_NAME:-autostrada_identity}?serverTimezone=UTC&connectionTimeZone=UTC&forceConnectionTimeZoneToSession=true&allowPublicKeyRetrieval=true&useSSL=false}
+      IDENTITY_DB_USERNAME: ${IDENTITY_DB_USERNAME:?Set the identity database username}
+      IDENTITY_DB_PASSWORD: ${IDENTITY_DB_PASSWORD:?Set the identity database password}
+      PUBLIC_URL: ${PUBLIC_URL:-http://localhost:8081}
+      SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE:-false}
+      IDENTITY_SIGNING_JWK: ${IDENTITY_SIGNING_JWK:?Set the identity private signing JWK}
+      IDENTITY_GATEWAY_SECRET: ${IDENTITY_GATEWAY_SECRET:?Set the gateway identity exchange secret}
+      IDENTITY_BACKEND_SECRET: ${IDENTITY_BACKEND_SECRET:?Set the backend identity service secret}
       APP_MAIL_MODE: ${APP_MAIL_MODE:-log}
       APP_MAIL_FROM: ${APP_MAIL_FROM:-no-reply@autostradaauctions.local}
       SMTP_HOST: ${SMTP_HOST:-}
@@ -69,12 +117,15 @@ services:
     environment:
       GATEWAY_PUBLIC_URL: ${PUBLIC_URL:-http://localhost:8081}
       GATEWAY_BACKEND_URL: http://backend:8080
+      GATEWAY_IDENTITY_URL: http://identity:8080
+      GATEWAY_IDENTITY_SECRET: ${IDENTITY_GATEWAY_SECRET:?Set the gateway identity exchange secret}
       GATEWAY_FRONTEND_URL: http://frontend:8080
       GATEWAY_ALLOWED_ORIGINS: ${PUBLIC_URL:-http://localhost:8081}
     ports:
       - "${GATEWAY_BIND_ADDRESS:-127.0.0.1}:${GATEWAY_PORT:-8081}:8081"
     depends_on:
       backend: { condition: service_healthy }
+      identity: { condition: service_healthy }
       frontend: { condition: service_healthy }
     networks: [edge, outbound]
     read_only: true

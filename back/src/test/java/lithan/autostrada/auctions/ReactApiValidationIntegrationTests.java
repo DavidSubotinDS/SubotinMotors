@@ -26,8 +26,9 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
 import lithan.autostrada.auctions.repository.CarRepository;
-import lithan.autostrada.auctions.repository.UserRepository;
+import fixtures.identity.repository.UserRepository;
 
+@org.springframework.context.annotation.Import(BusinessIdentityFixtures.class)
 @SpringBootTest
 @AutoConfigureMockMvc
 @Transactional
@@ -48,49 +49,7 @@ class ReactApiValidationIntegrationTests {
   @Autowired
   private PasswordEncoder passwordEncoder;
 
-  @Test
-  void registrationLoginAndLogoutWorkThroughTheApiSession() throws Exception {
-    mockMvc.perform(post("/api/auth/register").with(csrf()).contentType(MediaType.APPLICATION_JSON)
-            .content(objectMapper.writeValueAsBytes(registration())))
-        .andExpect(status().isOk())
-        .andExpect(jsonPath("$.redirectUrl").value("/login"));
 
-    var account = userRepository.findByUsername("api_driver").orElseThrow();
-    assertThat(passwordEncoder.matches("secret123", account.getPassword())).isTrue();
-    assertThat(account.getEmail()).isEqualTo("api-driver@example.com");
-    assertThat(account.getRoles()).extracting(role -> role.getRole()).containsExactly("ROLE_USER");
-    assertThat(account.getProfile().getFirstName()).isEqualTo("Api");
-
-    var login = mockMvc.perform(post("/api/auth/login").with(csrf()).contentType(MediaType.APPLICATION_JSON)
-            .content("{\"username\":\"api_driver\",\"password\":\"secret123\"}"))
-        .andExpect(status().isOk())
-        .andExpect(jsonPath("$.authenticated").value(true))
-        .andExpect(jsonPath("$.password").doesNotExist())
-        .andReturn();
-    var session = (MockHttpSession) login.getRequest().getSession(false);
-    assertThat(session).isNotNull();
-    mockMvc.perform(get("/api/user/workspace").session(session))
-        .andExpect(status().isOk())
-        .andExpect(jsonPath("$.profile.username").value("api_driver"));
-    mockMvc.perform(post("/api/auth/logout").with(csrf()).session(session))
-        .andExpect(status().isOk());
-    assertThat(session.isInvalid()).isTrue();
-    mockMvc.perform(get("/api/user/workspace"))
-        .andExpect(status().isUnauthorized());
-  }
-
-  @ParameterizedTest
-  @CsvSource({ "password,123", "firstName,''", "lastName,''", "phoneNumber,abc" })
-  void invalidRegistrationFieldsAreRejectedBeforePersistence(String field, String value) throws Exception {
-    long count = userRepository.count();
-    var request = registration();
-    request.put(field, value);
-    mockMvc.perform(post("/api/auth/register").with(csrf()).contentType(MediaType.APPLICATION_JSON)
-            .content(objectMapper.writeValueAsBytes(request)))
-        .andExpect(status().isBadRequest())
-        .andExpect(jsonPath("$.fieldErrors." + field).isNotEmpty());
-    assertThat(userRepository.count()).isEqualTo(count);
-  }
 
   @Test
   void validAuctionCanBeCreatedAndUpdatedButInvalidOrForeignEditsAreRejected() throws Exception {

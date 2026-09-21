@@ -67,9 +67,11 @@ demo password `demo123`; see the root README for older admin/user fixtures.
 Register a fresh account for new workflows. Initialization happens once per new
 volume. Changing `MYSQL_*` later does **not** rotate users in an existing volume;
 perform an explicit SQL credential rotation and update runtime configuration.
-The backend user receives privileges on its own schema only; root credentials
-are supplied only to MySQL, never backend. The same owner credential currently
-runs migrations and application SQL; separate migration credentials are future work.
+The backend runtime user receives privileges on business tables only. A separate
+migration user runs Flyway and the controlled identity cutover; the identity
+service has its own schema and runtime user. Root credentials are supplied only
+to MySQL, never to application containers. V19 removes runtime access to the
+renamed identity archives after parity verification.
 
 `.env.compose` and backups are ignored. Do not print expanded `compose config`
 or container environment inspection into shared logs: they contain runtime secrets.

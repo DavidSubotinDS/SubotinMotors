@@ -12,20 +12,7 @@ class IdentityBoundaryArchitectureTests {
   // Existing identity-owned code retains its paths during preparation. Mixed
   // admin adapters own explicit account routes; their business operations delegate
   // to MarketplaceAdminService and use the separate business mapper.
-  private static final Set<String> IDENTITY_OWNERS = Set.of(
-      "entity/UserAccount.java", "entity/UserProfile.java", "entity/Role.java",
-      "entity/ProfilePicture.java", "entity/PasswordResetToken.java",
-      "repository/UserRepository.java", "repository/UserProfileRepository.java",
-      "repository/RoleRepository.java", "repository/ProfilePictureRepository.java",
-      "repository/PasswordResetTokenRepository.java", "dto/UserProfileForm.java",
-      "service/UserService.java", "service/UserServiceImpl.java", "service/AdminService.java",
-      "service/AdminServiceImpl.java", "service/PasswordResetService.java",
-      "config/CustomUserDetails.java", "config/CustomUserDetailsService.java",
-      "controller/LoginController.java", "controller/RegisterController.java",
-      "controller/UserController.java", "controller/AdminController.java",
-      "controller/api/AuthApiController.java", "controller/api/AdminApiController.java",
-      "identity/IdentityApiMapper.java", "identity/SelfProfileService.java",
-      "identity/InProcessProfileClient.java", "identity/SessionCurrentIdentity.java");
+  private static final Set<String> IDENTITY_OWNERS = Set.of();
 
   @Test void onlyExplicitIdentityOwnersMayDependOnIdentityPersistenceOrLegacyIdentityServices() throws Exception {
     var root = Path.of("src/main/java/lithan/autostrada/auctions");
@@ -44,7 +31,7 @@ class IdentityBoundaryArchitectureTests {
   }
 
   @Test void identityAccountHasNoReverseBusinessCascadesAndPrincipalHasNoEntityState() throws Exception {
-    assertThat(java.util.Arrays.stream(lithan.autostrada.auctions.entity.UserAccount.class.getDeclaredFields())
+    assertThat(java.util.Arrays.stream(fixtures.identity.entity.UserAccount.class.getDeclaredFields())
         .map(field -> field.getGenericType().getTypeName()))
         .noneMatch(type -> type.contains(".entity.Car"));
     assertThat(java.util.Arrays.stream(lithan.autostrada.auctions.config.CustomUserDetails.class.getDeclaredFields())

@@ -1,7 +1,7 @@
 import { spawn } from 'node:child_process';
 import { mkdir, writeFile, readFile } from 'node:fs/promises';
 import { createWriteStream } from 'node:fs';
-import { randomBytes } from 'node:crypto';
+import { randomBytes, webcrypto } from 'node:crypto';
 import { createServer } from 'node:net';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -15,6 +15,7 @@ const overlay = resolve(directory, 'override.json');
 const emptyEnv = resolve(directory, 'empty.env');
 const token = randomBytes(32).toString('hex');
 const schema = `e2e_${id}`;
+const identitySchema = `identity_${id}`;
 const browser = !process.argv.includes('--integration-only');
 const upgradeFrom = process.argv.find(arg => arg.startsWith('--upgrade-from='))?.slice('--upgrade-from='.length);
 const env = Object.fromEntries(Object.entries(process.env).filter(([key]) =>
@@ -29,6 +30,25 @@ const children = new Set();
 const evidence = [];
 let config;
 let owned = false;
+
+async function signingMaterial() {
+  const kid = `compose-${randomBytes(8).toString('hex')}`;
+  const pair = await webcrypto.subtle.generateKey({
+    name: 'RSASSA-PKCS1-v1_5',
+    modulusLength: 2048,
+    publicExponent: new Uint8Array([1, 0, 1]),
+    hash: 'SHA-256',
+  }, true, ['sign', 'verify']);
+  const privateJwk = await webcrypto.subtle.exportKey('jwk', pair.privateKey);
+  const publicJwk = await webcrypto.subtle.exportKey('jwk', pair.publicKey);
+  for (const jwk of [privateJwk, publicJwk]) {
+    jwk.kid = kid;
+    jwk.alg = 'RS256';
+    jwk.use = 'sig';
+    delete jwk.key_ops;
+  }
+  return { signing: JSON.stringify(privateJwk), verification: JSON.stringify({ keys: [publicJwk] }) };
+}
 
 function execute(command, args, { input, allowFailure = false, timeout = 900000, cwd = root, log = true } = {}) {
   return new Promise((done, reject) => {
@@ -68,7 +88,14 @@ async function sql(statement, { rootUser = false, allowFailure = false } = {}) {
     : 'MYSQL_PWD="$MYSQL_PASSWORD" exec mysql -u"$MYSQL_USER" --batch --skip-column-names "$MYSQL_DATABASE"'],
   { input: statement, allowFailure, log: false, timeout: 20000 });
 }
+async function runtimeSql(statement, { allowFailure = false } = {}) {
+  return compose(['exec', '-T', '-e', `DB_RUNTIME_USERNAME=${env.DB_RUNTIME_USERNAME}`,
+    '-e', `DB_RUNTIME_PASSWORD=${env.DB_RUNTIME_PASSWORD}`, 'mysql', 'sh', '-c',
+    'MYSQL_PWD="$DB_RUNTIME_PASSWORD" exec mysql -u"$DB_RUNTIME_USERNAME" --batch --skip-column-names "$MYSQL_DATABASE"'],
+  { input: statement, allowFailure, log: false, timeout: 20000 });
+}
 async function value(statement) { return (await sql(statement)).stdout.trim(); }
+async function rootValue(statement) { return (await sql(statement, { rootUser: true })).stdout.trim(); }
 async function checkHttp(path, status = 200, options = {}) {
   const response = await fetch(env.PUBLIC_URL + path, { redirect: 'manual', signal: AbortSignal.timeout(10000), ...options });
   assert.equal(response.status, status, `${path}: ${await response.clone().text()}`);
@@ -76,6 +103,42 @@ async function checkHttp(path, status = 200, options = {}) {
   return response;
 }
 async function record(message) { evidence.push(message); console.log(message); await writeFile(resolve(directory, 'evidence.json'), JSON.stringify({ project, evidence }, null, 2)); }
+function mysqlLiteral(value) { return `'${String(value).replaceAll("'", "''")}'`; }
+async function identitySnapshot() {
+  const tables = ['tb_user', 'tb_role', 'tb_user_profile', 'tb_profile_picture', 'tb_password_reset_token'];
+  const source = await rootValue(tables.map(table => `SELECT '${table}',COUNT(*) FROM \`${schema}\`.\`${table}\``).join(';'));
+  const target = await rootValue(tables.map(table => `SELECT '${table}',COUNT(*) FROM \`${identitySchema}\`.\`${table}\``).join(';'));
+  assert.equal(target, source, 'Identity copy count parity failed');
+  return source;
+}
+async function copyIdentityTables() {
+  const tables = ['tb_password_reset_token', 'tb_profile_picture', 'tb_user_profile', 'tb_role', 'tb_user'];
+  config.services['identity-copy'] = {
+    build: { context: resolve(root, 'services/identity-service'), target: 'e2e' },
+    entrypoint: ['java', '-cp', '/test/test-classes:/test/classes:/test/lib/*'],
+    command: ['lithan.autostrada.identity.migration.IdentityCopy'],
+    environment: {
+      CUTOVER_WRITE_FREEZE: 'I_HAVE_STOPPED_ALL_WRITERS',
+      CUTOVER_SOURCE_TIMEZONE: 'UTC',
+      CUTOVER_SOURCE_URL: `jdbc:mysql://mysql:3306/${schema}?serverTimezone=UTC&connectionTimeZone=UTC&forceConnectionTimeZoneToSession=true&allowPublicKeyRetrieval=true&useSSL=false`,
+      CUTOVER_SOURCE_USER: 'e2e',
+      CUTOVER_SOURCE_PASSWORD: env.MYSQL_PASSWORD,
+      CUTOVER_TARGET_URL: env.IDENTITY_DB_URL,
+      CUTOVER_TARGET_USER: env.IDENTITY_DB_USERNAME,
+      CUTOVER_TARGET_PASSWORD: env.IDENTITY_DB_PASSWORD,
+    },
+    networks: ['edge', 'database'],
+  };
+  await saveConfig();
+  await compose(['build', 'identity-copy'], { timeout: 300000 });
+  await compose(['run', '--rm', '--no-deps', 'identity-copy'], { timeout: 120000 });
+  delete config.services['identity-copy'];
+  await saveConfig();
+  const source = await rootValue(tables.map(table => `SELECT '${table}',COUNT(*) FROM \`${schema}\`.\`${table}\``).join(';'));
+  const target = await rootValue(tables.map(table => `SELECT '${table}',COUNT(*) FROM \`${identitySchema}\`.\`${table}\``).join(';'));
+  assert.equal(target, source, 'Identity copy count parity failed after production utility');
+  await record('S5 cutover copy passed: the production IdentityCopy utility copied five identity-owned tables and verified complete row-value parity before writing the backend cutover marker.');
+}
 async function cleanup() {
   if (!owned) return;
   if (cleanupPromise) return cleanupPromise;
@@ -103,7 +166,23 @@ try {
   await writeFile(emptyEnv, '');
   const port = await freePort();
   env.GATEWAY_PORT = String(port); env.PUBLIC_URL = `http://127.0.0.1:${port}`; env.E2E_GATEWAY_URL = env.PUBLIC_URL;
-  config = { services: { backend: { environment: { AUCTION_NOTIFICATION_SCHEDULING: 'false' } } } };
+  const keys = await signingMaterial();
+  Object.assign(env, {
+    IDENTITY_DB_URL: `jdbc:mysql://mysql:3306/${identitySchema}?serverTimezone=UTC&connectionTimeZone=UTC&forceConnectionTimeZoneToSession=true&allowPublicKeyRetrieval=true&useSSL=false`,
+    IDENTITY_DB_USERNAME: 'identity_e2e',
+    IDENTITY_DB_PASSWORD: randomBytes(32).toString('hex'),
+    DB_RUNTIME_USERNAME: 'backend_runtime',
+    DB_RUNTIME_PASSWORD: randomBytes(32).toString('hex'),
+    DB_MIGRATION_USERNAME: 'backend_migration',
+    DB_MIGRATION_PASSWORD: randomBytes(32).toString('hex'),
+    IDENTITY_DATABASE: identitySchema,
+    IDENTITY_SIGNING_JWK: keys.signing,
+    IDENTITY_VERIFICATION_JWKS: keys.verification,
+    IDENTITY_GATEWAY_SECRET: 'gateway-compose-secret-000000000000000000',
+    IDENTITY_BACKEND_SECRET: 'backend-compose-secret-000000000000000000',
+  });
+  config = { services: { backend: { environment: { AUCTION_NOTIFICATION_SCHEDULING: 'false',
+    SPRING_FLYWAY_TARGET: '18' } } } };
   if (upgradeFrom) {
     assert.ok(!browser, '--upgrade-from requires --integration-only');
     config.services.backend.build = { context: resolve(root, upgradeFrom), target: 'production' };
@@ -116,13 +195,35 @@ try {
     assert.equal(result.stdout.trim(), '', 'Project collision; refusing reuse');
   }
   owned = true;
-  await writeFile(resolve(directory, 'project.json'), JSON.stringify({ project, port, schema }));
+  await writeFile(resolve(directory, 'project.json'), JSON.stringify({ project, port, schema, identitySchema }));
   await compose(['config', '--quiet']);
   console.log(`Building production images for ${project}; logs: ${directory}`);
   await compose(['build']);
   const seedGuard = await compose(['run', '--rm', '--no-deps', '-e', 'APP_DEMO_DATA_ACK=', 'backend'], { allowFailure: true });
   assert.equal(seedGuard.code, 1, 'Production startup must refuse missing demo acknowledgement');
   assert.match(seedGuard.stderr + seedGuard.stdout, /I_ACCEPT_EXISTING_DEMO_DATA/);
+  await compose(['up', '--detach', '--wait', '--wait-timeout', '240', 'mysql'], { timeout: 300000 });
+  await sql(`CREATE DATABASE \`${identitySchema}\`;
+    CREATE USER IF NOT EXISTS 'identity_e2e'@'%' IDENTIFIED BY ${mysqlLiteral(env.IDENTITY_DB_PASSWORD)};
+    GRANT ALL PRIVILEGES ON \`${identitySchema}\`.* TO 'identity_e2e'@'%';
+    CREATE USER IF NOT EXISTS 'backend_runtime'@'%' IDENTIFIED BY ${mysqlLiteral(env.DB_RUNTIME_PASSWORD)};
+    CREATE USER IF NOT EXISTS 'backend_migration'@'%' IDENTIFIED BY ${mysqlLiteral(env.DB_MIGRATION_PASSWORD)};
+    GRANT ALL PRIVILEGES ON \`${schema}\`.* TO 'backend_runtime'@'%';
+    GRANT ALL PRIVILEGES ON \`${schema}\`.* TO 'backend_migration'@'%' WITH GRANT OPTION;`, { rootUser: true });
+  Object.assign(config.services.backend.environment, {
+    DB_USERNAME: env.DB_RUNTIME_USERNAME,
+    DB_PASSWORD: env.DB_RUNTIME_PASSWORD,
+    DB_RUNTIME_USERNAME: env.DB_RUNTIME_USERNAME,
+    SPRING_FLYWAY_USER: env.DB_MIGRATION_USERNAME,
+    SPRING_FLYWAY_PASSWORD: env.DB_MIGRATION_PASSWORD,
+  });
+  await saveConfig();
+  await compose(['up', '--detach', '--wait', '--wait-timeout', '240', 'identity'], { timeout: 300000 });
+  await compose(['up', '--detach', '--wait', '--wait-timeout', '240', 'backend'], { timeout: 300000 });
+  assert.equal(await value('SELECT COUNT(*) FROM flyway_schema_history WHERE success=1 AND version BETWEEN 1 AND 18'), '18');
+  await copyIdentityTables();
+  delete config.services.backend.environment.SPRING_FLYWAY_TARGET;
+  await saveConfig();
   await compose(['up', '--detach', '--wait', '--wait-timeout', '240'], { timeout: 300000 });
   if (upgradeFrom) {
     // Start the old production binary first, then replace only the backend on
@@ -142,14 +243,21 @@ try {
     await record('Old production backend to current production backend upgrade passed on the same MySQL volume: every table checksum preserved.');
   }
   await compose(['images', '--format', 'json']);
-  assert.equal(await value('SELECT COUNT(*) FROM flyway_schema_history WHERE success=1 AND version BETWEEN 1 AND 18'), '18');
+  assert.equal(await value('SELECT COUNT(*) FROM flyway_schema_history WHERE success=1 AND version BETWEEN 1 AND 19'), '19');
+  assert.equal(await rootValue(`SELECT COUNT(*) FROM \`${identitySchema}\`.flyway_schema_history WHERE success=1`), '1');
   assert.equal(await value('SELECT COUNT(*) FROM flyway_schema_history WHERE success=0'), '0');
+  assert.equal((await runtimeSql('SELECT COUNT(*) FROM tb_car_part')).code, 0, 'Backend runtime lost business-table access');
+  assert.notEqual((await runtimeSql('SELECT COUNT(*) FROM archive_identity_tb_user', { allowFailure: true })).code, 0,
+    'Backend runtime still has access to archived identity data');
+  await record('S5 credential isolation passed: backend runtime retains business-table access but cannot read archived identity tables after V19.');
   await writeFile(resolve(directory, 'migrations.tsv'), (await sql('SELECT version,script,checksum,success FROM flyway_schema_history ORDER BY installed_rank')).stdout);
-  for (const service of ['backend', 'frontend', 'gateway']) {
+  await writeFile(resolve(directory, 'identity-migrations.tsv'),
+    (await sql(`SELECT version,script,checksum,success FROM \`${identitySchema}\`.flyway_schema_history ORDER BY installed_rank`, { rootUser: true })).stdout);
+  for (const service of ['identity', 'backend', 'frontend', 'gateway']) {
     assert.notEqual((await compose(['exec', '-T', service, 'id', '-u'])).stdout.trim(), '0');
   }
   const rendered = JSON.parse((await compose(['config', '--format', 'json'], { log: false })).stdout);
-  for (const service of ['mysql', 'backend', 'frontend']) assert.ok(!rendered.services[service].ports?.length, `${service} unexpectedly published`);
+  for (const service of ['mysql', 'identity', 'backend', 'frontend']) assert.ok(!rendered.services[service].ports?.length, `${service} unexpectedly published`);
   await checkHttp('/actuator/health/readiness');
   await checkHttp('/auctions/1');
   await checkHttp('/api/session');
@@ -167,7 +275,7 @@ try {
     headers: { 'Content-Type': 'application/json', Cookie: anonymousCookie, 'X-CSRF-TOKEN': anonymousToken },
     body: JSON.stringify({ username: 'demo_bidder', password: 'demo123' }) });
   const cookie = login.headers.get('set-cookie');
-  assert.match(cookie, /JSESSIONID=/); assert.match(cookie, /HttpOnly/i); assert.match(cookie, /SameSite=Lax/i);
+  assert.match(cookie, /AUTOSTRADA_SESSION=/); assert.match(cookie, /HttpOnly/i); assert.match(cookie, /SameSite=Lax/i);
   assert.match(cookie, /Path=\//i); assert.doesNotMatch(cookie, /Domain=|;\s*Secure/i);
   assert.ok(cookie.split(';')[0] !== anonymousCookie, 'Login must rotate the anonymous session');
   const oldSession = await checkHttp('/api/session', 200, { headers: { Cookie: anonymousCookie } });
@@ -188,22 +296,23 @@ try {
   await checkHttp('/api/auth/password-reset', 200, { method: 'POST', headers: { 'Content-Type': 'application/json',
     Cookie: signedInCookie, 'X-CSRF-TOKEN': signedInToken },
     body: JSON.stringify({ identifier: 'demo_bidder' }) });
-  const resetLogs = (await compose(['logs', '--no-color', 'backend'], { log: false })).stdout;
+  const resetLogs = (await compose(['logs', '--no-color', 'identity'], { log: false })).stdout;
   assert.ok(!/reset-password\?token=/.test(resetLogs), 'Reset links must not enter application logs');
-  assert.equal(await value('SELECT COUNT(*) FROM tb_password_reset_token'), '1');
+  assert.equal(await rootValue(`SELECT COUNT(*) FROM \`${identitySchema}\`.tb_password_reset_token`), '1');
   await checkHttp('/api/auth/logout', 200, { method: 'POST', headers: { Cookie: signedInCookie, 'X-CSRF-TOKEN': signedInToken } });
-  await record('Production images started non-root; private service ports, SPA/API/exact webhook routing and all 18 MySQL migrations verified.');
+  await record('Production images started non-root; private service ports, SPA/API/exact webhook routing and backend/identity MySQL migrations verified.');
   await record('Production cookie attributes, login rotation/old-session rejection, CSRF, logout, CORS, trusted redirects and reset request without secret logging verified.');
 
-  // Real MySQL checks: grants, unique/FK/CHECK enforcement, and a competing row lock.
+  // Real MySQL checks: grants, unique/CHECK enforcement, S5 identity FK extraction, and a competing row lock.
   assert.notEqual((await sql('SELECT * FROM mysql.user', { allowFailure: true })).code, 0);
-  for (const query of ["INSERT INTO tb_role(role,id_user) VALUES ('ROLE_USER',999999)",
-    "INSERT INTO tb_user(username,password,email) SELECT username,password,email FROM tb_user LIMIT 1",
+  for (const query of [
+    `INSERT INTO \`${identitySchema}\`.tb_role(role,id_user) VALUES ('ROLE_USER',999999)`,
+    `INSERT INTO \`${identitySchema}\`.tb_user(username,password,email) SELECT username,password,email FROM \`${identitySchema}\`.tb_user LIMIT 1`,
     'UPDATE tb_car_part SET stock_quantity=-1 WHERE id_part=1']) {
-    assert.notEqual((await sql(query, { allowFailure: true })).code, 0, 'MySQL constraint did not reject invalid data');
+    assert.notEqual((await sql(query, { rootUser: query.includes(identitySchema), allowFailure: true })).code, 0, 'MySQL constraint did not reject invalid data');
   }
-  // S4b changes Java mappings only. The original MySQL FKs, nullability and
-  // owner indexes remain enforceable during preparation, including on old rows.
+  // S5 drops cross-boundary FKs after the copy/cutover marker but preserves
+  // scalar owner columns, nullability and indexes for query plans and checks.
   const identityReferences = [
     ['tb_car', 'id_car', 'id_user'], ['tb_car_bid', 'id_bid', 'id_user'],
     ['tb_test_drive', 'id_test_drive', 'id_user'], ['tb_car_listing', 'id_listing', 'id_seller'],
@@ -215,22 +324,21 @@ try {
   ];
   for (const [table, , column] of identityReferences) {
     assert.equal(await value(`SELECT COUNT(*) FROM information_schema.KEY_COLUMN_USAGE WHERE TABLE_SCHEMA=DATABASE()
-      AND TABLE_NAME='${table}' AND COLUMN_NAME='${column}' AND REFERENCED_TABLE_NAME='tb_user' AND REFERENCED_COLUMN_NAME='id_user'`), '1');
+      AND TABLE_NAME='${table}' AND COLUMN_NAME='${column}' AND REFERENCED_TABLE_NAME='tb_user' AND REFERENCED_COLUMN_NAME='id_user'`), '0');
     assert.equal(await value(`SELECT IS_NULLABLE FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE()
       AND TABLE_NAME='${table}' AND COLUMN_NAME='${column}'`), 'NO');
     assert.ok(Number(await value(`SELECT COUNT(*) FROM information_schema.STATISTICS WHERE TABLE_SCHEMA=DATABASE()
       AND TABLE_NAME='${table}' AND COLUMN_NAME='${column}' AND SEQ_IN_INDEX=1`)) > 0);
     if (Number(await value(`SELECT COUNT(*) FROM ${table}`)) > 0) {
-      const orphan = await sql(`UPDATE ${table} SET ${column}=2147483647 LIMIT 1`, { allowFailure: true });
-      assert.notEqual(orphan.code, 0); assert.match(orphan.stderr, /1452/);
+      const orphan = await sql(`START TRANSACTION; UPDATE ${table} SET ${column}=2147483647 LIMIT 1; ROLLBACK;`);
+      assert.equal(orphan.code, 0);
     }
   }
-  const deletion = await sql('DELETE FROM tb_user WHERE id_user=(SELECT id_user FROM tb_car LIMIT 1)', { allowFailure: true });
-  assert.notEqual(deletion.code, 0); assert.match(deletion.stderr, /1451/);
+  assert.equal(await value("SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='archive_identity_tb_user'"), '1');
   const identitySnapshotQuery = identityReferences.map(([table, key, column]) =>
     `SELECT '${table}.${column}',${key},${column} FROM ${table} ORDER BY ${key}`).join(';');
   const identitySnapshot = await value(identitySnapshotQuery);
-  await record('S4b: all 14 scalar identity columns retain non-null FKs and owner indexes; orphan writes and account deletion rejected.');
+  await record('S5: all 14 scalar identity columns remain non-null and indexed after backend V19; database FKs to identity tables are removed only after copy parity.');
 
   // Named-lock handshake establishes that the holder owns the row before contender runs.
   const holder = sql("START TRANSACTION; SELECT id_part FROM tb_car_part WHERE id_part=1 FOR UPDATE; SELECT GET_LOCK('s3_row_locked',0); DO SLEEP(6); ROLLBACK; SELECT RELEASE_LOCK('s3_row_locked');");
@@ -243,28 +351,41 @@ try {
   }
   const contention = await sql('SET innodb_lock_wait_timeout=1; UPDATE tb_car_part SET stock_quantity=stock_quantity+1 WHERE id_part=1', { allowFailure: true });
   assert.notEqual(contention.code, 0); assert.match(contention.stderr, /1205/); await holder;
-  await record('MySQL schema-only grants, unique/FK/CHECK constraints and row-lock contention verified.');
+  await record('MySQL schema-only grants, identity unique/FK constraints, business CHECK constraints and row-lock contention verified.');
 
-  await sql("UPDATE tb_user_profile SET about='S3 backup sentinel' WHERE id_profile=1");
-  const snapshotQuery = "SELECT id_user,username,email,password FROM tb_user ORDER BY id_user; SELECT id_profile,about FROM tb_user_profile ORDER BY id_profile; SELECT version,checksum FROM flyway_schema_history ORDER BY installed_rank; SELECT id_picture,SHA2(image,256) FROM tb_car_gallery_picture ORDER BY id_picture";
+  await sql(`UPDATE \`${identitySchema}\`.tb_user_profile SET about='S5 backup sentinel' WHERE id_profile=1`, { rootUser: true });
+  const snapshotQuery = "SELECT version,checksum FROM flyway_schema_history ORDER BY installed_rank; SELECT id_picture,SHA2(image,256) FROM tb_car_gallery_picture ORDER BY id_picture";
   const snapshot = await value(snapshotQuery);
+  const identityDataSnapshot = await rootValue(`SELECT id_user,username,email,password FROM \`${identitySchema}\`.tb_user ORDER BY id_user;
+    SELECT id_profile,about FROM \`${identitySchema}\`.tb_user_profile ORDER BY id_profile;
+    SELECT id_token,SHA2(token_hash,256),consumed_at FROM \`${identitySchema}\`.tb_password_reset_token ORDER BY id_token;
+    SELECT version,checksum FROM \`${identitySchema}\`.flyway_schema_history ORDER BY installed_rank`);
   const dump = await compose(['exec', '-T', 'mysql', 'sh', '-c',
-    'MYSQL_PWD="$MYSQL_PASSWORD" exec mysqldump -u"$MYSQL_USER" --single-transaction --no-tablespaces --set-gtid-purged=OFF --hex-blob "$MYSQL_DATABASE"'], { log: false });
+    `MYSQL_PWD="$MYSQL_ROOT_PASSWORD" exec mysqldump -uroot --single-transaction --no-tablespaces --set-gtid-purged=OFF --hex-blob --databases "$MYSQL_DATABASE" "${identitySchema}"`], { log: false });
   await writeFile(resolve(directory, 'backup.sql'), dump.stdout);
   await compose(['down', '--timeout', '20']); // Intentionally preserve volume.
   await compose(['up', '--detach', '--wait', '--wait-timeout', '240'], { timeout: 300000 });
   assert.equal(await value(snapshotQuery), snapshot);
   assert.equal(await value(identitySnapshotQuery), identitySnapshot);
-  await record('Preserved-volume recreation passed: IDs, password hashes, profile sentinel, image hashes and Flyway checksums unchanged.');
-  await compose(['stop', 'gateway', 'backend']);
-  // Only the generated schema in our generated container can be restored.
-  await sql(`DROP DATABASE \`${schema}\`; CREATE DATABASE \`${schema}\`;`, { rootUser: true });
-  await sql(await readFile(resolve(directory, 'backup.sql'), 'utf8'));
+  assert.equal(await rootValue(`SELECT id_user,username,email,password FROM \`${identitySchema}\`.tb_user ORDER BY id_user;
+    SELECT id_profile,about FROM \`${identitySchema}\`.tb_user_profile ORDER BY id_profile;
+    SELECT id_token,SHA2(token_hash,256),consumed_at FROM \`${identitySchema}\`.tb_password_reset_token ORDER BY id_token;
+    SELECT version,checksum FROM \`${identitySchema}\`.flyway_schema_history ORDER BY installed_rank`), identityDataSnapshot);
+  await record('Preserved-volume recreation passed: business IDs, identity IDs, password hashes, reset state, profile sentinel, image hashes and Flyway checksums unchanged.');
+  await compose(['stop', 'gateway', 'backend', 'identity']);
+  // Only the generated schemas in our generated container can be restored.
+  await sql(`DROP DATABASE \`${schema}\`; DROP DATABASE \`${identitySchema}\`;`, { rootUser: true });
+  await compose(['exec', '-T', 'mysql', 'sh', '-c', 'MYSQL_PWD="$MYSQL_ROOT_PASSWORD" exec mysql -uroot'],
+    { input: await readFile(resolve(directory, 'backup.sql'), 'utf8'), log: false, timeout: 90000 });
   await compose(['up', '--detach', '--wait', '--wait-timeout', '240'], { timeout: 300000 });
   assert.equal(await value(snapshotQuery), snapshot);
   assert.equal(await value(identitySnapshotQuery), identitySnapshot);
-  await record('S4b: all business row IDs and scalar identity references survived restart and restore unchanged.');
-  await record('Logical backup restored to the isolated schema; Flyway/Hibernate startup and data parity passed.');
+  assert.equal(await rootValue(`SELECT id_user,username,email,password FROM \`${identitySchema}\`.tb_user ORDER BY id_user;
+    SELECT id_profile,about FROM \`${identitySchema}\`.tb_user_profile ORDER BY id_profile;
+    SELECT id_token,SHA2(token_hash,256),consumed_at FROM \`${identitySchema}\`.tb_password_reset_token ORDER BY id_token;
+    SELECT version,checksum FROM \`${identitySchema}\`.flyway_schema_history ORDER BY installed_rank`), identityDataSnapshot);
+  await record('S5: all business row IDs, scalar identity references, identity credentials, profile data and reset state survived restart and restore unchanged.');
+  await record('Logical backup restored to the isolated backend and identity schemas; Flyway/Hibernate startup and data parity passed.');
 
   await compose(['stop', 'mysql']);
   await compose(['exec', '-T', 'backend', 'curl', '--fail', '--silent', 'http://127.0.0.1:8080/actuator/health/liveness']);
@@ -279,18 +400,40 @@ try {
 
   if (browser) {
     await sql(`CREATE TABLE e2e_guard (token VARCHAR(64) NOT NULL); INSERT INTO e2e_guard VALUES ('${token}');`);
+    await sql(`CREATE TABLE \`${identitySchema}\`.e2e_guard (token VARCHAR(64) NOT NULL); INSERT INTO \`${identitySchema}\`.e2e_guard VALUES ('${token}');`, { rootUser: true });
     const controlPort = await freePort(); env.E2E_CONTROL_URL = `http://127.0.0.1:${controlPort}`;
+    const identityControlPort = await freePort(); env.E2E_IDENTITY_CONTROL_URL = `http://127.0.0.1:${identityControlPort}`;
     config.services.backend.build = { context: resolve(root, 'back'), target: 'e2e' };
     config.services.backend.ports = [`127.0.0.1:${controlPort}:8080`];
-    Object.assign(config.services.backend.environment, { E2E_DATABASE: schema, E2E_CONTROL_TOKEN: token });
+    Object.assign(config.services.backend.environment, {
+      E2E_DATABASE: schema,
+      E2E_CONTROL_TOKEN: token,
+      DB_PASSWORD: env.MYSQL_PASSWORD,
+      IDENTITY_URL: 'http://identity:8080',
+      IDENTITY_BACKEND_SECRET: env.IDENTITY_BACKEND_SECRET,
+      IDENTITY_VERIFICATION_JWKS: env.IDENTITY_VERIFICATION_JWKS,
+    });
+    config.services.identity = config.services.identity || {};
+    config.services.identity.build = { context: resolve(root, 'services/identity-service'), target: 'e2e' };
+    config.services.identity.ports = [`127.0.0.1:${identityControlPort}:8080`];
+    config.services.identity.environment = {
+      E2E_IDENTITY_DATABASE: identitySchema,
+      E2E_CONTROL_TOKEN: token,
+      PUBLIC_URL: env.PUBLIC_URL,
+      IDENTITY_DB_USERNAME: env.IDENTITY_DB_USERNAME,
+      IDENTITY_DB_PASSWORD: env.IDENTITY_DB_PASSWORD,
+      IDENTITY_SIGNING_JWK: env.IDENTITY_SIGNING_JWK,
+      IDENTITY_GATEWAY_SECRET: env.IDENTITY_GATEWAY_SECRET,
+      IDENTITY_BACKEND_SECRET: env.IDENTITY_BACKEND_SECRET,
+    };
     await saveConfig();
-    await compose(['build', 'backend']);
+    await compose(['build', 'identity', 'backend']);
     await compose(['up', '--detach', '--wait', '--wait-timeout', '240'], { timeout: 300000 });
     if (process.argv.includes('--verify-failure-cleanup')) throw new Error('Intentional post-startup failure to verify Compose cleanup');
     if (process.argv.includes('--verify-browser-failure')) env.E2E_FAILURE_PROBE = 'true';
     const result = await execute(process.execPath, ['node_modules/@playwright/test/cli.js', 'test',
       ...(env.E2E_FAILURE_PROBE ? ['--grep', 'register, reject bad login'] : process.argv.slice(2).filter(arg => !['--integration-only', '--verify-failure-cleanup'].includes(arg)))],
-    { cwd: resolve(root, 'front'), allowFailure: true, timeout: 180000 });
+    { cwd: resolve(root, 'front'), allowFailure: true, timeout: 600000 });
     console.log(result.stdout);
     assert.equal(result.code, 0, 'Browser suite failed; see Playwright reports and Compose logs');
     await record('Browser scenarios passed through Compose gateway against isolated MySQL.');

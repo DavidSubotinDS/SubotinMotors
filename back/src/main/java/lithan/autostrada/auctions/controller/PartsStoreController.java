@@ -18,7 +18,7 @@ import lithan.autostrada.auctions.service.CarPartService;
 import lithan.autostrada.auctions.service.CartService;
 import lithan.autostrada.auctions.service.ListingCommentService;
 import lithan.autostrada.auctions.service.StoreOrderService;
-import lithan.autostrada.auctions.service.UserService;
+import lithan.autostrada.auctions.identity.CheckoutProfileClient;
 import lithan.autostrada.auctions.error.MissingShippingAddressException;
 
 @Controller
@@ -28,19 +28,19 @@ public class PartsStoreController {
   private final CartService cartService;
   private final StoreOrderService orderService;
   private final ListingCommentService commentService;
-  private final UserService userService;
+  private final CheckoutProfileClient checkoutProfiles;
 
   public PartsStoreController(
       CarPartService partService,
       CartService cartService,
       StoreOrderService orderService,
       ListingCommentService commentService,
-      UserService userService) {
+      CheckoutProfileClient checkoutProfiles) {
     this.partService = partService;
     this.cartService = cartService;
     this.orderService = orderService;
     this.commentService = commentService;
-    this.userService = userService;
+    this.checkoutProfiles = checkoutProfiles;
   }
 
   @GetMapping("/parts")
@@ -93,7 +93,7 @@ public class PartsStoreController {
     model.addAttribute("stripeEnabled", orderService.isStripeEnabled());
     model.addAttribute(
         "hasShippingAddress",
-        userService.getUserLogin().getProfile().hasCompleteShippingAddress());
+        checkoutProfiles.current().hasCompleteShippingAddress());
     return "store/cart";
   }
 

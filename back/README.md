@@ -58,3 +58,12 @@ The browser baseline uses a separate launcher under `src/test/java/e2e`, exclude
 from the production JAR. Start it through `npm run test:e2e` in `../front`, which
 forces a fresh in-memory H2 database and cleans up its processes. See the
 [E2E runbook](../docs/browser-e2e.md); normal startup does not expose test controls.
+
+## Identity boundary (S4b)
+
+Business code uses `CurrentIdentity`, `ProfileClient` and current-actor-only
+`CheckoutProfileClient`; do not import identity entities/repositories or legacy
+identity services into business code. Existing account ID columns/FKs remain.
+`IdentityBoundaryArchitectureTests` enforces permitted persistence owners in the
+normal Backend suite. [Contract and rollout](../docs/identity-boundary.md);
+[actual verification and limitations](../docs/identity-boundary-pr.md).

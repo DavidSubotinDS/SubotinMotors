@@ -24,7 +24,6 @@ import lithan.autostrada.auctions.entity.Car;
 import lithan.autostrada.auctions.entity.CarBidding;
 import lithan.autostrada.auctions.entity.TestDrive;
 import lithan.autostrada.auctions.service.UserCarService;
-import lithan.autostrada.auctions.service.UserService;
 import lithan.autostrada.auctions.service.CarListingService;
 
 @Controller
@@ -34,8 +33,6 @@ public class UserCarController {
   @Autowired
   private UserCarService userCarService;
 
-  @Autowired
-  private UserService userService;
 
   @Autowired
   private CarListingService carListingService;

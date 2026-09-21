@@ -24,7 +24,7 @@ import lithan.autostrada.auctions.entity.CarListingPicture;
 import lithan.autostrada.auctions.entity.CarListingStatus;
 import lithan.autostrada.auctions.entity.ListingTestRide;
 import lithan.autostrada.auctions.entity.TestDriveStatus;
-import lithan.autostrada.auctions.entity.UserAccount;
+import lithan.autostrada.auctions.identity.CurrentIdentity;
 import lithan.autostrada.auctions.error.ResourceNotFoundException;
 import lithan.autostrada.auctions.repository.CarListingRepository;
 import lithan.autostrada.auctions.repository.ListingTestRideRepository;
@@ -41,15 +41,15 @@ public class CarListingServiceImpl implements CarListingService {
 
   private final CarListingRepository listingRepository;
   private final ListingTestRideRepository testRideRepository;
-  private final UserService userService;
+  private final CurrentIdentity currentIdentity;
 
   public CarListingServiceImpl(
       CarListingRepository listingRepository,
       ListingTestRideRepository testRideRepository,
-      UserService userService) {
+      CurrentIdentity currentIdentity) {
     this.listingRepository = listingRepository;
     this.testRideRepository = testRideRepository;
-    this.userService = userService;
+    this.currentIdentity = currentIdentity;
   }
 
   @Override
@@ -73,14 +73,14 @@ public class CarListingServiceImpl implements CarListingService {
 
   @Override
   public List<CarListing> currentUserListings() {
-    return listingRepository.findBySellerOrderByCreatedAtDesc(userService.getUserLogin());
+    return listingRepository.findBySellerIdOrderByCreatedAtDesc(currentIdentity.requireUserId());
   }
 
   @Override
   public CarListing ownedListing(int listingId) {
     CarListing listing = listingRepository.findById(listingId)
         .orElseThrow(ResourceNotFoundException::new);
-    if (listing.getSeller().getIdUser() != userService.getUserLogin().getIdUser()) {
+    if (listing.getSellerId() != currentIdentity.requireUserId()) {
       throw new AccessDeniedException("You do not own this listing");
     }
     return listing;
@@ -99,7 +99,7 @@ public class CarListingServiceImpl implements CarListingService {
     Instant now = Instant.now();
     CarListing listing = new CarListing();
     apply(form, listing);
-    listing.setSeller(userService.getUserLogin());
+    listing.setSellerId(currentIdentity.requireUserId());
     listing.setStatus(CarListingStatus.ACTIVE);
     listing.setCreatedAt(now);
     listing.setUpdatedAt(now);
@@ -175,14 +175,14 @@ public class CarListingServiceImpl implements CarListingService {
   public void scheduleTestRide(int listingId, LocalDateTime scheduledAt) {
     validateFuture(scheduledAt);
     CarListing listing = publicListing(listingId);
-    UserAccount requester = userService.getUserLogin();
+    int requester = currentIdentity.requireUserId();
     if (!listing.isActive()) {
       throw new IllegalStateException("Test rides are only available for active listings");
     }
-    if (listing.getSeller().getIdUser() == requester.getIdUser()) {
+    if (listing.getSellerId() == requester) {
       throw new IllegalStateException("You cannot schedule a test ride for your own listing");
     }
-    if (testRideRepository.existsByUserAndListingAndScheduledAt(
+    if (testRideRepository.existsByUserIdAndListingAndScheduledAt(
         requester, listing, scheduledAt)) {
       throw new IllegalStateException("You already requested this time for the listing");
     }
@@ -190,7 +190,7 @@ public class CarListingServiceImpl implements CarListingService {
     Instant now = Instant.now();
     ListingTestRide testRide = new ListingTestRide();
     testRide.setListing(listing);
-    testRide.setUser(requester);
+    testRide.setUserId(requester);
     testRide.setScheduledAt(scheduledAt);
     testRide.setStatus(TestDriveStatus.PENDING);
     testRide.setCreatedAt(now);
@@ -200,12 +200,12 @@ public class CarListingServiceImpl implements CarListingService {
 
   @Override
   public List<ListingTestRide> currentUserTestRides() {
-    return testRideRepository.findByUserOrderByScheduledAtAsc(userService.getUserLogin());
+    return testRideRepository.findByUserIdOrderByScheduledAtAsc(currentIdentity.requireUserId());
   }
 
   @Override
   public List<ListingTestRide> testRideRequestsForCurrentSeller() {
-    return testRideRepository.findByListingSellerOrderByScheduledAtAsc(userService.getUserLogin());
+    return testRideRepository.findByListingSellerIdOrderByScheduledAtAsc(currentIdentity.requireUserId());
   }
 
   @Override
@@ -219,8 +219,8 @@ public class CarListingServiceImpl implements CarListingService {
     if (!testRide.getListing().isActive()) {
       throw new IllegalStateException("Only active listings can be rescheduled");
     }
-    if (testRideRepository.existsByUserAndListingAndScheduledAtAndIdTestRideNot(
-        testRide.getUser(), testRide.getListing(), scheduledAt, testRideId)) {
+    if (testRideRepository.existsByUserIdAndListingAndScheduledAtAndIdTestRideNot(
+        testRide.getUserId(), testRide.getListing(), scheduledAt, testRideId)) {
       throw new IllegalStateException("You already requested this time for the listing");
     }
     testRide.setScheduledAt(scheduledAt);
@@ -272,7 +272,7 @@ public class CarListingServiceImpl implements CarListingService {
   private ListingTestRide currentUserTestRide(int testRideId) {
     ListingTestRide testRide = testRideRepository.findById(testRideId)
         .orElseThrow(ResourceNotFoundException::new);
-    if (testRide.getUser().getIdUser() != userService.getUserLogin().getIdUser()) {
+    if (testRide.getUserId() != currentIdentity.requireUserId()) {
       throw new AccessDeniedException("This test ride belongs to another user");
     }
     return testRide;
@@ -281,8 +281,8 @@ public class CarListingServiceImpl implements CarListingService {
   private ListingTestRide ownedListingTestRide(int testRideId) {
     ListingTestRide testRide = testRideRepository.findById(testRideId)
         .orElseThrow(ResourceNotFoundException::new);
-    if (testRide.getListing().getSeller().getIdUser()
-        != userService.getUserLogin().getIdUser()) {
+    if (testRide.getListing().getSellerId()
+        != currentIdentity.requireUserId()) {
       throw new AccessDeniedException("This request belongs to another seller");
     }
     return testRide;

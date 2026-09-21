@@ -21,9 +21,8 @@ public class ListingComment {
   @Column(name = "id_comment")
   private int idComment;
 
-  @ManyToOne(fetch = FetchType.LAZY, optional = false)
-  @JoinColumn(name = "id_user", nullable = false)
-  private UserAccount author;
+  @Column(name = "id_user", nullable = false)
+  private int authorId;
 
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "id_car")
@@ -52,12 +51,12 @@ public class ListingComment {
     return idComment;
   }
 
-  public UserAccount getAuthor() {
-    return author;
+  public int getAuthorId() {
+    return authorId;
   }
 
-  public void setAuthor(UserAccount author) {
-    this.author = author;
+  public void setAuthorId(int authorId) {
+    this.authorId = authorId;
   }
 
   public Car getCar() {

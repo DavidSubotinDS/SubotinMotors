@@ -15,7 +15,7 @@ import lithan.autostrada.auctions.entity.CarBidding;
 import lithan.autostrada.auctions.entity.PaymentAccount;
 import lithan.autostrada.auctions.entity.PaymentOrder;
 import lithan.autostrada.auctions.entity.PaymentWebhookEvent;
-import lithan.autostrada.auctions.entity.UserAccount;
+import lithan.autostrada.auctions.identity.CurrentIdentity;
 import lithan.autostrada.auctions.error.ResourceNotFoundException;
 import lithan.autostrada.auctions.payment.StripeAccountState;
 import lithan.autostrada.auctions.payment.StripeCheckoutResult;
@@ -29,9 +29,12 @@ import lithan.autostrada.auctions.repository.PaymentWebhookEventRepository;
 @Service
 public class PaymentServiceImpl implements PaymentService {
 
+  @org.springframework.beans.factory.annotation.Autowired
+  private lithan.autostrada.auctions.identity.CheckoutProfileClient checkoutProfiles;
+
   private final StripeGateway stripeGateway;
   private final StripeProperties properties;
-  private final UserService userService;
+  private final CurrentIdentity currentIdentity;
   private final CarBiddingRepository bidRepository;
   private final PaymentAccountRepository accountRepository;
   private final PaymentOrderRepository paymentRepository;
@@ -40,14 +43,14 @@ public class PaymentServiceImpl implements PaymentService {
   public PaymentServiceImpl(
       StripeGateway stripeGateway,
       StripeProperties properties,
-      UserService userService,
+      CurrentIdentity currentIdentity,
       CarBiddingRepository bidRepository,
       PaymentAccountRepository accountRepository,
       PaymentOrderRepository paymentRepository,
       PaymentWebhookEventRepository webhookEventRepository) {
     this.stripeGateway = stripeGateway;
     this.properties = properties;
-    this.userService = userService;
+    this.currentIdentity = currentIdentity;
     this.bidRepository = bidRepository;
     this.accountRepository = accountRepository;
     this.paymentRepository = paymentRepository;
@@ -61,22 +64,22 @@ public class PaymentServiceImpl implements PaymentService {
 
   @Override
   public Optional<PaymentAccount> getCurrentSellerAccount() {
-    return accountRepository.findByUser(userService.getUserLogin());
+    return accountRepository.findByUserId(currentIdentity.requireUserId());
   }
 
   @Override
   @Transactional
   public String startSellerOnboarding() {
-    UserAccount seller = userService.getUserLogin();
-    PaymentAccount account = accountRepository.findByUser(seller).orElseGet(() -> createAccount(seller));
+    int seller = currentIdentity.requireUserId();
+    PaymentAccount account = accountRepository.findByUserId(seller).orElseGet(() -> createAccount(seller));
     return stripeGateway.createOnboardingLink(account.getProviderAccountId());
   }
 
-  private PaymentAccount createAccount(UserAccount seller) {
+  private PaymentAccount createAccount(int seller) {
     Instant now = Instant.now();
     PaymentAccount account = new PaymentAccount();
-    account.setUser(seller);
-    account.setProviderAccountId(stripeGateway.createConnectedAccount(seller));
+    account.setUserId(seller);
+    account.setProviderAccountId(stripeGateway.createConnectedAccount(seller, checkoutProfiles.current().name()));
     account.setStatus("PENDING");
     account.setTransfersEnabled(false);
     account.setCreatedAt(now);
@@ -87,7 +90,7 @@ public class PaymentServiceImpl implements PaymentService {
   @Override
   @Transactional
   public PaymentAccount refreshCurrentSellerAccount() {
-    PaymentAccount account = accountRepository.findByUser(userService.getUserLogin())
+    PaymentAccount account = accountRepository.findByUserId(currentIdentity.requireUserId())
         .orElseThrow(ResourceNotFoundException::new);
     StripeAccountState state = stripeGateway.retrieveAccountState(account.getProviderAccountId());
     account.setTransfersEnabled(state.transfersEnabled());
@@ -104,7 +107,7 @@ public class PaymentServiceImpl implements PaymentService {
     if (!"ONGOING".equals(bid.getStatus()) || !"ACTIVE".equals(car.getStatus())) {
       throw new IllegalStateException("Only ongoing bids on active cars can be accepted");
     }
-    PaymentAccount sellerAccount = accountRepository.findByUser(car.getUser())
+    PaymentAccount sellerAccount = accountRepository.findByUserId(car.getUserId())
         .orElseThrow(() -> new IllegalStateException("The seller must connect a payout account first"));
     if (!sellerAccount.isTransfersEnabled()) {
       throw new IllegalStateException("The seller payout account is not ready");
@@ -116,8 +119,8 @@ public class PaymentServiceImpl implements PaymentService {
 
     PaymentOrder payment = new PaymentOrder();
     payment.setBid(bid);
-    payment.setBuyer(bid.getUser());
-    payment.setSeller(car.getUser());
+    payment.setBuyerId(bid.getUserId());
+    payment.setSellerId(car.getUserId());
     payment.setAmountMinor(amountMinor);
     payment.setPlatformFeeMinor(feeMinor);
     payment.setCurrency(properties.getCurrency().toLowerCase());
@@ -139,8 +142,8 @@ public class PaymentServiceImpl implements PaymentService {
   @Transactional
   public String createBuyerCheckout(int paymentId) {
     PaymentOrder payment = paymentRepository.findById(paymentId).orElseThrow(ResourceNotFoundException::new);
-    UserAccount buyer = userService.getUserLogin();
-    if (payment.getBuyer().getIdUser() != buyer.getIdUser()) {
+    int buyer = currentIdentity.requireUserId();
+    if (payment.getBuyerId() != buyer) {
       throw new AccessDeniedException("This payment belongs to another buyer");
     }
     if ("PAID".equals(payment.getStatus())) {
@@ -153,7 +156,7 @@ public class PaymentServiceImpl implements PaymentService {
       throw new IllegalStateException("This payment can no longer be started");
     }
 
-    PaymentAccount sellerAccount = accountRepository.findByUser(payment.getSeller())
+    PaymentAccount sellerAccount = accountRepository.findByUserId(payment.getSellerId())
         .filter(PaymentAccount::isTransfersEnabled)
         .orElseThrow(() -> new IllegalStateException("The seller payout account is not ready"));
     StripeCheckoutResult checkout = stripeGateway.createCheckoutSession(
@@ -168,12 +171,12 @@ public class PaymentServiceImpl implements PaymentService {
 
   @Override
   public Page<PaymentOrder> listCurrentUserPurchases(Pageable pageable) {
-    return paymentRepository.findByBuyer(userService.getUserLogin(), pageable);
+    return paymentRepository.findByBuyerId(currentIdentity.requireUserId(), pageable);
   }
 
   @Override
   public Page<PaymentOrder> listCurrentUserSales(Pageable pageable) {
-    return paymentRepository.findBySeller(userService.getUserLogin(), pageable);
+    return paymentRepository.findBySellerId(currentIdentity.requireUserId(), pageable);
   }
 
   @Override
@@ -188,9 +191,9 @@ public class PaymentServiceImpl implements PaymentService {
 
   @Override
   public Optional<PaymentOrder> findCurrentBuyerPaymentBySession(String sessionId) {
-    UserAccount buyer = userService.getUserLogin();
+    int buyer = currentIdentity.requireUserId();
     return paymentRepository.findByCheckoutSessionId(sessionId)
-        .filter(payment -> payment.getBuyer().getIdUser() == buyer.getIdUser());
+        .filter(payment -> payment.getBuyerId() == buyer);
   }
 
   @Override

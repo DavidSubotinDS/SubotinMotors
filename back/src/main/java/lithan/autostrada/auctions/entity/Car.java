@@ -62,9 +62,8 @@ public class Car {
   private LocalDateTime auctionEndTime =
       LocalDateTime.now().plusDays(7).withSecond(0).withNano(0);
 
-  @ManyToOne(fetch = FetchType.EAGER, optional = false)
-  @JoinColumn(name = "id_user")
-  private UserAccount user;
+  @Column(name = "id_user", nullable = false)
+  private int userId;
 
   @OneToOne(fetch = FetchType.EAGER, cascade = CascadeType.ALL, orphanRemoval = true, mappedBy = "car")
   private CarPicture carPicture;
@@ -200,12 +199,12 @@ public class Car {
     this.status = status;
   }
 
-  public UserAccount getUser() {
-    return user;
+  public int getUserId() {
+    return userId;
   }
 
-  public void setUser(UserAccount user) {
-    this.user = user;
+  public void setUserId(int userId) {
+    this.userId = userId;
   }
 
   public CarPicture getCarPicture() {

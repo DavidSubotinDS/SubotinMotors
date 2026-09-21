@@ -22,6 +22,7 @@ import lithan.autostrada.auctions.dto.api.ApiModels.ProfileResponse;
 import lithan.autostrada.auctions.dto.api.PageResponse;
 import lithan.autostrada.auctions.entity.UserProfile;
 import lithan.autostrada.auctions.service.AdminService;
+import lithan.autostrada.auctions.service.MarketplaceAdminService;
 import lithan.autostrada.auctions.service.PaymentService;
 import lithan.autostrada.auctions.service.UserCarService;
 
@@ -29,9 +30,15 @@ import lithan.autostrada.auctions.service.UserCarService;
 @RequestMapping("/api/admin")
 public class AdminApiController {
 
+  @org.springframework.beans.factory.annotation.Autowired
+  private MarketplaceAdminService marketplaceAdminService;
+
   private final AdminService adminService;
   private final UserCarService userCarService;
   private final PaymentService paymentService;
+  @org.springframework.beans.factory.annotation.Autowired
+  private lithan.autostrada.auctions.identity.IdentityApiMapper identityMapper;
+
   private final ApiModelMapper mapper;
 
   public AdminApiController(
@@ -62,13 +69,13 @@ public class AdminApiController {
         5,
         Sort.by(sortDirection(adminDirection), userSortProperty(adminSort))));
     return mapper.adminDashboard(
-        PageResponse.from(users.map(mapper::user)),
-        PageResponse.from(admins.map(mapper::user)));
+        PageResponse.from(users.map(identityMapper::user)),
+        PageResponse.from(admins.map(identityMapper::user)));
   }
 
   @GetMapping("/users/{idProfile}")
   public ProfileResponse userProfile(@PathVariable int idProfile) {
-    return mapper.profile(adminService.getProfileById(idProfile), null);
+    return identityMapper.profile(adminService.getProfileById(idProfile), null);
   }
 
   @PutMapping("/users/{idProfile}")
@@ -99,7 +106,7 @@ public class AdminApiController {
     profile.setCountry(form.getCountry());
     profile.setAbout(form.getAbout());
     adminService.editUser(profile);
-    return mapper.profile(adminService.getProfileById(idProfile), null);
+    return identityMapper.profile(adminService.getProfileById(idProfile), null);
   }
 
   @PostMapping("/users/{idUser}/mark-admin")
@@ -117,17 +124,17 @@ public class AdminApiController {
       @RequestParam(defaultValue = "0") int bidPage,
       @RequestParam(defaultValue = "idBid") String bidSort,
       @RequestParam(defaultValue = "desc") String bidDirection) {
-    var cars = adminService.listCar(PageRequest.of(
+    var cars = marketplaceAdminService.listCar(PageRequest.of(
         Math.max(carPage, 0),
         Math.min(Math.max(carSize, 1), 100),
         Sort.by(sortDirection(carDirection), carSortProperty(carSort))));
-    var bids = adminService.listCarBid(PageRequest.of(
+    var bids = marketplaceAdminService.listCarBid(PageRequest.of(
         Math.max(bidPage, 0),
         5,
         Sort.by(sortDirection(bidDirection), bidSortProperty(bidSort))));
     return mapper.adminCarManagement(
-        PageResponse.from(cars.map(mapper::auction)),
-        PageResponse.from(bids.map(mapper::bid)));
+        PageResponse.from(mapper.map(cars, mapper::auction)),
+        PageResponse.from(mapper.map(bids, mapper::bid)));
   }
 
   @PostMapping("/cars/{idCar}/activate")
@@ -154,13 +161,13 @@ public class AdminApiController {
 
   @PostMapping("/bids/{idBid}/approve")
   public ApiMessageResponse approveBid(@PathVariable int idBid) {
-    adminService.approveCarBid(idBid);
+    marketplaceAdminService.approveCarBid(idBid);
     return new ApiMessageResponse("Bid approved.", null);
   }
 
   @PostMapping("/bids/{idBid}/deny")
   public ApiMessageResponse denyBid(@PathVariable int idBid) {
-    adminService.denyCarBid(idBid);
+    marketplaceAdminService.denyCarBid(idBid);
     return new ApiMessageResponse("Bid denied.", null);
   }
 
@@ -176,7 +183,7 @@ public class AdminApiController {
     var webhookEvents = paymentService.listWebhookEvents(
         PageRequest.of(0, 20, Sort.by(Sort.Direction.DESC, "processedAt")));
     return mapper.adminTransactions(
-        PageResponse.from(transactions.map(mapper::payment)),
+        PageResponse.from(mapper.map(transactions, mapper::payment)),
         webhookEvents.getContent());
   }
 

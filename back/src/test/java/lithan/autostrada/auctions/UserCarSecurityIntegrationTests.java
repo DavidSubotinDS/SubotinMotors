@@ -12,7 +12,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.access.AccessDeniedException;
-import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.transaction.annotation.Transactional;
 
 import lithan.autostrada.auctions.entity.Car;
@@ -46,7 +45,7 @@ class UserCarSecurityIntegrationTests {
   private UserCarService userCarService;
 
   @Test
-  @WithMockUser(username = "user123", roles = "USER")
+  @WithIdentity(username = "user123", roles = "USER")
   void newlyPostedCarsRequireAdministratorApproval() throws Exception {
     MockMultipartFile image = new MockMultipartFile(
         "imageFile",
@@ -71,7 +70,7 @@ class UserCarSecurityIntegrationTests {
   }
 
   @Test
-  @WithMockUser(username = "user123", roles = "USER")
+  @WithIdentity(username = "user123", roles = "USER")
   void userCannotEditAnotherUsersCar() {
     UserAccount admin = userRepository.findByUsername("admin123").orElseThrow();
     Car car = new Car();
@@ -80,14 +79,14 @@ class UserCarSecurityIntegrationTests {
     car.setYear("2024");
     car.setPrice(10000);
     car.setStatus("ACTIVE");
-    car.setUser(admin);
+    car.setUserId(admin.getIdUser());
     carRepository.saveAndFlush(car);
 
     assertThrows(AccessDeniedException.class, () -> userCarService.getOwnedCarById(car.getIdCar()));
   }
 
   @Test
-  @WithMockUser(username = "user123", roles = "USER")
+  @WithIdentity(username = "user123", roles = "USER")
   void userCanListAndCancelOwnOngoingBid() {
     Car car = saveActiveCarOwnedBy("admin123", "Bid", "Management");
 
@@ -99,7 +98,7 @@ class UserCarSecurityIntegrationTests {
   }
 
   @Test
-  @WithMockUser(username = "user123", roles = "USER")
+  @WithIdentity(username = "user123", roles = "USER")
   void userCanRescheduleAndCancelOwnTestDrive() {
     Car car = saveActiveCarOwnedBy("admin123", "Test", "Drive");
     LocalDate originalDate = LocalDate.now().plusDays(5);
@@ -127,7 +126,7 @@ class UserCarSecurityIntegrationTests {
   }
 
   @Test
-  @WithMockUser(username = "user123", roles = "USER")
+  @WithIdentity(username = "user123", roles = "USER")
   void testDriveMustBeAfterToday() {
     Car car = saveActiveCarOwnedBy("admin123", "Future", "Only");
 
@@ -137,7 +136,7 @@ class UserCarSecurityIntegrationTests {
   }
 
   @Test
-  @WithMockUser(username = "admin123", roles = "USER")
+  @WithIdentity(username = "admin123", roles = "USER")
   void ownerCanAcceptPendingTestDriveRequest() {
     UserAccount requester = userRepository.findByUsername("user123").orElseThrow();
     Car car = saveActiveCarOwnedBy("admin123", "Owner", "Approval");
@@ -156,7 +155,7 @@ class UserCarSecurityIntegrationTests {
   }
 
   @Test
-  @WithMockUser(username = "admin123", roles = "USER")
+  @WithIdentity(username = "admin123", roles = "USER")
   void ownerCanRejectPendingTestDriveRequest() {
     UserAccount requester = userRepository.findByUsername("user123").orElseThrow();
     Car car = saveActiveCarOwnedBy("admin123", "Owner", "Rejection");
@@ -169,21 +168,21 @@ class UserCarSecurityIntegrationTests {
   }
 
   @Test
-  @WithMockUser(username = "user123", roles = "USER")
+  @WithIdentity(username = "user123", roles = "USER")
   void userCannotManageAnotherUsersBidOrTestDrive() {
     UserAccount admin = userRepository.findByUsername("admin123").orElseThrow();
     Car car = saveActiveCarOwnedBy("user123", "Ownership", "Boundary");
 
     CarBidding bid = new CarBidding();
     bid.setCar(car);
-    bid.setUser(admin);
+    bid.setUserId(admin.getIdUser());
     bid.setBidPrice(12000);
     bid.setStatus("ONGOING");
     bidRepository.save(bid);
 
     TestDrive testDrive = new TestDrive();
     testDrive.setCar(car);
-    testDrive.setUser(admin);
+    testDrive.setUserId(admin.getIdUser());
     testDrive.setDate(LocalDate.now().plusDays(3));
     testDrive.setStatus(TestDriveStatus.PENDING);
     testDriveRepository.save(testDrive);
@@ -195,7 +194,7 @@ class UserCarSecurityIntegrationTests {
   }
 
   @Test
-  @WithMockUser(username = "user123", roles = "USER")
+  @WithIdentity(username = "user123", roles = "USER")
   void userCannotDecideRequestForAnotherOwnersCar() {
     UserAccount requester = userRepository.findByUsername("user123").orElseThrow();
     Car car = saveActiveCarOwnedBy("admin123", "Other", "Owner");
@@ -212,7 +211,7 @@ class UserCarSecurityIntegrationTests {
   private TestDrive saveTestDrive(UserAccount requester, Car car, LocalDate date) {
     TestDrive testDrive = new TestDrive();
     testDrive.setCar(car);
-    testDrive.setUser(requester);
+    testDrive.setUserId(requester.getIdUser());
     testDrive.setDate(date);
     testDrive.setStatus(TestDriveStatus.PENDING);
     return testDriveRepository.saveAndFlush(testDrive);
@@ -226,7 +225,7 @@ class UserCarSecurityIntegrationTests {
     car.setYear("2025");
     car.setPrice(10000);
     car.setStatus("ACTIVE");
-    car.setUser(owner);
+    car.setUserId(owner.getIdUser());
     return carRepository.saveAndFlush(car);
   }
 }

@@ -26,9 +26,8 @@ public class StoreOrder {
   @Column(name = "id_order")
   private int idOrder;
 
-  @ManyToOne(fetch = FetchType.EAGER, optional = false)
-  @JoinColumn(name = "id_user", nullable = false)
-  private UserAccount user;
+  @Column(name = "id_user", nullable = false)
+  private int userId;
 
   @Column(name = "total_minor", nullable = false)
   private long totalMinor;
@@ -85,12 +84,12 @@ public class StoreOrder {
     return idOrder;
   }
 
-  public UserAccount getUser() {
-    return user;
+  public int getUserId() {
+    return userId;
   }
 
-  public void setUser(UserAccount user) {
-    this.user = user;
+  public void setUserId(int userId) {
+    this.userId = userId;
   }
 
   public long getTotalMinor() {

@@ -89,7 +89,7 @@ public class StoreAdminApiController {
         Math.max(page, 0),
         10,
         Sort.by(sortDirection(direction), orderSort(sort))));
-    return PageResponse.from(orders.map(mapper::storeOrder));
+    return PageResponse.from(mapper.map(orders, mapper::storeOrder));
   }
 
   @GetMapping("/orders/{idOrder}")

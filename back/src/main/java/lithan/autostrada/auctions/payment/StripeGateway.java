@@ -3,12 +3,11 @@ package lithan.autostrada.auctions.payment;
 import lithan.autostrada.auctions.entity.PaymentOrder;
 import lithan.autostrada.auctions.entity.ListingDeposit;
 import lithan.autostrada.auctions.entity.StoreOrder;
-import lithan.autostrada.auctions.entity.UserAccount;
 
 public interface StripeGateway {
   boolean isEnabled();
 
-  String createConnectedAccount(UserAccount seller);
+  String createConnectedAccount(int sellerId, String displayName);
 
   String createOnboardingLink(String accountId);
 
@@ -16,9 +15,9 @@ public interface StripeGateway {
 
   StripeCheckoutResult createCheckoutSession(PaymentOrder paymentOrder, String destinationAccountId);
 
-  StripeCheckoutResult createStoreCheckoutSession(StoreOrder order);
+  StripeCheckoutResult createStoreCheckoutSession(StoreOrder order, String customerEmail);
 
-  StripeCheckoutResult createListingDepositCheckoutSession(ListingDeposit deposit);
+  StripeCheckoutResult createListingDepositCheckoutSession(ListingDeposit deposit, String customerEmail);
 
   StripeWebhookEvent verifyAndParseWebhook(String payload, String signature);
 }

@@ -13,7 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 import lithan.autostrada.auctions.entity.AuctionFollow;
 import lithan.autostrada.auctions.entity.AuctionNotification;
 import lithan.autostrada.auctions.entity.Car;
-import lithan.autostrada.auctions.entity.UserAccount;
+import lithan.autostrada.auctions.identity.CurrentIdentity;
 import lithan.autostrada.auctions.error.ResourceNotFoundException;
 import lithan.autostrada.auctions.repository.AuctionFollowRepository;
 import lithan.autostrada.auctions.repository.AuctionNotificationRepository;
@@ -25,7 +25,7 @@ public class AuctionNotificationService {
   private final AuctionNotificationRepository notificationRepository;
   private final AuctionFollowRepository followRepository;
   private final CarRepository carRepository;
-  private final UserService userService;
+  private final CurrentIdentity currentIdentity;
   private final Clock clock;
   private final Duration endingSoonWindow;
 
@@ -33,14 +33,14 @@ public class AuctionNotificationService {
       AuctionNotificationRepository notificationRepository,
       AuctionFollowRepository followRepository,
       CarRepository carRepository,
-      UserService userService,
+      CurrentIdentity currentIdentity,
       Clock clock,
       @Value("${auction.notifications.ending-soon-window:PT24H}")
           Duration endingSoonWindow) {
     this.notificationRepository = notificationRepository;
     this.followRepository = followRepository;
     this.carRepository = carRepository;
-    this.userService = userService;
+    this.currentIdentity = currentIdentity;
     this.clock = clock;
     this.endingSoonWindow = endingSoonWindow;
   }
@@ -54,7 +54,7 @@ public class AuctionNotificationService {
     int created = 0;
     for (Car car : endingCars) {
       for (AuctionFollow follow : followRepository.findByCar(car)) {
-        if (createEndingSoonNotification(follow.getUser(), car, now)) {
+        if (createEndingSoonNotification(follow.getUserId(), car, now)) {
           created++;
         }
       }
@@ -63,20 +63,20 @@ public class AuctionNotificationService {
   }
 
   @Transactional
-  public boolean createEndingSoonNotification(UserAccount user, Car car) {
+  public boolean createEndingSoonNotification(int user, Car car) {
     return createEndingSoonNotification(user, car, LocalDateTime.now(clock));
   }
 
   private boolean createEndingSoonNotification(
-      UserAccount user, Car car, LocalDateTime now) {
+      int user, Car car, LocalDateTime now) {
     if (!car.isEndingWithin(endingSoonWindow, now)
-        || notificationRepository.existsByUserAndCarAndNotificationType(
+        || notificationRepository.existsByUserIdAndCarAndNotificationType(
             user, car, AuctionNotification.ENDING_SOON)) {
       return false;
     }
 
     AuctionNotification notification = new AuctionNotification();
-    notification.setUser(user);
+    notification.setUserId(user);
     notification.setCar(car);
     notification.setNotificationType(AuctionNotification.ENDING_SOON);
     notification.setMessage(
@@ -87,21 +87,21 @@ public class AuctionNotificationService {
   }
 
   public List<AuctionNotification> listCurrentUserNotifications() {
-    return notificationRepository.findByUserOrderByCreatedAtDesc(
-        userService.getUserLogin());
+    return notificationRepository.findByUserIdOrderByCreatedAtDesc(
+        currentIdentity.requireUserId());
   }
 
   public long unreadCount() {
-    return notificationRepository.countByUserAndReadAtIsNull(
-        userService.getUserLogin());
+    return notificationRepository.countByUserIdAndReadAtIsNull(
+        currentIdentity.requireUserId());
   }
 
   @Transactional
   public void markRead(int notificationId) {
     AuctionNotification notification = notificationRepository.findById(notificationId)
         .orElseThrow(ResourceNotFoundException::new);
-    UserAccount currentUser = userService.getUserLogin();
-    if (notification.getUser().getIdUser() != currentUser.getIdUser()) {
+    int currentUser = currentIdentity.requireUserId();
+    if (notification.getUserId() != currentUser) {
       throw new AccessDeniedException("This notification belongs to another user");
     }
     if (!notification.isRead()) {
@@ -112,10 +112,10 @@ public class AuctionNotificationService {
 
   @Transactional
   public void markAllRead() {
-    UserAccount user = userService.getUserLogin();
+    int user = currentIdentity.requireUserId();
     LocalDateTime now = LocalDateTime.now(clock);
     List<AuctionNotification> unread =
-        notificationRepository.findByUserAndReadAtIsNull(user);
+        notificationRepository.findByUserIdAndReadAtIsNull(user);
     unread.forEach(notification -> notification.setReadAt(now));
     notificationRepository.saveAll(unread);
   }

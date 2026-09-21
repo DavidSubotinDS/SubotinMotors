@@ -24,6 +24,7 @@ import lithan.autostrada.auctions.entity.PaymentWebhookEvent;
 import lithan.autostrada.auctions.entity.UserAccount;
 import lithan.autostrada.auctions.entity.UserProfile;
 import lithan.autostrada.auctions.service.AdminService;
+import lithan.autostrada.auctions.service.MarketplaceAdminService;
 import lithan.autostrada.auctions.service.PaymentService;
 import lithan.autostrada.auctions.service.UserCarService;
 import lithan.autostrada.auctions.service.UserService;
@@ -31,6 +32,9 @@ import lithan.autostrada.auctions.service.UserService;
 @Controller
 @RequestMapping("/admin")
 public class AdminController {
+
+  @org.springframework.beans.factory.annotation.Autowired
+  private MarketplaceAdminService marketplaceAdminService;
 
   @Autowired
   private AdminService adminService;
@@ -129,9 +133,9 @@ public class AdminController {
     String safeBidSort = bidSortProperty(bidSort);
     Sort.Direction safeCarDirection = sortDirection(carDirection);
     Sort.Direction safeBidDirection = sortDirection(bidDirection);
-    Page<Car> cars = adminService.listCar(
+    Page<Car> cars = marketplaceAdminService.listCar(
         PageRequest.of(Math.max(carPage, 0), 5, Sort.by(safeCarDirection, safeCarSort)));
-    Page<CarBidding> bids = adminService.listCarBid(
+    Page<CarBidding> bids = marketplaceAdminService.listCarBid(
         PageRequest.of(Math.max(bidPage, 0), 5, Sort.by(safeBidDirection, safeBidSort)));
 
     model.addAttribute("carPage", cars);
@@ -165,7 +169,7 @@ public class AdminController {
   // APPROVE BID CAR
   @PostMapping("/approve-bid/{idBid}")
   public String approveBidCarPost(@PathVariable("idBid") int id) {
-    adminService.approveCarBid(id);
+    marketplaceAdminService.approveCarBid(id);
 
     return "redirect:/admin/car-management";
   }
@@ -173,7 +177,7 @@ public class AdminController {
   // DENY BID CAR
   @PostMapping("/deny-bid/{idBid}")
   public String denyBidCarPost(@PathVariable("idBid") int id) {
-    adminService.denyCarBid(id);
+    marketplaceAdminService.denyCarBid(id);
 
     return "redirect:/admin/car-management";
   }

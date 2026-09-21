@@ -16,7 +16,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 
 @SpringBootTest
@@ -74,7 +73,7 @@ class AutostradaAuctionsApplicationTests {
   }
 
   @Test
-  @WithMockUser(username = "admin123", roles = "ADMIN")
+  @WithIdentity(username = "admin123", roles = "ADMIN")
   void adminListsSupportIndependentPaginationAndSorting() throws Exception {
     var dashboardResult = mockMvc.perform(get("/api/admin/dashboard")
             .param("userPage", "1").param("adminPage", "0")
@@ -110,7 +109,7 @@ class AutostradaAuctionsApplicationTests {
   }
 
   @Test
-  @WithMockUser(username = "user123", roles = "USER")
+  @WithIdentity(username = "user123", roles = "USER")
   void bidAndTestDriveManagementApisAreAvailable() throws Exception {
     mockMvc.perform(get("/api/user/bids"))
         .andExpect(status().isOk()).andExpect(jsonPath("$").isArray());
@@ -121,7 +120,7 @@ class AutostradaAuctionsApplicationTests {
   }
 
   @Test
-  @WithMockUser(username = "user123", roles = "USER")
+  @WithIdentity(username = "user123", roles = "USER")
   void retiredPaymentsRedirectAndOrdersSupportPagination() throws Exception {
     mockMvc.perform(get("/user/payments"))
         .andExpect(status().is3xxRedirection()).andExpect(redirectedUrl("/orders"));

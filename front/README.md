@@ -54,3 +54,11 @@ for automatic isolated backend/frontend/gateway startup, fixtures, browser tests
 through the gateway and cleanup. Gateway build failures also fail this command. JDK 17 and
 Node.js 22 are required. See [the E2E runbook](../docs/browser-e2e.md) for local
 commands, failure reports and provider-simulation limitations.
+
+## S4b profile compatibility
+
+Public/business display keeps response keys but redacts private identity fields;
+self/admin account views retain their authorized fields. Existing React flows use
+the retained public names/location/picture. Two added identity browser scenarios
+cover profile edits/upload/display and forged-owner/cross-user denial. See
+[boundary contract](../docs/identity-boundary.md) and [evidence](../docs/identity-boundary-pr.md).

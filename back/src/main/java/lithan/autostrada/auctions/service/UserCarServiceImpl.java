@@ -18,7 +18,7 @@ import lithan.autostrada.auctions.entity.CarGalleryPicture;
 import lithan.autostrada.auctions.entity.CarPicture;
 import lithan.autostrada.auctions.entity.TestDrive;
 import lithan.autostrada.auctions.entity.TestDriveStatus;
-import lithan.autostrada.auctions.entity.UserAccount;
+import lithan.autostrada.auctions.identity.CurrentIdentity;
 import lithan.autostrada.auctions.error.ResourceNotFoundException;
 import lithan.autostrada.auctions.repository.CarBiddingRepository;
 import lithan.autostrada.auctions.repository.CarPictureRepository;
@@ -36,7 +36,7 @@ public class UserCarServiceImpl implements UserCarService {
   private static final int MAX_VEHICLE_IMAGES = 8;
 
   @Autowired
-  private UserService userService;
+  private CurrentIdentity currentIdentity;
 
   @Autowired
   private CarRepository carRepo;
@@ -52,7 +52,7 @@ public class UserCarServiceImpl implements UserCarService {
 
   @Override
   public List<Car> listUserCar() {
-    return carRepo.findByUser(userService.getUserLogin());
+    return carRepo.findByUserId(currentIdentity.requireUserId());
   }
 
   @Override
@@ -66,7 +66,7 @@ public class UserCarServiceImpl implements UserCarService {
   public void postCar(List<MultipartFile> files, Car car) throws Exception {
     requireFutureAuctionEnd(car);
     List<ValidatedImage> images = validateImages(files, 0, true);
-    UserAccount user = userService.getUserLogin();
+    int user = currentIdentity.requireUserId();
     CarPicture picture = new CarPicture();
 
     setPictureData(picture, images.get(0));
@@ -77,14 +77,14 @@ public class UserCarServiceImpl implements UserCarService {
       car.addGalleryPicture(galleryPicture(images.get(index), index));
     }
     car.setStatus("PENDING");
-    car.setUser(user);
+    car.setUserId(user);
     carRepo.save(car);
   }
 
   @Override
   public Car getOwnedCarById(int id) {
     Car car = getCarById(id);
-    if (car.getUser().getIdUser() != userService.getUserLogin().getIdUser()) {
+    if (car.getUserId() != currentIdentity.requireUserId()) {
       throw new AccessDeniedException("You do not own this car");
     }
     return car;
@@ -142,14 +142,14 @@ public class UserCarServiceImpl implements UserCarService {
   @Transactional
   public void placeBid(int carId, int bidPrice) {
     Car car = getCarById(carId);
-    UserAccount bidder = userService.getUserLogin();
+    int bidder = currentIdentity.requireUserId();
     if (!"ACTIVE".equals(car.getStatus())) {
       throw new IllegalStateException("Bids are only accepted on active cars");
     }
     if (!car.isAuctionOpenAt(LocalDateTime.now(clock))) {
       throw new IllegalStateException("This auction has ended");
     }
-    if (car.getUser().getIdUser() == bidder.getIdUser()) {
+    if (car.getUserId() == bidder) {
       throw new IllegalStateException("You cannot bid on your own car");
     }
     int minimum = Math.max(car.getPrice(), highestBidding(carId));
@@ -159,7 +159,7 @@ public class UserCarServiceImpl implements UserCarService {
 
     CarBidding bid = new CarBidding();
     bid.setCar(car);
-    bid.setUser(bidder);
+    bid.setUserId(bidder);
     bid.setBidPrice(bidPrice);
     bid.setStatus("ONGOING");
     carBidRepo.save(bid);
@@ -167,14 +167,14 @@ public class UserCarServiceImpl implements UserCarService {
 
   @Override
   public List<CarBidding> listCurrentUserBids() {
-    return carBidRepo.findByUserOrderByIdBidDesc(userService.getUserLogin());
+    return carBidRepo.findByUserIdOrderByIdBidDesc(currentIdentity.requireUserId());
   }
 
   @Override
   @Transactional
   public void cancelCurrentUserBid(int bidId) {
     CarBidding bid = carBidRepo.findById(bidId).orElseThrow(ResourceNotFoundException::new);
-    if (bid.getUser().getIdUser() != userService.getUserLogin().getIdUser()) {
+    if (bid.getUserId() != currentIdentity.requireUserId()) {
       throw new AccessDeniedException("This bid belongs to another user");
     }
     if (!"ONGOING".equals(bid.getStatus())) {
@@ -195,33 +195,33 @@ public class UserCarServiceImpl implements UserCarService {
   public void saveTestDrive(LocalDate date, int carId) {
     validateTestDriveDate(date);
     Car car = getCarById(carId);
-    UserAccount user = userService.getUserLogin();
+    int user = currentIdentity.requireUserId();
     if (!car.isAuctionOpenAt(LocalDateTime.now(clock))) {
       throw new IllegalStateException("Test drives are only available for active cars");
     }
-    if (car.getUser().getIdUser() == user.getIdUser()) {
+    if (car.getUserId() == user) {
       throw new IllegalStateException("You cannot book a test drive for your own car");
     }
-    if (testDriveRepo.existsByUserAndCarAndDate(user, car, date)) {
+    if (testDriveRepo.existsByUserIdAndCarAndDate(user, car, date)) {
       throw new IllegalStateException("You already booked this car for that date");
     }
 
     TestDrive testDrive = new TestDrive();
     testDrive.setDate(date);
     testDrive.setCar(car);
-    testDrive.setUser(user);
+    testDrive.setUserId(user);
     testDrive.setStatus(TestDriveStatus.PENDING);
     testDriveRepo.save(testDrive);
   }
 
   @Override
   public List<TestDrive> listTestDriveForOwnedCars() {
-    return testDriveRepo.findByCarUserOrderByDateAsc(userService.getUserLogin());
+    return testDriveRepo.findByCarUserIdOrderByDateAsc(currentIdentity.requireUserId());
   }
 
   @Override
   public List<TestDrive> listCurrentUserTestDrives() {
-    return testDriveRepo.findByUserOrderByDateAsc(userService.getUserLogin());
+    return testDriveRepo.findByUserIdOrderByDateAsc(currentIdentity.requireUserId());
   }
 
   @Override
@@ -235,8 +235,8 @@ public class UserCarServiceImpl implements UserCarService {
     if (!"ACTIVE".equals(testDrive.getCar().getStatus())) {
       throw new IllegalStateException("Only test drives for active cars can be rescheduled");
     }
-    if (testDriveRepo.existsByUserAndCarAndDateAndIdTestDriveNot(
-        testDrive.getUser(), testDrive.getCar(), date, testDriveId)) {
+    if (testDriveRepo.existsByUserIdAndCarAndDateAndIdTestDriveNot(
+        testDrive.getUserId(), testDrive.getCar(), date, testDriveId)) {
       throw new IllegalStateException("You already booked this car for that date");
     }
     testDrive.setDate(date);
@@ -290,7 +290,7 @@ public class UserCarServiceImpl implements UserCarService {
   private TestDrive getCurrentUserTestDrive(int testDriveId) {
     TestDrive testDrive = testDriveRepo.findById(testDriveId)
         .orElseThrow(ResourceNotFoundException::new);
-    if (testDrive.getUser().getIdUser() != userService.getUserLogin().getIdUser()) {
+    if (testDrive.getUserId() != currentIdentity.requireUserId()) {
       throw new AccessDeniedException("This test drive belongs to another user");
     }
     return testDrive;
@@ -299,7 +299,7 @@ public class UserCarServiceImpl implements UserCarService {
   private TestDrive getTestDriveForOwnedCar(int testDriveId) {
     TestDrive testDrive = testDriveRepo.findById(testDriveId)
         .orElseThrow(ResourceNotFoundException::new);
-    if (testDrive.getCar().getUser().getIdUser() != userService.getUserLogin().getIdUser()) {
+    if (testDrive.getCar().getUserId() != currentIdentity.requireUserId()) {
       throw new AccessDeniedException("This test drive is for another owner's car");
     }
     return testDrive;

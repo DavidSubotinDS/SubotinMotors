@@ -12,7 +12,7 @@ import lithan.autostrada.auctions.config.StripeProperties;
 import lithan.autostrada.auctions.entity.CartItem;
 import lithan.autostrada.auctions.entity.StoreOrder;
 import lithan.autostrada.auctions.entity.StoreOrderItem;
-import lithan.autostrada.auctions.entity.UserAccount;
+import lithan.autostrada.auctions.identity.CurrentIdentity;
 import lithan.autostrada.auctions.error.ResourceNotFoundException;
 import lithan.autostrada.auctions.error.MissingShippingAddressException;
 import lithan.autostrada.auctions.payment.StripeCheckoutResult;
@@ -29,7 +29,10 @@ public class StoreOrderServiceImpl implements StoreOrderService {
   private final StoreOrderRepository orderRepository;
   private final CartItemRepository cartItemRepository;
   private final PaymentWebhookEventRepository webhookEventRepository;
-  private final UserService userService;
+  private final CurrentIdentity currentIdentity;
+  @org.springframework.beans.factory.annotation.Autowired
+  private lithan.autostrada.auctions.identity.CheckoutProfileClient checkoutProfiles;
+
   private final StripeGateway stripeGateway;
   private final StripeProperties stripeProperties;
 
@@ -37,13 +40,13 @@ public class StoreOrderServiceImpl implements StoreOrderService {
       StoreOrderRepository orderRepository,
       CartItemRepository cartItemRepository,
       PaymentWebhookEventRepository webhookEventRepository,
-      UserService userService,
+      CurrentIdentity currentIdentity,
       StripeGateway stripeGateway,
       StripeProperties stripeProperties) {
     this.orderRepository = orderRepository;
     this.cartItemRepository = cartItemRepository;
     this.webhookEventRepository = webhookEventRepository;
-    this.userService = userService;
+    this.currentIdentity = currentIdentity;
     this.stripeGateway = stripeGateway;
     this.stripeProperties = stripeProperties;
   }
@@ -59,26 +62,27 @@ public class StoreOrderServiceImpl implements StoreOrderService {
     if (!stripeGateway.isEnabled()) {
       throw new IllegalStateException("Stripe sandbox checkout is not currently enabled");
     }
-    UserAccount user = userService.getUserLogin();
-    if (user.getProfile() == null || !user.getProfile().hasCompleteShippingAddress()) {
+    int user = currentIdentity.requireUserId();
+    var profile = checkoutProfiles.current();
+    if (!profile.hasCompleteShippingAddress()) {
       throw new MissingShippingAddressException();
     }
-    List<CartItem> cart = cartItemRepository.findByUserOrderByCreatedAtAsc(user);
+    List<CartItem> cart = cartItemRepository.findByUserIdOrderByCreatedAtAsc(user);
     if (cart.isEmpty()) {
       throw new IllegalStateException("Your cart is empty");
     }
 
     Instant now = Instant.now();
     StoreOrder order = new StoreOrder();
-    order.setUser(user);
+    order.setUserId(user);
     order.setCurrency(stripeProperties.getCurrency().toLowerCase());
     order.setStatus("CREATING_CHECKOUT");
-    order.setShippingName(user.getProfile().getFirstName() + " " + user.getProfile().getLastName());
-    order.setShippingAddress(user.getProfile().getFormattedShippingAddress());
-    order.setShippingStreetAddress(user.getProfile().getStreetAddress().trim());
-    order.setShippingCity(user.getProfile().getCity().trim());
-    order.setShippingPostalCode(user.getProfile().getPostalCode().trim());
-    order.setShippingCountry(user.getProfile().getCountry().trim());
+    order.setShippingName(profile.name());
+    order.setShippingAddress(profile.formattedAddress());
+    order.setShippingStreetAddress(profile.streetAddress().trim());
+    order.setShippingCity(profile.city().trim());
+    order.setShippingPostalCode(profile.postalCode().trim());
+    order.setShippingCountry(profile.country().trim());
     order.setCreatedAt(now);
     order.setUpdatedAt(now);
 
@@ -108,18 +112,18 @@ public class StoreOrderServiceImpl implements StoreOrderService {
     order.setTotalMinor(totalMinor);
     orderRepository.saveAndFlush(order);
 
-    StripeCheckoutResult checkout = stripeGateway.createStoreCheckoutSession(order);
+    StripeCheckoutResult checkout = stripeGateway.createStoreCheckoutSession(order, profile.email());
     order.setCheckoutSessionId(checkout.sessionId());
     order.setCheckoutUrl(checkout.checkoutUrl());
     order.setStatus("CHECKOUT_CREATED");
     order.setUpdatedAt(Instant.now());
-    cartItemRepository.deleteByUser(user);
+    cartItemRepository.deleteByUserId(user);
     return checkout.checkoutUrl();
   }
 
   @Override
   public Page<StoreOrder> currentUserOrders(Pageable pageable) {
-    return orderRepository.findByUser(userService.getUserLogin(), pageable);
+    return orderRepository.findByUserId(currentIdentity.requireUserId(), pageable);
   }
 
   @Override
@@ -134,7 +138,7 @@ public class StoreOrderServiceImpl implements StoreOrderService {
 
   @Override
   public StoreOrder currentUserOrder(int idOrder) {
-    return orderRepository.findByIdOrderAndUser(idOrder, userService.getUserLogin())
+    return orderRepository.findByIdOrderAndUserId(idOrder, currentIdentity.requireUserId())
         .orElseThrow(ResourceNotFoundException::new);
   }
 
@@ -142,7 +146,7 @@ public class StoreOrderServiceImpl implements StoreOrderService {
   public StoreOrder currentUserOrderBySession(String sessionId) {
     StoreOrder order = orderRepository.findByCheckoutSessionId(sessionId)
         .orElseThrow(ResourceNotFoundException::new);
-    if (order.getUser().getIdUser() != userService.getUserLogin().getIdUser()) {
+    if (order.getUserId() != currentIdentity.requireUserId()) {
       throw new ResourceNotFoundException();
     }
     return order;

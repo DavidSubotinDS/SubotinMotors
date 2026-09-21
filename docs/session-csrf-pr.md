@@ -1,5 +1,11 @@
 # S4a evidence and owner handoff
 
+Update verified before S4b: PR #21 was merged to `master` at
+`1a3147baa4cf4c58a2aba5d2958980348439788e`; Backend and Frontend both succeeded
+on that exact merged commit in run `35546068946`. The uncommitted/remote-CI
+wording below records the original S4a handoff, not current merge status.
+See [S4b prerequisite evidence](identity-boundary-pr.md).
+
 Branch: `feature/david.subotin_session-csrf-foundation`, based on freshly fetched
 `8d131049a8f8ed4b96f7d664eb57e3c52e934dc3`. Default branch remains `master`.
 No staging, commits, pushes, PRs, merges or tags were performed. The original

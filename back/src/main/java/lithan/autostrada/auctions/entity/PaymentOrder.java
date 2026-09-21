@@ -27,13 +27,11 @@ public class PaymentOrder {
   @JoinColumn(name = "id_bid", nullable = false, unique = true)
   private CarBidding bid;
 
-  @ManyToOne(fetch = FetchType.EAGER, optional = false)
-  @JoinColumn(name = "id_buyer", nullable = false)
-  private UserAccount buyer;
+  @Column(name = "id_buyer", nullable = false)
+  private int buyerId;
 
-  @ManyToOne(fetch = FetchType.EAGER, optional = false)
-  @JoinColumn(name = "id_seller", nullable = false)
-  private UserAccount seller;
+  @Column(name = "id_seller", nullable = false)
+  private int sellerId;
 
   @Column(name = "amount_minor", nullable = false)
   private long amountMinor;
@@ -83,20 +81,20 @@ public class PaymentOrder {
     this.bid = bid;
   }
 
-  public UserAccount getBuyer() {
-    return buyer;
+  public int getBuyerId() {
+    return buyerId;
   }
 
-  public void setBuyer(UserAccount buyer) {
-    this.buyer = buyer;
+  public void setBuyerId(int buyerId) {
+    this.buyerId = buyerId;
   }
 
-  public UserAccount getSeller() {
-    return seller;
+  public int getSellerId() {
+    return sellerId;
   }
 
-  public void setSeller(UserAccount seller) {
-    this.seller = seller;
+  public void setSellerId(int sellerId) {
+    this.sellerId = sellerId;
   }
 
   public long getAmountMinor() {

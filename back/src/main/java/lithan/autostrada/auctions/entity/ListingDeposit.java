@@ -27,9 +27,8 @@ public class ListingDeposit {
   @JoinColumn(name = "id_listing", nullable = false)
   private CarListing listing;
 
-  @ManyToOne(fetch = FetchType.EAGER, optional = false)
-  @JoinColumn(name = "id_buyer", nullable = false)
-  private UserAccount buyer;
+  @Column(name = "id_buyer", nullable = false)
+  private int buyerId;
 
   @Column(name = "amount_minor", nullable = false)
   private long amountMinor;
@@ -73,12 +72,12 @@ public class ListingDeposit {
     this.listing = listing;
   }
 
-  public UserAccount getBuyer() {
-    return buyer;
+  public int getBuyerId() {
+    return buyerId;
   }
 
-  public void setBuyer(UserAccount buyer) {
-    this.buyer = buyer;
+  public void setBuyerId(int buyerId) {
+    this.buyerId = buyerId;
   }
 
   public long getAmountMinor() {

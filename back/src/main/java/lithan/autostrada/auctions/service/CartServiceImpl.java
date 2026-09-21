@@ -8,7 +8,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import lithan.autostrada.auctions.entity.CarPart;
 import lithan.autostrada.auctions.entity.CartItem;
-import lithan.autostrada.auctions.entity.UserAccount;
+import lithan.autostrada.auctions.identity.CurrentIdentity;
 import lithan.autostrada.auctions.error.ResourceNotFoundException;
 import lithan.autostrada.auctions.repository.CartItemRepository;
 
@@ -17,20 +17,20 @@ public class CartServiceImpl implements CartService {
 
   private final CartItemRepository cartItemRepository;
   private final CarPartService partService;
-  private final UserService userService;
+  private final CurrentIdentity currentIdentity;
 
   public CartServiceImpl(
       CartItemRepository cartItemRepository,
       CarPartService partService,
-      UserService userService) {
+      CurrentIdentity currentIdentity) {
     this.cartItemRepository = cartItemRepository;
     this.partService = partService;
-    this.userService = userService;
+    this.currentIdentity = currentIdentity;
   }
 
   @Override
   public List<CartItem> items() {
-    return cartItemRepository.findByUserOrderByCreatedAtAsc(userService.getUserLogin());
+    return cartItemRepository.findByUserIdOrderByCreatedAtAsc(currentIdentity.requireUserId());
   }
 
   @Override
@@ -39,19 +39,19 @@ public class CartServiceImpl implements CartService {
     if (quantity < 1) {
       throw new IllegalArgumentException("Quantity must be at least one");
     }
-    UserAccount user = userService.getUserLogin();
+    int user = currentIdentity.requireUserId();
     CarPart part = partService.getActivePart(idPart);
     if (part.getStockQuantity() < 1) {
       throw new IllegalStateException("This product is out of stock");
     }
-    CartItem item = cartItemRepository.findByUserAndPart(user, part).orElse(null);
+    CartItem item = cartItemRepository.findByUserIdAndPart(user, part).orElse(null);
     int newQuantity = quantity + (item == null ? 0 : item.getQuantity());
     validateStock(part, newQuantity);
 
     Instant now = Instant.now();
     if (item == null) {
       item = new CartItem();
-      item.setUser(user);
+      item.setUserId(user);
       item.setPart(part);
       item.setCreatedAt(now);
     }
@@ -63,8 +63,8 @@ public class CartServiceImpl implements CartService {
   @Override
   @Transactional
   public void update(int idCartItem, int quantity) {
-    UserAccount user = userService.getUserLogin();
-    CartItem item = cartItemRepository.findByIdCartItemAndUser(idCartItem, user)
+    int user = currentIdentity.requireUserId();
+    CartItem item = cartItemRepository.findByIdCartItemAndUserId(idCartItem, user)
         .orElseThrow(ResourceNotFoundException::new);
     if (quantity <= 0) {
       cartItemRepository.delete(item);
@@ -78,8 +78,8 @@ public class CartServiceImpl implements CartService {
   @Override
   @Transactional
   public void remove(int idCartItem) {
-    UserAccount user = userService.getUserLogin();
-    CartItem item = cartItemRepository.findByIdCartItemAndUser(idCartItem, user)
+    int user = currentIdentity.requireUserId();
+    CartItem item = cartItemRepository.findByIdCartItemAndUserId(idCartItem, user)
         .orElseThrow(ResourceNotFoundException::new);
     cartItemRepository.delete(item);
   }

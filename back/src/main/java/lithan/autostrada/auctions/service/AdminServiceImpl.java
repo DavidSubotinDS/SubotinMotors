@@ -6,14 +6,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import lithan.autostrada.auctions.entity.Car;
-import lithan.autostrada.auctions.entity.CarBidding;
 import lithan.autostrada.auctions.entity.Role;
 import lithan.autostrada.auctions.entity.UserAccount;
 import lithan.autostrada.auctions.entity.UserProfile;
 import lithan.autostrada.auctions.error.ResourceNotFoundException;
-import lithan.autostrada.auctions.repository.CarBiddingRepository;
-import lithan.autostrada.auctions.repository.CarRepository;
 import lithan.autostrada.auctions.repository.RoleRepository;
 import lithan.autostrada.auctions.repository.UserProfileRepository;
 import lithan.autostrada.auctions.repository.UserRepository;
@@ -27,11 +23,7 @@ public class AdminServiceImpl implements AdminService {
   @Autowired
   private UserProfileRepository userProfileRepo;
 
-  @Autowired
-  private CarRepository carRepo;
 
-  @Autowired
-  private CarBiddingRepository carBidRepo;
 
   @Autowired
   private RoleRepository roleRepo;
@@ -82,41 +74,4 @@ public class AdminServiceImpl implements AdminService {
     return userProfileRepo.findById(idProfile).orElseThrow(ResourceNotFoundException::new);
   }
 
-  @Override
-  public Page<Car> listCar(Pageable pageable) {
-    return carRepo.findAll(pageable);
-  }
-
-  @Override
-  public Page<CarBidding> listCarBid(Pageable pageable) {
-    return carBidRepo.findByStatusNot("STARTING", pageable);
-  }
-
-  @Override
-  @Transactional
-  public void approveCarBid(int idBid) {
-    CarBidding acceptedBid = carBidRepo.findById(idBid).orElseThrow(ResourceNotFoundException::new);
-    Car car = acceptedBid.getCar();
-    if (!"ONGOING".equals(acceptedBid.getStatus()) || !"ACTIVE".equals(car.getStatus())) {
-      throw new IllegalStateException("Only ongoing bids on active cars can be accepted");
-    }
-    acceptedBid.setStatus("ACCEPTED");
-    car.setStatus("SOLD");
-    carBidRepo.findByCarIdCar(car.getIdCar()).stream()
-        .filter(other -> other.getIdBid() != acceptedBid.getIdBid() && "ONGOING".equals(other.getStatus()))
-        .forEach(other -> other.setStatus("DENIED"));
-    carBidRepo.save(acceptedBid);
-    carRepo.save(car);
-  }
-
-  @Override
-  @Transactional
-  public void denyCarBid(int idBid) {
-    CarBidding carBidding = carBidRepo.findById(idBid).orElseThrow(ResourceNotFoundException::new);
-    if (!"ONGOING".equals(carBidding.getStatus())) {
-      throw new IllegalStateException("Only ongoing bids can be denied");
-    }
-    carBidding.setStatus("DENIED");
-    carBidRepo.save(carBidding);
-  }
 }

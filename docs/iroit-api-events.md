@@ -1,5 +1,18 @@
 # IROIT API, event contracts and business flows
 
+Current S4b status (2026-09-21): S4a is merged at
+`1a3147baa4cf4c58a2aba5d2958980348439788e`, with successful Backend and Frontend
+checks verified on that exact commit. S4b identity boundary preparation is
+implemented in the working tree: scalar business identity references, immutable
+principal IDs and in-process public/private profile clients. Backend remains the
+sole identity/session owner; existing database FKs remain. See the
+[implemented boundary](identity-boundary.md) and [evidence/owner handoff](identity-boundary-pr.md).
+Local backend/frontend/gateway, production containers and native/Compose browser
+checks pass. MySQL constraints, restart/restore/outage recovery and an S4a-to-S4b
+upgrade with all table checksums preserved passed on disposable databases.
+S4b has not been committed, pushed or remotely checked. S5 extraction is next,
+after S4b acceptance and merge. Earlier dated status paragraphs are historical.
+
 S4a implemented browser contract: `GET /api/csrf` returns only `{token}` with
 `Cache-Control: no-store`, creating/reusing an anonymous backend session.
 All unsafe API/form/multipart requests now require CSRF; exact signed

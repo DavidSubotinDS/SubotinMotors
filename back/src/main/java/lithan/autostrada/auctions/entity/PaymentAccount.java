@@ -21,9 +21,8 @@ public class PaymentAccount {
   @Column(name = "id_payment_account")
   private int idPaymentAccount;
 
-  @OneToOne(fetch = FetchType.EAGER, optional = false)
-  @JoinColumn(name = "id_user", nullable = false, unique = true)
-  private UserAccount user;
+  @Column(name = "id_user", nullable = false, unique = true)
+  private int userId;
 
   @Column(name = "provider_account_id", nullable = false, unique = true, length = 255)
   private String providerAccountId;
@@ -44,12 +43,12 @@ public class PaymentAccount {
     return idPaymentAccount;
   }
 
-  public UserAccount getUser() {
-    return user;
+  public int getUserId() {
+    return userId;
   }
 
-  public void setUser(UserAccount user) {
-    this.user = user;
+  public void setUserId(int userId) {
+    this.userId = userId;
   }
 
   public String getProviderAccountId() {

@@ -17,10 +17,10 @@ final class SimulatedStripeGateway implements StripeGateway {
   }
 
   @Override public boolean isEnabled() { return true; }
-  @Override public StripeCheckoutResult createStoreCheckoutSession(StoreOrder order) {
+  @Override public StripeCheckoutResult createStoreCheckoutSession(StoreOrder order, String customerEmail) {
     return checkout("store", order.getIdOrder());
   }
-  @Override public StripeCheckoutResult createListingDepositCheckoutSession(ListingDeposit deposit) {
+  @Override public StripeCheckoutResult createListingDepositCheckoutSession(ListingDeposit deposit, String customerEmail) {
     return checkout("deposit", deposit.getIdDeposit());
   }
   private StripeCheckoutResult checkout(String purpose, int id) {
@@ -30,7 +30,7 @@ final class SimulatedStripeGateway implements StripeGateway {
   @Override public StripeWebhookEvent verifyAndParseWebhook(String payload, String signature) {
     return verifier.verifyAndParseWebhook(payload, signature);
   }
-  @Override public String createConnectedAccount(UserAccount seller) { throw retired(); }
+  @Override public String createConnectedAccount(int sellerId, String displayName) { throw retired(); }
   @Override public String createOnboardingLink(String account) { throw retired(); }
   @Override public StripeAccountState retrieveAccountState(String account) { throw retired(); }
   @Override public StripeCheckoutResult createCheckoutSession(PaymentOrder order, String account) { throw retired(); }

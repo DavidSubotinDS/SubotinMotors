@@ -1,6 +1,6 @@
 package lithan.autostrada.auctions;
 
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
+import static lithan.autostrada.auctions.TestIdentity.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrlPattern;
@@ -94,7 +94,7 @@ class StoreAdminOrderIntegrationTests {
     Instant timestamp = Instant.parse("2026-06-24T10:15:30Z");
 
     StoreOrder order = new StoreOrder();
-    order.setUser(buyer);
+    order.setUserId(buyer.getIdUser());
     order.setTotalMinor(6998L);
     order.setCurrency("eur");
     order.setStatus("PAID");

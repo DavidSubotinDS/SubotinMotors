@@ -7,16 +7,15 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 import lithan.autostrada.auctions.entity.Car;
 import lithan.autostrada.auctions.entity.TestDrive;
-import lithan.autostrada.auctions.entity.UserAccount;
 
 public interface TestDriveRepository extends JpaRepository<TestDrive, Integer> {
 
-  List<TestDrive> findByCarUserOrderByDateAsc(UserAccount user);
+  List<TestDrive> findByCarUserIdOrderByDateAsc(int userId);
 
-  List<TestDrive> findByUserOrderByDateAsc(UserAccount user);
+  List<TestDrive> findByUserIdOrderByDateAsc(int userId);
 
-  boolean existsByUserAndCarAndDate(UserAccount user, Car car, LocalDate date);
+  boolean existsByUserIdAndCarAndDate(int userId, Car car, LocalDate date);
 
-  boolean existsByUserAndCarAndDateAndIdTestDriveNot(
-      UserAccount user, Car car, LocalDate date, int idTestDrive);
+  boolean existsByUserIdAndCarAndDateAndIdTestDriveNot(
+      int userId, Car car, LocalDate date, int idTestDrive);
 }

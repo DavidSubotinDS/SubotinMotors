@@ -58,28 +58,28 @@ class DemoSeedDataIntegrationTests {
     UserAccount trader = userRepository.findByUsername("demo_trader").orElseThrow();
     UserAccount newcomer = userRepository.findByUsername("demo_newcomer").orElseThrow();
 
-    assertTrue(carRepository.findByUser(bidder).isEmpty());
-    assertFalse(bidRepository.findByUserOrderByIdBidDesc(bidder).isEmpty());
-    assertFalse(paymentRepository.findByBuyerOrderByCreatedAtDesc(bidder).isEmpty());
+    assertTrue(carRepository.findByUserId(bidder.getIdUser()).isEmpty());
+    assertFalse(bidRepository.findByUserIdOrderByIdBidDesc(bidder.getIdUser()).isEmpty());
+    assertFalse(paymentRepository.findByBuyerIdOrderByCreatedAtDesc(bidder.getIdUser()).isEmpty());
 
-    assertFalse(carRepository.findByUser(seller).isEmpty());
-    assertTrue(bidRepository.findByUserOrderByIdBidDesc(seller).isEmpty());
-    assertFalse(paymentRepository.findBySellerOrderByCreatedAtDesc(seller).isEmpty());
+    assertFalse(carRepository.findByUserId(seller.getIdUser()).isEmpty());
+    assertTrue(bidRepository.findByUserIdOrderByIdBidDesc(seller.getIdUser()).isEmpty());
+    assertFalse(paymentRepository.findBySellerIdOrderByCreatedAtDesc(seller.getIdUser()).isEmpty());
 
-    assertFalse(carRepository.findByUser(trader).isEmpty());
-    assertFalse(bidRepository.findByUserOrderByIdBidDesc(trader).isEmpty());
-    assertFalse(paymentRepository.findByBuyerOrderByCreatedAtDesc(trader).isEmpty());
-    assertFalse(paymentRepository.findBySellerOrderByCreatedAtDesc(trader).isEmpty());
+    assertFalse(carRepository.findByUserId(trader.getIdUser()).isEmpty());
+    assertFalse(bidRepository.findByUserIdOrderByIdBidDesc(trader.getIdUser()).isEmpty());
+    assertFalse(paymentRepository.findByBuyerIdOrderByCreatedAtDesc(trader.getIdUser()).isEmpty());
+    assertFalse(paymentRepository.findBySellerIdOrderByCreatedAtDesc(trader.getIdUser()).isEmpty());
 
-    assertTrue(carRepository.findByUser(newcomer).isEmpty());
-    assertTrue(bidRepository.findByUserOrderByIdBidDesc(newcomer).isEmpty());
+    assertTrue(carRepository.findByUserId(newcomer.getIdUser()).isEmpty());
+    assertTrue(bidRepository.findByUserIdOrderByIdBidDesc(newcomer.getIdUser()).isEmpty());
   }
 
   @Test
   void demoListingsCoverAuctionAndModerationStates() {
     assertEquals(4, carRepository.findAll().stream()
         .filter(car -> "ACTIVE".equals(car.getStatus()))
-        .filter(car -> car.getUser().getUsername().startsWith("demo_"))
+        .filter(car -> userRepository.findById(car.getUserId()).orElseThrow().getUsername().startsWith("demo_"))
         .count());
     assertEquals(2, carRepository.findAll().stream()
         .filter(car -> "PENDING".equals(car.getStatus()))
@@ -99,15 +99,15 @@ class DemoSeedDataIntegrationTests {
 
     assertEquals(24, listingDemoUsers);
     assertEquals(24, carListingRepository.findAll().stream()
-        .filter(listing -> listing.getSeller().getUsername().startsWith("demo_list_"))
+        .filter(listing -> userRepository.findById(listing.getSellerId()).orElseThrow().getUsername().startsWith("demo_list_"))
         .count());
     assertEquals(24, carListingRepository.findAll().stream()
-        .filter(listing -> listing.getSeller().getUsername().startsWith("demo_list_"))
-        .map(listing -> listing.getSeller().getUsername())
+        .filter(listing -> userRepository.findById(listing.getSellerId()).orElseThrow().getUsername().startsWith("demo_list_"))
+        .map(listing -> userRepository.findById(listing.getSellerId()).orElseThrow().getUsername())
         .distinct()
         .count());
     assertTrue(carListingRepository.findAll().stream()
-        .filter(listing -> listing.getSeller().getUsername().startsWith("demo_list_"))
+        .filter(listing -> userRepository.findById(listing.getSellerId()).orElseThrow().getUsername().startsWith("demo_list_"))
         .allMatch(listing -> listing.getPicture() != null));
     assertTrue(carListingRepository.findAll().stream()
         .anyMatch(listing -> "ACTIVE".equals(listing.getStatus().name())));
@@ -122,26 +122,26 @@ class DemoSeedDataIntegrationTests {
   @Test
   void fixedPriceDemoListingsIncludeReservationAndTestRideExamples() {
     assertTrue(listingTestRideRepository.findAll().stream()
-        .anyMatch(ride -> ride.getListing().getSeller().getUsername().startsWith("demo_list_")
+        .anyMatch(ride -> userRepository.findById(ride.getListing().getSellerId()).orElseThrow().getUsername().startsWith("demo_list_")
             && "PENDING".equals(ride.getStatus().name())));
     assertTrue(listingTestRideRepository.findAll().stream()
-        .anyMatch(ride -> ride.getListing().getSeller().getUsername().startsWith("demo_list_")
+        .anyMatch(ride -> userRepository.findById(ride.getListing().getSellerId()).orElseThrow().getUsername().startsWith("demo_list_")
             && "ACCEPTED".equals(ride.getStatus().name())));
     assertTrue(listingTestRideRepository.findAll().stream()
-        .anyMatch(ride -> ride.getListing().getSeller().getUsername().startsWith("demo_list_")
+        .anyMatch(ride -> userRepository.findById(ride.getListing().getSellerId()).orElseThrow().getUsername().startsWith("demo_list_")
             && "REJECTED".equals(ride.getStatus().name())));
     assertTrue(listingTestRideRepository.findAll().stream()
-        .anyMatch(ride -> ride.getListing().getSeller().getUsername().startsWith("demo_list_")
+        .anyMatch(ride -> userRepository.findById(ride.getListing().getSellerId()).orElseThrow().getUsername().startsWith("demo_list_")
             && "CANCELLED".equals(ride.getStatus().name())));
 
     assertTrue(listingDepositRepository.findAll().stream()
-        .anyMatch(deposit -> deposit.getListing().getSeller().getUsername().startsWith("demo_list_")
+        .anyMatch(deposit -> userRepository.findById(deposit.getListing().getSellerId()).orElseThrow().getUsername().startsWith("demo_list_")
             && "PENDING_CHECKOUT".equals(deposit.getStatus())));
     assertTrue(listingDepositRepository.findAll().stream()
-        .anyMatch(deposit -> deposit.getListing().getSeller().getUsername().startsWith("demo_list_")
+        .anyMatch(deposit -> userRepository.findById(deposit.getListing().getSellerId()).orElseThrow().getUsername().startsWith("demo_list_")
             && "PAID".equals(deposit.getStatus())));
     assertTrue(listingDepositRepository.findAll().stream()
-        .anyMatch(deposit -> deposit.getListing().getSeller().getUsername().startsWith("demo_list_")
+        .anyMatch(deposit -> userRepository.findById(deposit.getListing().getSellerId()).orElseThrow().getUsername().startsWith("demo_list_")
             && "EXPIRED".equals(deposit.getStatus())));
   }
 
@@ -158,8 +158,8 @@ class DemoSeedDataIntegrationTests {
     assertTrue(commentRepository.findAll().stream().anyMatch(comment -> comment.getCar() != null));
     assertTrue(commentRepository.findAll().stream().anyMatch(comment -> comment.getPart() != null));
     assertTrue(commentRepository.findAll().stream()
-        .anyMatch(comment -> "admin123".equals(comment.getAuthor().getUsername())));
+        .anyMatch(comment -> "admin123".equals(userRepository.findById(comment.getAuthorId()).orElseThrow().getUsername())));
     assertTrue(commentRepository.findAll().stream()
-        .anyMatch(comment -> "demo_seller".equals(comment.getAuthor().getUsername())));
+        .anyMatch(comment -> "demo_seller".equals(userRepository.findById(comment.getAuthorId()).orElseThrow().getUsername())));
   }
 }

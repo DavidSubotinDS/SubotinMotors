@@ -10,13 +10,12 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import lithan.autostrada.auctions.entity.Car;
-import lithan.autostrada.auctions.entity.UserAccount;
 
 public interface CarRepository extends JpaRepository<Car, Integer> {
 
         List<Car> findByStatusNot(String status);
 
-        List<Car> findByUser(UserAccount user);
+        List<Car> findByUserId(int userId);
 
         @Query("SELECT c FROM Car c WHERE c.status = 'ACTIVE' "
                         + "AND (:keyword IS NULL OR LOWER(c.make) LIKE LOWER(CONCAT('%', :keyword, '%')) "

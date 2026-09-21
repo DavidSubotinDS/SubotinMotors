@@ -65,9 +65,8 @@ public class CarListing {
   @Column(nullable = false, length = 20)
   private CarListingStatus status = CarListingStatus.ACTIVE;
 
-  @ManyToOne(fetch = FetchType.EAGER, optional = false)
-  @JoinColumn(name = "id_seller", nullable = false)
-  private UserAccount seller;
+  @Column(name = "id_seller", nullable = false)
+  private int sellerId;
 
   @OneToOne(
       fetch = FetchType.EAGER,
@@ -201,12 +200,12 @@ public class CarListing {
     return status == CarListingStatus.RESERVED;
   }
 
-  public UserAccount getSeller() {
-    return seller;
+  public int getSellerId() {
+    return sellerId;
   }
 
-  public void setSeller(UserAccount seller) {
-    this.seller = seller;
+  public void setSellerId(int sellerId) {
+    this.sellerId = sellerId;
   }
 
   public CarListingPicture getPicture() {

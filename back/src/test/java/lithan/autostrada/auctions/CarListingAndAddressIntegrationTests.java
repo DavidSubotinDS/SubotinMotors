@@ -7,7 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
+import static lithan.autostrada.auctions.TestIdentity.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -95,14 +95,14 @@ class CarListingAndAddressIntegrationTests {
   @BeforeEach
   void configureStripeSandbox() {
     when(stripeGateway.isEnabled()).thenReturn(true);
-    when(stripeGateway.createStoreCheckoutSession(any(StoreOrder.class)))
+    when(stripeGateway.createStoreCheckoutSession(any(StoreOrder.class), org.mockito.ArgumentMatchers.anyString()))
         .thenAnswer(invocation -> {
           StoreOrder order = invocation.getArgument(0);
           return new StripeCheckoutResult(
               "cs_address_" + order.getIdOrder(),
               "https://checkout.stripe.test/store/" + order.getIdOrder());
         });
-    when(stripeGateway.createListingDepositCheckoutSession(any(ListingDeposit.class)))
+    when(stripeGateway.createListingDepositCheckoutSession(any(ListingDeposit.class), org.mockito.ArgumentMatchers.anyString()))
         .thenAnswer(invocation -> {
           ListingDeposit deposit = invocation.getArgument(0);
           return new StripeCheckoutResult(
@@ -179,7 +179,7 @@ class CarListingAndAddressIntegrationTests {
         .andExpect(redirectedUrl("/user/edit-profile?addressRequired"));
 
     assertEquals(orderCount, orderRepository.count());
-    assertEquals(1, cartItemRepository.countByUser(buyer));
+    assertEquals(1, cartItemRepository.countByUserId(buyer.getIdUser()));
   }
 
   @Test
@@ -214,7 +214,7 @@ class CarListingAndAddressIntegrationTests {
         .andExpect(jsonPath("$.listing.title").value("City-friendly hatchback"));
 
     assertEquals(CarListingStatus.ACTIVE, listing.getStatus());
-    assertEquals("user123", listing.getSeller().getUsername());
+    assertEquals("user123", userRepository.findById(listing.getSellerId()).orElseThrow().getUsername());
     assertNotNull(listing.getPicture());
   }
 
@@ -241,8 +241,7 @@ class CarListingAndAddressIntegrationTests {
         .andExpect(jsonPath("$.message").value("Test ride request sent to the seller."));
 
     ListingTestRide ride = listingTestRideRepository
-        .findByUserOrderByScheduledAtAsc(
-            userRepository.findByUsername("user123").orElseThrow())
+        .findByUserIdOrderByScheduledAtAsc(userRepository.findByUsername("user123").orElseThrow().getIdUser())
         .stream()
         .filter(candidate -> candidate.getListing().getIdListing() == listing.getIdListing())
         .findFirst()
@@ -267,7 +266,7 @@ class CarListingAndAddressIntegrationTests {
         .orElseThrow();
     assertEquals("CHECKOUT_CREATED", deposit.getStatus());
     assertEquals(listing.getDepositAmountMinor(), deposit.getAmountMinor());
-    assertEquals("user123", deposit.getBuyer().getUsername());
+    assertEquals("user123", userRepository.findById(deposit.getBuyerId()).orElseThrow().getUsername());
     assertEquals(CarListingStatus.RESERVED,
         listingRepository.findById(listing.getIdListing()).orElseThrow().getStatus());
   }
@@ -285,7 +284,7 @@ class CarListingAndAddressIntegrationTests {
     UserAccount requester = userRepository.findByUsername("admin123").orElseThrow();
     ListingTestRide ride = new ListingTestRide();
     ride.setListing(listing);
-    ride.setUser(requester);
+    ride.setUserId(requester.getIdUser());
     ride.setScheduledAt(future);
     ride.setStatus(TestDriveStatus.PENDING);
     ride.setCreatedAt(Instant.now());
@@ -319,7 +318,7 @@ class CarListingAndAddressIntegrationTests {
         .andExpect(status().is3xxRedirection());
 
     UserAccount seller = userRepository.findByUsername(username).orElseThrow();
-    return listingRepository.findBySellerOrderByCreatedAtDesc(seller).stream()
+    return listingRepository.findBySellerIdOrderByCreatedAtDesc(seller.getIdUser()).stream()
         .filter(listing -> title.equals(listing.getTitle()))
         .findFirst()
         .orElseThrow();
@@ -329,7 +328,7 @@ class CarListingAndAddressIntegrationTests {
     CarPart part = partRepository.findBySkuIgnoreCase(sku).orElseThrow();
     Instant now = Instant.now();
     CartItem item = new CartItem();
-    item.setUser(buyer);
+    item.setUserId(buyer.getIdUser());
     item.setPart(part);
     item.setQuantity(1);
     item.setCreatedAt(now);

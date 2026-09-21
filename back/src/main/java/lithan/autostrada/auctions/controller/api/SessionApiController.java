@@ -16,8 +16,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 import lithan.autostrada.auctions.config.CustomUserDetails;
 import lithan.autostrada.auctions.dto.api.UserSessionResponse;
-import lithan.autostrada.auctions.entity.UserAccount;
-import lithan.autostrada.auctions.entity.UserProfile;
 
 @RestController
 @RequestMapping("/api")
@@ -41,11 +39,10 @@ public class SessionApiController {
 
     Object principal = authentication.getPrincipal();
     if (principal instanceof CustomUserDetails customUserDetails) {
-      UserAccount user = customUserDetails.getUser();
       return new UserSessionResponse(
           true,
-          user.getUsername(),
-          displayName(user.getProfile(), user.getUsername()),
+          customUserDetails.getUsername(),
+          customUserDetails.getDisplayName(),
           roles(authentication));
     }
 
@@ -62,10 +59,4 @@ public class SessionApiController {
         .toList();
   }
 
-  private String displayName(UserProfile profile, String fallback) {
-    if (profile == null) {
-      return fallback;
-    }
-    return (profile.getFirstName() + " " + profile.getLastName()).trim();
-  }
 }

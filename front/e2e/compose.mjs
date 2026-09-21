@@ -114,7 +114,9 @@ async function captureFailureDiagnostics(error) {
   for (const [file, args] of captures) {
     try {
       const result = await compose(args, { allowFailure: true, log: false, timeout: 60000 });
-      await writeFile(resolve(directory, file), `${result.stdout}${result.stderr}`);
+      const output = `${result.stdout}${result.stderr}`;
+      await writeFile(resolve(directory, file), output);
+      if (file !== 'failure-compose-ps.log') console.error(`\n--- ${file} ---\n${output}`);
     } catch (captureError) {
       await writeFile(resolve(directory, file), `Unable to collect diagnostics:\n${captureError?.stack || captureError}`);
     }
@@ -185,6 +187,7 @@ try {
   const keys = await signingMaterial();
   Object.assign(env, {
     IDENTITY_DB_URL: `jdbc:mysql://mysql:3306/${identitySchema}?serverTimezone=UTC&connectionTimeZone=UTC&forceConnectionTimeZoneToSession=true&allowPublicKeyRetrieval=true&useSSL=false`,
+    IDENTITY_DB_NAME: identitySchema,
     IDENTITY_DB_USERNAME: 'identity_e2e',
     IDENTITY_DB_PASSWORD: randomBytes(32).toString('hex'),
     DB_RUNTIME_USERNAME: 'backend_runtime',
@@ -219,7 +222,7 @@ try {
   assert.equal(seedGuard.code, 1, 'Production startup must refuse missing demo acknowledgement');
   assert.match(seedGuard.stderr + seedGuard.stdout, /I_ACCEPT_EXISTING_DEMO_DATA/);
   await compose(['up', '--detach', '--wait', '--wait-timeout', '240', 'mysql'], { timeout: 300000 });
-  await sql(`CREATE DATABASE \`${identitySchema}\`;
+  await sql(`CREATE DATABASE IF NOT EXISTS \`${identitySchema}\`;
     CREATE USER IF NOT EXISTS 'identity_e2e'@'%' IDENTIFIED BY ${mysqlLiteral(env.IDENTITY_DB_PASSWORD)};
     GRANT ALL PRIVILEGES ON \`${identitySchema}\`.* TO 'identity_e2e'@'%';
     CREATE USER IF NOT EXISTS 'backend_runtime'@'%' IDENTIFIED BY ${mysqlLiteral(env.DB_RUNTIME_PASSWORD)};

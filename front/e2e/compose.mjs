@@ -200,8 +200,11 @@ try {
     IDENTITY_GATEWAY_SECRET: 'gateway-compose-secret-000000000000000000',
     IDENTITY_BACKEND_SECRET: 'backend-compose-secret-000000000000000000',
   });
-  config = { services: { backend: { environment: { AUCTION_NOTIFICATION_SCHEDULING: 'false',
-    SPRING_FLYWAY_TARGET: '18' } } } };
+  config = { services: {
+    mysql: { environment: { AUTOSTRADA_E2E: 'true' } },
+    backend: { environment: { AUCTION_NOTIFICATION_SCHEDULING: 'false',
+      SPRING_FLYWAY_TARGET: '18' } },
+  } };
   if (upgradeFrom) {
     assert.ok(!browser, '--upgrade-from requires --integration-only');
     config.services.backend.build = { context: resolve(root, upgradeFrom), target: 'production' };
@@ -216,6 +219,11 @@ try {
   owned = true;
   await writeFile(resolve(directory, 'project.json'), JSON.stringify({ project, port, schema, identitySchema }));
   await compose(['config', '--quiet']);
+  // Reproduce Linux's sourced (mode 100644) init hook even on Windows mounts.
+  // Uses the actual pinned image's entrypoint helpers, with SQL stubbed.
+  await compose(['run', '--rm', '--no-deps', '--entrypoint', 'bash', '--volume',
+    `${resolve(root, 'back/scripts')}:/checks:ro`, 'mysql', '/checks/test-mysql-init.sh']);
+  await record('MySQL init-hook regression passed for sourced/executable scripts and E2E skip; parent shell options preserved.');
   console.log(`Building production images for ${project}; logs: ${directory}`);
   await compose(['build']);
   const seedGuard = await compose(['run', '--rm', '--no-deps', '-e', 'APP_DEMO_DATA_ACK=', 'backend'], { allowFailure: true });

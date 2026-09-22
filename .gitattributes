@@ -1,1 +1,2 @@
 back/docker-entrypoint.sh text eol=lf
+back/scripts/*.sh text eol=lf

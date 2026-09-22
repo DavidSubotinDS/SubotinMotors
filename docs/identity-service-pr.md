@@ -1,8 +1,67 @@
 # S5 owner handoff — locally accepted, ready for review
 
-Status on 2026-09-21: the extraction and disposable acceptance gates are complete
-in the working tree. The branch remains uncommitted and has not been pushed,
-reviewed, or merged by this work session.
+The original 2026-09-21 local acceptance record below is historical. The owner
+subsequently committed and pushed S5 through `ac559c7`; the current branch is
+`feature/david.subotin_identity-service`. Remote CI failures were reported by
+the owner. No staging, commits, pushes or merges were performed in the CI-fix
+session described below.
+
+## 2026-09-22 MySQL CI startup correction
+
+The pinned official MySQL image sources non-executable init scripts. Git records
+`back/scripts/mysql-init-users.sh` as mode 100644, so its unscoped `set -eu`
+enabled `nounset` in the entrypoint shell. The subsequent official
+`mysql_expire_root_user` function then failed on line 342 when
+`MYSQL_ONETIME_PASSWORD` was unset. This exact error was reproduced locally
+using the committed script and pinned image, without a server or database volume.
+
+The init hook now runs in a subshell. Strict error handling still applies inside
+the hook, while shell options and its E2E early `exit` cannot affect the parent.
+The owner's existing `AUTOSTRADA_E2E` skip and Compose override are retained.
+Shell scripts in `back/scripts` have explicit LF endings for Linux checkouts.
+No MySQL password-mode variables were added: `"0"` is nonempty and would enable
+one-time password expiry in this image, rather than disable it.
+
+`back/scripts/test-mysql-init.sh` tests the actual image's init-processing and
+password-expiry helpers with SQL stubbed. It fails on the original committed
+script and passes on the correction, including sourced/executable normal and
+E2E paths and missing-required-configuration rejection. The shared Compose
+harness runs it before image builds, so both required CI checks enforce it.
+JavaScript syntax and `git diff --check` pass. The full `node front/e2e/compose.mjs`
+run exited 0 on 2026-09-22: production container builds/startup, five-table copy
+parity, migrations and credential isolation, MySQL integrity checks, preserved-data
+restart, logical backup/restore, database outage/recovery, and all 20 browser
+scenarios passed. Cleanup verified no owned containers, volumes or networks remain.
+Evidence is recorded under
+`compose-results/autostrada-test-da4666a1eb6c8eca9d1cb8909ca42447`.
+These are disposable MySQL and simulated-payment results; they do not establish
+real Stripe sandbox or SMTP delivery. Application unit suites were not separately
+rerun for this shell/harness correction.
+
+Remote CI has not been rerun for this uncommitted correction. GitHub CLI has no
+active login in this environment; the four reported failures are the Backend
+and Frontend jobs on push and pull-request events. Verify the required checks
+on the new pushed commit before merging.
+
+Selective owner commands for this correction (including the retained local
+E2E skip changes):
+
+```powershell
+git add -- .gitattributes back/scripts/mysql-init-users.sh back/scripts/test-mysql-init.sh front/e2e/compose.mjs docs/identity-service-pr.md
+git diff --cached --check
+git diff --cached
+git commit -m "fix: isolate MySQL init hook shell options"
+git push origin feature/david.subotin_identity-service
+```
+
+Suggested existing-PR update:
+
+> Fix MySQL initialization by isolating the sourced init hook's strict shell
+> options and E2E early exit. Add a pinned-image regression to the shared Compose
+> harness used by Backend and Frontend checks. The original committed script
+> reproduces the exact CI error; the corrected full disposable MySQL integration
+> and all 20 browser scenarios pass, including verified cleanup. Remote checks
+> must pass on the new pushed commit before merge.
 
 ## Ownership and changes
 

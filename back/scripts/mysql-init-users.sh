@@ -1,5 +1,12 @@
 #!/bin/sh
+# The official MySQL image sources non-executable init scripts. Keep strict
+# options and the E2E early exit inside a subshell, never in its entrypoint.
+(
 set -eu
+
+if [ "${AUTOSTRADA_E2E:-false}" = "true" ]; then
+	exit 0
+fi
 
 mysql --protocol=socket -uroot -p"$MYSQL_ROOT_PASSWORD" "$MYSQL_DATABASE" <<SQL
 CREATE DATABASE IF NOT EXISTS \`$IDENTITY_DB_NAME\`;
@@ -11,3 +18,4 @@ GRANT ALL PRIVILEGES ON \`$MYSQL_DATABASE\`.* TO '$DB_MIGRATION_USERNAME'@'%' WI
 GRANT ALL PRIVILEGES ON \`$IDENTITY_DB_NAME\`.* TO '$IDENTITY_DB_USERNAME'@'%';
 FLUSH PRIVILEGES;
 SQL
+)

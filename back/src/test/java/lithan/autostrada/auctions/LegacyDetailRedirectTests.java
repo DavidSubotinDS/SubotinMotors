@@ -11,6 +11,7 @@ import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 import lithan.autostrada.auctions.config.ReactFrontendRedirectConfig;
 import lithan.autostrada.auctions.entity.*;
+import fixtures.identity.entity.*;
 import lithan.autostrada.auctions.dto.CarListingForm;
 import lithan.autostrada.auctions.dto.CarPartForm;
 

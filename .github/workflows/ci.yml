@@ -47,9 +47,70 @@ jobs:
             back/.mvn/wrapper/maven-wrapper.properties
             gateway/pom.xml
             gateway/.mvn/wrapper/maven-wrapper.properties
+            services/identity-service/pom.xml
+            services/identity-service/.mvn/wrapper/maven-wrapper.properties
 
       - name: Test and package backend
         run: bash ./mvnw --batch-mode --no-transfer-progress clean verify
+
+      # Identity-service failures block the existing required Backend check.
+      - name: Independently test and package identity service
+        working-directory: services/identity-service
+        run: bash ./mvnw --batch-mode --no-transfer-progress clean verify
+
+      - name: Build identity service container
+        working-directory: services/identity-service
+        run: docker build --tag autostrada-identity-service:ci .
+
+      - name: Smoke identity service container without a database
+        working-directory: services/identity-service
+        run: |
+          docker run --detach --name identity-ci --publish 127.0.0.1:18082:8082 \
+            -e IDENTITY_SIGNING_JWK='{"kty":"RSA","kid":"ci","n":"invalid","e":"AQAB","d":"invalid"}' \
+            -e IDENTITY_GATEWAY_SECRET=ci-gateway-secret-000000000000000000 \
+            -e IDENTITY_BACKEND_SECRET=ci-backend-secret-000000000000000000 \
+            autostrada-identity-service:ci
+          stopped=false
+          for attempt in {1..30}; do
+            state="$(docker inspect --format '{{.State.Status}}' identity-ci 2>/dev/null || true)"
+            if [[ "$state" == "exited" || "$state" == "dead" ]]; then
+              stopped=true
+              break
+            fi
+            sleep 2
+          done
+          if [[ "$stopped" != true ]]; then
+            echo "Identity service did not stop within the startup-failure timeout"
+            docker logs identity-ci || true
+            exit 1
+          fi
+          exit_code="$(docker inspect --format '{{.State.ExitCode}}' identity-ci)"
+          if [[ "$exit_code" == "0" ]]; then
+            echo "Identity service unexpectedly started successfully"
+            docker logs identity-ci || true
+            exit 1
+          fi
+
+      - name: Identity service container logs and cleanup
+        if: ${{ always() }}
+        working-directory: services/identity-service
+        run: |
+          mkdir -p target
+          if docker inspect identity-ci > /dev/null 2>&1; then
+            docker logs identity-ci > target/container.log 2>&1
+            docker rm --force identity-ci
+          fi
+
+      - name: Upload identity service test and container evidence
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: identity-service-test-reports
+          path: |
+            services/identity-service/target/surefire-reports/
+            services/identity-service/target/container.log
+          if-no-files-found: warn
+          retention-days: 7
 
       # Gateway failures block the existing required Backend check.
       - name: Independently test and package gateway
@@ -198,6 +259,7 @@ jobs:
           cache-dependency-path: |
             back/pom.xml
             gateway/pom.xml
+            services/identity-service/pom.xml
 
       - name: Install Playwright Chromium and OS dependencies
         run: npx playwright install --with-deps chromium

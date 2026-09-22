@@ -18,13 +18,14 @@ import lithan.autostrada.auctions.entity.Car;
 import lithan.autostrada.auctions.entity.CarBidding;
 import lithan.autostrada.auctions.entity.TestDrive;
 import lithan.autostrada.auctions.entity.TestDriveStatus;
-import lithan.autostrada.auctions.entity.UserAccount;
+import fixtures.identity.entity.UserAccount;
 import lithan.autostrada.auctions.repository.CarBiddingRepository;
 import lithan.autostrada.auctions.repository.CarRepository;
 import lithan.autostrada.auctions.repository.TestDriveRepository;
-import lithan.autostrada.auctions.repository.UserRepository;
+import fixtures.identity.repository.UserRepository;
 import lithan.autostrada.auctions.service.UserCarService;
 
+@org.springframework.context.annotation.Import(BusinessIdentityFixtures.class)
 @SpringBootTest
 @Transactional
 class UserCarSecurityIntegrationTests {

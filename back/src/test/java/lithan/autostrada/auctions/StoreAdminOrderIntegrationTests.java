@@ -18,11 +18,12 @@ import org.springframework.transaction.annotation.Transactional;
 import lithan.autostrada.auctions.entity.CarPart;
 import lithan.autostrada.auctions.entity.StoreOrder;
 import lithan.autostrada.auctions.entity.StoreOrderItem;
-import lithan.autostrada.auctions.entity.UserAccount;
+import fixtures.identity.entity.UserAccount;
 import lithan.autostrada.auctions.repository.CarPartRepository;
 import lithan.autostrada.auctions.repository.StoreOrderRepository;
-import lithan.autostrada.auctions.repository.UserRepository;
+import fixtures.identity.repository.UserRepository;
 
+@org.springframework.context.annotation.Import(BusinessIdentityFixtures.class)
 @SpringBootTest
 @AutoConfigureMockMvc
 @Transactional

@@ -88,20 +88,6 @@ public class UserWorkspaceApiController {
         cartService.itemCount());
   }
 
-  @GetMapping("/profile")
-  public ProfileResponse profile() { return selfProfiles.profile(); }
-
-  @PutMapping("/profile")
-  public ProfileResponse updateProfile(@RequestBody ProfileRequest request, HttpSession session) {
-    return selfProfiles.updateProfile(request, session);
-  }
-
-  @PostMapping("/profile/picture")
-  public ProfileResponse updateProfilePicture(@RequestParam("imageFile") MultipartFile imageFile,
-      HttpSession session) throws Exception {
-    return selfProfiles.updateProfilePicture(imageFile, session);
-  }
-
   @GetMapping("/auctions")
   public java.util.List<AuctionSummaryResponse> auctions() {
     return mapper.map(userCarService.listUserCar().stream(), mapper::auction).toList();

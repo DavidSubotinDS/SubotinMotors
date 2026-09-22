@@ -7,7 +7,7 @@ import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequ
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import org.springframework.web.context.support.WebApplicationContextUtils;
 import lithan.autostrada.auctions.config.CustomUserDetails;
-import lithan.autostrada.auctions.repository.UserRepository;
+import fixtures.identity.repository.UserRepository;
 
 public final class TestIdentity {
   private TestIdentity() { }
@@ -22,10 +22,12 @@ public final class TestIdentity {
       };
     }
   }
-  static UsernamePasswordAuthenticationToken authentication(UserRepository users, String username, String[] roles) {
-    var principal = new CustomUserDetails(users.findByUsername(username).orElseThrow());
-    principal.eraseCredentials();
-    return UsernamePasswordAuthenticationToken.authenticated(principal, null,
+  static org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken authentication(UserRepository users, String username, String[] roles) {
+    int id=users.findByUsername(username).orElseThrow().getIdUser();
+    var jwt=org.springframework.security.oauth2.jwt.Jwt.withTokenValue("test-only").header("alg","RS256")
+        .subject(Integer.toString(id)).claim("tokenUse","user").claim("roles",Arrays.stream(roles).map(r->"ROLE_"+r).toList())
+        .issuedAt(java.time.Instant.now()).expiresAt(java.time.Instant.now().plusSeconds(60)).build();
+    return new org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken(jwt,
         Arrays.stream(roles).map(role -> new SimpleGrantedAuthority("ROLE_" + role)).toList());
   }
 }

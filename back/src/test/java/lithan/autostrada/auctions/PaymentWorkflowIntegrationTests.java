@@ -15,16 +15,17 @@ import lithan.autostrada.auctions.entity.Car;
 import lithan.autostrada.auctions.entity.CarBidding;
 import lithan.autostrada.auctions.entity.PaymentAccount;
 import lithan.autostrada.auctions.entity.PaymentOrder;
-import lithan.autostrada.auctions.entity.UserAccount;
+import fixtures.identity.entity.UserAccount;
 import lithan.autostrada.auctions.payment.StripeWebhookEvent;
 import lithan.autostrada.auctions.repository.CarBiddingRepository;
 import lithan.autostrada.auctions.repository.CarRepository;
 import lithan.autostrada.auctions.repository.PaymentAccountRepository;
 import lithan.autostrada.auctions.repository.PaymentOrderRepository;
 import lithan.autostrada.auctions.repository.PaymentWebhookEventRepository;
-import lithan.autostrada.auctions.repository.UserRepository;
+import fixtures.identity.repository.UserRepository;
 import lithan.autostrada.auctions.service.PaymentService;
 
+@org.springframework.context.annotation.Import(BusinessIdentityFixtures.class)
 @SpringBootTest
 @Transactional
 class PaymentWorkflowIntegrationTests {

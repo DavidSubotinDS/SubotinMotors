@@ -12,7 +12,7 @@ test('register, reject bad login, reuse the session across pages/reload, and inv
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
   await expect(page.getByText('Sign in failed', { exact: true })).toBeVisible();
   await login(page, 'newbuyer');
-  const cookie = (await page.context().cookies()).find((item) => item.name === 'JSESSIONID');
+  const cookie = (await page.context().cookies()).find((item) => item.name === 'AUTOSTRADA_SESSION');
   expect(cookie?.httpOnly).toBe(true);
   await page.goto('/user/profile');
   await expect(page.getByRole('heading', { name: 'New Buyer', exact: true })).toBeVisible();
@@ -23,7 +23,7 @@ test('register, reject bad login, reuse the session across pages/reload, and inv
   await expect(page.getByRole('link', { name: 'Login', exact: true })).toBeVisible();
   expect((await page.request.get('/api/user/profile')).status()).toBe(401);
   // Replaying the old cookie must not revive the invalidated server session.
-  const replay = await page.request.get('/api/user/profile', { headers: { Cookie: `JSESSIONID=${cookie.value}` } });
+  const replay = await page.request.get('/api/user/profile', { headers: { Cookie: `AUTOSTRADA_SESSION=${cookie.value}` } });
   expect(replay.status()).toBe(401);
   await page.goto('/user/profile');
   await expect(page.getByText('Authentication required.', { exact: true })).toBeVisible();

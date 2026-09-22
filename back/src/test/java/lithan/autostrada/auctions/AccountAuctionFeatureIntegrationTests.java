@@ -16,33 +16,27 @@ import org.springframework.transaction.annotation.Transactional;
 
 import lithan.autostrada.auctions.entity.AuctionNotification;
 import lithan.autostrada.auctions.entity.Car;
-import lithan.autostrada.auctions.entity.PasswordResetToken;
-import lithan.autostrada.auctions.entity.UserAccount;
+import fixtures.identity.entity.PasswordResetToken;
+import fixtures.identity.entity.UserAccount;
 import lithan.autostrada.auctions.repository.AuctionFollowRepository;
 import lithan.autostrada.auctions.repository.AuctionNotificationRepository;
 import lithan.autostrada.auctions.repository.CarRepository;
-import lithan.autostrada.auctions.repository.PasswordResetTokenRepository;
-import lithan.autostrada.auctions.repository.UserRepository;
+import fixtures.identity.repository.PasswordResetTokenRepository;
+import fixtures.identity.repository.UserRepository;
 import lithan.autostrada.auctions.service.AuctionFollowService;
 import lithan.autostrada.auctions.service.AuctionNotificationService;
-import lithan.autostrada.auctions.service.PasswordResetService;
 import lithan.autostrada.auctions.service.UserCarService;
 
+@org.springframework.context.annotation.Import(BusinessIdentityFixtures.class)
 @SpringBootTest
 @Transactional
 class AccountAuctionFeatureIntegrationTests {
 
-  @Autowired
-  private PasswordResetService passwordResetService;
 
-  @Autowired
-  private PasswordResetTokenRepository tokenRepository;
 
   @Autowired
   private UserRepository userRepository;
 
-  @Autowired
-  private PasswordEncoder passwordEncoder;
 
   @Autowired
   private CarRepository carRepository;
@@ -62,44 +56,7 @@ class AccountAuctionFeatureIntegrationTests {
   @Autowired
   private AuctionNotificationRepository notificationRepository;
 
-  @Test
-  void passwordResetTokenIsHashedConsumedAndChangesPassword() {
-    UserAccount user = userRepository.findByUsername("user123").orElseThrow();
-    String oldPassword = user.getPassword();
 
-    String rawToken = passwordResetService.requestReset("user123").orElseThrow();
-    PasswordResetToken stored = tokenRepository.findAll().stream()
-        .filter(token -> token.getUser().getIdUser() == user.getIdUser())
-        .findFirst()
-        .orElseThrow();
-
-    assertNotEquals(rawToken, stored.getTokenHash());
-    assertTrue(passwordResetService.isValid(rawToken));
-    assertTrue(passwordResetService.resetPassword(rawToken, "newSecret123"));
-    assertFalse(passwordResetService.isValid(rawToken));
-    assertFalse(passwordResetService.resetPassword(rawToken, "anotherSecret123"));
-    assertTrue(passwordEncoder.matches(
-        "newSecret123",
-        userRepository.findById(user.getIdUser()).orElseThrow().getPassword()));
-    assertFalse(passwordEncoder.matches(
-        "newSecret123", oldPassword));
-  }
-
-  @Test
-  void expiredAndInvalidResetTokensAreRejected() {
-    UserAccount user = userRepository.findByUsername("user123").orElseThrow();
-    String rawToken = passwordResetService.requestReset(user.getEmail()).orElseThrow();
-    PasswordResetToken stored = tokenRepository.findAll().stream()
-        .filter(token -> token.getUser().getIdUser() == user.getIdUser())
-        .findFirst()
-        .orElseThrow();
-    stored.setExpiresAt(LocalDateTime.now().minusMinutes(1));
-    tokenRepository.saveAndFlush(stored);
-
-    assertFalse(passwordResetService.isValid(rawToken));
-    assertFalse(passwordResetService.resetPassword(rawToken, "newSecret123"));
-    assertFalse(passwordResetService.isValid("not-a-real-token"));
-  }
 
   @Test
   @WithIdentity(username = "user123", roles = "USER")

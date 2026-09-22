@@ -22,12 +22,13 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
-import lithan.autostrada.auctions.config.CustomUserDetails;
 import lithan.autostrada.auctions.identity.*;
 import lithan.autostrada.auctions.repository.*;
+import fixtures.identity.repository.*;
 import lithan.autostrada.auctions.controller.api.ApiModelMapper;
 import lithan.autostrada.auctions.service.CartService;
 
+@org.springframework.context.annotation.Import(BusinessIdentityFixtures.class)
 @SpringBootTest
 @AutoConfigureMockMvc(print = MockMvcPrint.NONE)
 @Transactional
@@ -74,17 +75,11 @@ class IdentityBoundaryIntegrationTests {
     assertThat(profiles.findByProfileId(Integer.MAX_VALUE)).isEmpty();
   }
 
-  @Test void profileIdIsNotAnAccountIdAndPublicResponseDoesNotExposePrivateFields() throws Exception {
+  @Test void profileIdIsNotAnAccountIdAndProfileAuctionsStayBusinessOwned() throws Exception {
     sql.update("INSERT INTO tb_user(id_user,username,email,password) VALUES (910002,'boundarytwo','private@example.invalid','test-hash')");
     sql.update("INSERT INTO tb_user_profile(id_profile,id_user,first_name,last_name,phone_number,address,street_address,city,postal_code,country,about) VALUES (920002,910002,'Visible','Seller','123456789','Private location','Secret street','Novi Sad','21000','Serbia','Public bio')");
     assertThat(profiles.findByProfileId(920002).orElseThrow().userId()).isEqualTo(910002);
     sql.update("INSERT INTO tb_car(id_car,make,model,production_year,price,status,id_user) VALUES (930002,'Boundary','Car','2024',1000,'ACTIVE',910002)");
-    mvc.perform(get("/api/public/profiles/920002"))
-        .andExpect(status().isOk()).andExpect(jsonPath("$.firstName").value("Visible"))
-        .andExpect(jsonPath("$.idUser").isEmpty()).andExpect(jsonPath("$.username").isEmpty())
-        .andExpect(jsonPath("$.email").isEmpty()).andExpect(jsonPath("$.phoneNumber").isEmpty())
-        .andExpect(jsonPath("$.streetAddress").isEmpty()).andExpect(jsonPath("$.postalCode").isEmpty())
-        .andExpect(jsonPath("$.address").isEmpty()).andExpect(jsonPath("$.displayLocation").value("Novi Sad, Serbia"));
     mvc.perform(get("/api/public/profiles/920002/auctions"))
         .andExpect(status().isOk()).andExpect(jsonPath("$[0].id").value(930002));
     mvc.perform(get("/api/public/profiles/910002/auctions"))
@@ -98,8 +93,7 @@ class IdentityBoundaryIntegrationTests {
     assertThat(checkout.userId()).isEqualTo(user.getIdUser());
     assertThat(checkout.email()).isEqualTo(user.getEmail());
     assertThat(checkout.toString()).doesNotContain(user.getEmail());
-    mvc.perform(get("/api/user/profile"))
-        .andExpect(status().isOk()).andExpect(jsonPath("$.email").value(user.getEmail()));
+    assertThat(((RemoteProfileClient) checkoutProfiles).self().email()).isEqualTo(user.getEmail());
   }
 
   @Test void anonymousAndUnsupportedPrincipalsCannotReadPrivateProfiles() {
@@ -113,27 +107,14 @@ class IdentityBoundaryIntegrationTests {
     } finally { SecurityContextHolder.setContext(previous); }
   }
 
-  @Test void principalIdentityIsImmutableAndCredentialsAreErasable() {
-    var account = users.findByUsername("demo_bidder").orElseThrow();
-    var principal = new CustomUserDetails(account);
-    int id = account.getIdUser();
-    account.setUsername("renamed");
-    assertThat(principal.getUserId()).isEqualTo(id);
-    assertThat(principal.getUsername()).isEqualTo("demo_bidder");
-    principal.eraseCredentials();
-    assertThat(principal.getPassword()).isNull();
-    assertThat(account.getPassword()).isNotNull();
-  }
-
   @Test void deletedIdentityCannotCreateCartSideEffects() {
     var previous = SecurityContextHolder.getContext();
     long count = carts.count();
-    var account = new lithan.autostrada.auctions.entity.UserAccount("gone", "unused");
-    account.setIdUser(Integer.MAX_VALUE);
-    var principal = new CustomUserDetails(account);
     try {
-      SecurityContextHolder.getContext().setAuthentication(
-          UsernamePasswordAuthenticationToken.authenticated(principal, null, List.of()));
+      var jwt = org.springframework.security.oauth2.jwt.Jwt.withTokenValue("test-only").header("alg","RS256")
+          .subject(Integer.toString(Integer.MAX_VALUE)).claim("tokenUse","user")
+          .issuedAt(java.time.Instant.now()).expiresAt(java.time.Instant.now().plusSeconds(60)).build();
+      SecurityContextHolder.getContext().setAuthentication(new org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken(jwt));
       assertThatThrownBy(() -> cart.add(1, 1)).isInstanceOf(AccessDeniedException.class);
       assertThat(carts.count()).isEqualTo(count);
     } finally { SecurityContextHolder.setContext(previous); }

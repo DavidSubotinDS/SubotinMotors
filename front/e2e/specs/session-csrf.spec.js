@@ -16,14 +16,14 @@ async function rejected(response) {
 for (const form of [false, true]) {
   test(`${form ? 'form' : 'API'} login rotates the session, rejects the old identifier and token, and keeps thank-you GET read-only`, async ({ page, playwright }) => {
     const before = await token(page);
-    const oldCookie = (await page.context().cookies()).find(c => c.name === 'JSESSIONID');
+    const oldCookie = (await page.context().cookies()).find(c => c.name === 'AUTOSTRADA_SESSION');
     const result = form
       ? await page.request.post('/loginUser', { form: { username: 'buyer', password, _csrf: before }, maxRedirects: 0 })
       : await page.request.post('/api/auth/login', { data: { username: 'buyer', password }, headers: { 'X-CSRF-TOKEN': before } });
     expect(result.status()).toBe(form ? 302 : 200);
-    const currentCookie = (await page.context().cookies()).find(c => c.name === 'JSESSIONID');
+    const currentCookie = (await page.context().cookies()).find(c => c.name === 'AUTOSTRADA_SESSION');
     expect(currentCookie.value !== oldCookie.value).toBe(true);
-    const replay = await playwright.request.newContext({ baseURL: gateway, extraHTTPHeaders: { Cookie: `JSESSIONID=${oldCookie.value}` } });
+    const replay = await playwright.request.newContext({ baseURL: gateway, extraHTTPHeaders: { Cookie: `AUTOSTRADA_SESSION=${oldCookie.value}` } });
     try {
       expect((await (await replay.get('/api/session')).json()).authenticated).toBe(false);
       expect((await replay.get('/api/user/profile')).status()).toBe(401);

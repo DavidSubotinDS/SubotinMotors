@@ -18,6 +18,8 @@ class GatewayUnavailableTests {
   }
   @DynamicPropertySource static void properties(DynamicPropertyRegistry registry) {
     registry.add("gateway.backend-url", () -> "http://127.0.0.1:" + closedPort);
+    registry.add("gateway.identity-url", () -> "http://127.0.0.1:" + closedPort);
+    registry.add("gateway.identity-secret", () -> "unavailable-fixture-secret-32-bytes");
     registry.add("gateway.frontend-url", () -> "http://127.0.0.1:" + closedPort);
   }
   @Autowired WebTestClient client;

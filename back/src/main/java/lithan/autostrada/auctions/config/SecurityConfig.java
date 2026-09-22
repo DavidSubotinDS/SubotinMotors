@@ -42,36 +42,6 @@ public class SecurityConfig {
       "POST".equals(request.getMethod())
           && (request.getContextPath() + "/webhooks/stripe").equals(request.getRequestURI());
 
-  @Bean
-  public HttpSessionCsrfTokenRepository csrfTokenRepository() {
-    return new HttpSessionCsrfTokenRepository();
-  }
-
-  // Controller authentication must explicitly invoke the same framework lifecycle
-  // that form login invokes in its authentication filter.
-  @Bean
-  public SessionAuthenticationStrategy apiSessionAuthenticationStrategy(HttpSessionCsrfTokenRepository repository) {
-    var fixation = new ChangeSessionIdAuthenticationStrategy();
-    var csrf = new CsrfAuthenticationStrategy(repository);
-    return (authentication, request, response) -> {
-      fixation.onAuthentication(authentication, request, response);
-      csrf.onAuthentication(authentication, request, response);
-    };
-  }
-
-  @Bean
-  public static PasswordEncoder passwordEncoder() {
-    return new BCryptPasswordEncoder();
-  }
-
-  @Bean
-  public AuthenticationManager authenticationManager(AuthenticationConfiguration configuration) throws Exception {
-    return configuration.getAuthenticationManager();
-  }
-
-  @Autowired
-  AuthenticationSuccessHandler successHandler;
-
   @Value("${app.cors.allowed-origins:http://localhost:5173}")
   private List<String> allowedCorsOrigins;
 
@@ -79,6 +49,13 @@ public class SecurityConfig {
   public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
 
     http.cors(cors -> { });
+    http.sessionManagement(s -> s.sessionCreationPolicy(org.springframework.security.config.http.SessionCreationPolicy.STATELESS));
+    http.securityContext(s -> s.securityContextRepository(new org.springframework.security.web.context.NullSecurityContextRepository()));
+    http.requestCache(c -> c.disable());
+    http.csrf(c -> c.disable()); // Cookie authentication removed. Gateway exchange validates browser CSRF.
+    http.formLogin(c -> c.disable()); http.logout(c -> c.disable()); http.httpBasic(c -> c.disable());
+    http.oauth2ResourceServer(o -> o.jwt(j -> j.jwtAuthenticationConverter(AssertionSecurity.converter())));
+
 
     // Authorize
     http.authorizeHttpRequests(configurer -> configurer
@@ -86,7 +63,9 @@ public class SecurityConfig {
         .requestMatchers("/css/**", "/images/**", "/js/**").permitAll()
         .requestMatchers("/actuator/health", "/actuator/health/liveness", "/actuator/health/readiness").permitAll()
         .requestMatchers(STRIPE_WEBHOOK).permitAll()
-        .requestMatchers("/api/auth/**").permitAll()
+        .requestMatchers("/api/auth/**", "/api/session", "/api/csrf", "/loginUser", "/logout",
+            "/register/**", "/forgot-password", "/reset-password", "/api/user/profile/**",
+            "/api/admin/users/**", "/api/admin/dashboard").denyAll()
         .requestMatchers(HttpMethod.GET, "/api/csrf", "/api/session", "/api/public/**").permitAll()
         .requestMatchers("/api/admin/**").hasRole("ADMIN")
         .requestMatchers("/api/user/**", "/api/store/**", "/api/comments/**").hasRole("USER")
@@ -120,23 +99,6 @@ public class SecurityConfig {
 
         .requestMatchers("/admin/**").hasRole("ADMIN")
         .anyRequest().authenticated());
-
-    // Form Login
-    http.formLogin(form -> form
-        .loginPage("/login")
-        .loginProcessingUrl("/loginUser")
-        .successHandler(successHandler)
-        .permitAll());
-
-    // Logout
-    http.logout(logout -> logout
-        .logoutUrl("/logout")
-        .permitAll());
-
-    http.sessionManagement(session -> session.sessionFixation(fixation -> fixation.changeSessionId()));
-    http.csrf(csrf -> csrf
-        .csrfTokenRepository(csrfTokenRepository())
-        .ignoringRequestMatchers(STRIPE_WEBHOOK));
 
     var loginEntryPoint = new LoginUrlAuthenticationEntryPoint("/login");
     http.exceptionHandling(exceptions -> exceptions

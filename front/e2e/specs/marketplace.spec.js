@@ -179,6 +179,7 @@ test('follow generates ending-soon notifications; recipient read/read-all persis
   }
   await page.goto('/user/watchlist');
   await expect(page.getByRole('heading', { name: 'E2E Roadster', exact: true })).toBeVisible();
+  await expect.poll(async () => (await json(page, '/api/user/notifications')).length).toBe(2);
   const notifications = await json(page, '/api/user/notifications');
   expect(notifications).toHaveLength(2);
   await login(page, 'other');

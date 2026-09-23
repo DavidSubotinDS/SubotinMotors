@@ -27,7 +27,7 @@ for (const entry of await readdir(root, { withFileTypes: true }).catch(error => 
     if (ids.length) docker([kind, 'rm', ...(kind === 'container' ? ['--force'] : []), ...ids]);
     if (docker(query)) throw new Error(`Owned ${kind} resources remain for ${entry.name}`);
   }
-  for (const service of ['backend', 'frontend', 'gateway']) {
+  for (const service of ['backend', 'frontend', 'gateway', 'identity', 'notification', 'rabbitmq', 'identity-copy', 'notification-copy', 'broker-probe']) {
     const tag = `${entry.name}-${service}:latest`;
     const found = spawnSync('docker', ['image', 'inspect', tag], { stdio: 'ignore', windowsHide: true, timeout: 10000 });
     if (found.status === 0) docker(['image', 'rm', tag]);

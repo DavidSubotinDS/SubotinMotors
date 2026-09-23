@@ -37,9 +37,10 @@ public class AuctionFollowService {
     this.clock = clock;
   }
 
+  @Transactional
   public boolean follow(int carId) {
     int user = currentIdentity.requireUserId();
-    Car car = carRepository.findById(carId).orElseThrow(ResourceNotFoundException::new);
+    Car car = carRepository.findForFollow(carId).orElseThrow(ResourceNotFoundException::new);
     if (!car.isAuctionOpenAt(LocalDateTime.now(clock))) {
       throw new IllegalStateException("Only active auctions can be followed");
     }
@@ -51,11 +52,7 @@ public class AuctionFollowService {
     follow.setUserId(user);
     follow.setCar(car);
     follow.setFollowedAt(LocalDateTime.now(clock));
-    try {
-      followRepository.saveAndFlush(follow);
-    } catch (DataIntegrityViolationException exception) {
-      return false;
-    }
+    followRepository.saveAndFlush(follow);
     notificationService.createEndingSoonNotification(user, car);
     return true;
   }

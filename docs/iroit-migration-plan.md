@@ -1,17 +1,14 @@
 # IROIT incremental migration and implementation backlog
 
-Current S4b status (2026-09-21): S4a is merged at
-`1a3147baa4cf4c58a2aba5d2958980348439788e`, with successful Backend and Frontend
-checks verified on that exact commit. S4b identity boundary preparation is
-implemented in the working tree: scalar business identity references, immutable
-principal IDs and in-process public/private profile clients. Backend remains the
-sole identity/session owner; existing database FKs remain. See the
-[implemented boundary](identity-boundary.md) and [evidence/owner handoff](identity-boundary-pr.md).
-Local backend/frontend/gateway, production containers and native/Compose browser
-checks pass. MySQL constraints, restart/restore/outage recovery and an S4a-to-S4b
-upgrade with all table checksums preserved passed on disposable databases.
-S4b has not been committed, pushed or remotely checked. S5 extraction is next,
-after S4b acceptance and merge. Earlier dated status paragraphs are historical.
+Current status (2026-09-22): S5 is merged at
+`cddde6da41d32d3d37fae9a8eaa71cc4027cca73`, with Backend and Frontend success
+verified on that exact commit (Actions run 35673771885). Identity owns sessions,
+authentication, accounts and profiles. S6 notification extraction is implemented
+and locally accepted in the working tree; see [current ownership/runbook](notification-service.md)
+and [actual evidence and pending gates](notification-service-pr.md).
+Older dated S4a/S4b/S5 status paragraphs below are historical. Proposed later-stage
+architecture does not establish implemented behavior; the S6 runbook takes
+precedence for current route, data, session and mail-delivery ownership.
 
 Current S4a status (2026-09-20): S3 merged as `8d13104` with successful exact-commit
 Backend/Frontend checks. S4a Phase B is implemented in the working tree; see

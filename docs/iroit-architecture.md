@@ -1,14 +1,12 @@
 # IROIT target architecture and decision record
 
-Current S5 status (2026-09-21): S4a and S4b are represented in the current
-feature branch, and identity extraction is locally accepted. The identity service
-owns account/profile/role/reset/session behavior; gateway session exchange and
-backend assertions/profile APIs are active. Disposable MySQL parity, V19 archive
-cutover, runtime credential isolation and the full 20-scenario Compose browser
-suite passed. The S5 branch remains uncommitted and requires owner review and
-remote CI before merge. See [identity extraction evidence](identity-service.md)
-and [the owner handoff](identity-service-pr.md). Earlier dated status paragraphs
-are historical.
+Current status (2026-09-22): S5 is merged at
+`cddde6da41d32d3d37fae9a8eaa71cc4027cca73`; exact-commit Backend and Frontend
+checks passed (Actions run 35673771885). Identity owns accounts, profiles and
+sessions. S6 notification extraction is implemented and locally accepted in the
+working tree. See [current ownership and recovery](notification-service.md)
+and [actual evidence/pending gates](notification-service-pr.md). Earlier dated
+status paragraphs are historical; later-stage designs remain proposed.
 
 Current S4a working-tree status (2026-09-20): S3 is merged as `8d13104`; Backend
 and Frontend passed on that exact commit. [S4a](session-csrf.md) implements the

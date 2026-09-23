@@ -41,6 +41,8 @@ public class E2eApplication {
     try(var connection=java.sql.DriverManager.getConnection(databaseUrl,"sa","");var statement=connection.createStatement()) {
       statement.execute("CREATE TABLE identity_cutover(id INT PRIMARY KEY,state VARCHAR(40),manifest VARCHAR(4096))");
       statement.execute("INSERT INTO identity_cutover VALUES(1,'PARITY_VERIFIED','synthetic disposable browser fixtures; not copy evidence')");
+      statement.execute("CREATE TABLE notification_cutover(id INT PRIMARY KEY,state VARCHAR(40))");
+      statement.execute("INSERT INTO notification_cutover VALUES(1,'PARITY_VERIFIED')");
     } catch(java.sql.SQLException ex) {throw new IllegalStateException("Disposable fixture setup failed");}
     // CLI properties override inherited Spring environment settings. Never read normal config.
     new SpringApplication(AutostradaAuctionsApplication.class, Configuration.class).run(
@@ -53,6 +55,7 @@ public class E2eApplication {
         "--server.address=127.0.0.1", "--server.port=18080",
         "--payments.stripe.enabled=false", "--app.mail.mode=log",
         "--auction.notifications.scheduling-enabled=false",
+        "--notification.base-url=http://127.0.0.1:18083", "--notification.relay.enabled=false",
         "--identity.base-url=" + System.getenv("IDENTITY_URL"),
         "--identity.service-secret=" + System.getenv("IDENTITY_BACKEND_SECRET"),
         "--identity.verification-jwks=" + System.getenv("IDENTITY_VERIFICATION_JWKS"));
@@ -108,6 +111,15 @@ public class E2eApplication {
     public Map<String, String> time(@RequestBody Map<String, String> body) {
       clock.time = Instant.parse(body.get("instant"));
       return Map.of("instant", clock.time.toString());
+    }
+
+    @GetMapping("/__e2e/outbox")
+    public java.util.List<Map<String,Object>> outbox() {
+      return jdbc.queryForList("SELECT event_id,payload FROM tb_notification_outbox WHERE published_at IS NULL");
+    }
+    @PostMapping("/__e2e/outbox-ack")
+    public void ack(@RequestBody Map<String,String> body) {
+      jdbc.update("UPDATE tb_notification_outbox SET published_at=? WHERE event_id=?",java.sql.Timestamp.from(clock.instant()),body.get("eventId"));
     }
 
     @PostMapping("/__e2e/reset")

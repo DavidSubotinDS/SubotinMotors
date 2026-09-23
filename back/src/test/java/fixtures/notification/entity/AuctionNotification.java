@@ -1,6 +1,7 @@
-package lithan.autostrada.auctions.entity;
+package fixtures.notification.entity;
 
 import java.time.LocalDateTime;
+import lithan.autostrada.auctions.entity.Car;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;

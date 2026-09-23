@@ -12,6 +12,9 @@ import org.springframework.data.repository.query.Param;
 import lithan.autostrada.auctions.entity.Car;
 
 public interface CarRepository extends JpaRepository<Car, Integer> {
+        @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+        @Query("SELECT c FROM Car c WHERE c.idCar=:id")
+        java.util.Optional<Car> findForFollow(@Param("id") int id);
 
         List<Car> findByStatusNot(String status);
 

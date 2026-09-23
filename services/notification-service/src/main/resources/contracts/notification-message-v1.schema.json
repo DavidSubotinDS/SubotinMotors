@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "S6 notification messages v1",
+  "type": "object",
+  "required": ["eventId", "eventType", "schemaVersion", "occurredAt", "producer", "aggregateType", "aggregateId", "aggregateVersion", "correlationId", "causationId", "payload"],
+  "properties": {
+    "eventId": {"type":"string", "format":"uuid"},
+    "eventType": {"enum":["marketplace.auction-ending-soon.v1", "identity.password-reset-delivery.v1"]},
+    "schemaVersion": {"const":1},
+    "occurredAt": {"type":"string", "format":"date-time"},
+    "producer": {"type":"string"},
+    "aggregateType": {"type":"string"},
+    "aggregateId": {"type":"string", "minLength":1, "maxLength":160},
+    "aggregateVersion": {"const":1},
+    "correlationId": {"type":"string", "format":"uuid"},
+    "causationId": {"type":["string","null"]},
+    "traceparent": {"type":"string", "pattern":"^00-[a-f0-9]{32}-[a-f0-9]{16}-[a-f0-9]{2}$"},
+    "payload": {"type":"object"}
+  },
+  "oneOf": [
+    {
+      "properties": {
+        "eventType":{"const":"marketplace.auction-ending-soon.v1"},
+        "producer":{"const":"legacy-backend"},
+        "aggregateType":{"const":"AuctionNotification"},
+        "payload": {
+          "type":"object",
+          "required":["auctionId","recipientId","notificationType","message","dedupeKey","auctionSnapshot"],
+          "properties": {
+            "auctionId":{"type":"string","pattern":"^[1-9][0-9]{0,9}$"},
+            "recipientId":{"type":"string","pattern":"^[1-9][0-9]{0,9}$"},
+            "notificationType":{"const":"AUCTION_ENDING_SOON"},
+            "message":{"type":"string","minLength":1,"maxLength":500},
+            "dedupeKey":{"type":"string","pattern":"^[1-9][0-9]*:[1-9][0-9]*:ENDING_SOON$","maxLength":160},
+            "auctionSnapshot": {
+              "type":"object", "additionalProperties":false,
+              "required":["id","make","model","year","price","status","statusLabel","auctionEndTime","auctionEndTimeEpochMillis","imageUrl","imageUrls","sellerDisplayName"],
+              "properties": {
+                "id":{"type":"integer","minimum":1},
+                "make":{"type":"string"}, "model":{"type":"string"}, "year":{"type":"string"},
+                "price":{"type":"number"}, "status":{"type":"string"}, "statusLabel":{"type":"string"},
+                "auctionEndTime":{"type":["string","null"]}, "auctionEndTimeEpochMillis":{"type":"integer"},
+                "imageUrl":{"type":["string","null"]}, "imageUrls":{"type":"array","items":{"type":"string"}},
+                "sellerDisplayName":{"type":["string","null"]}
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "properties": {
+        "eventType":{"const":"identity.password-reset-delivery.v1"},
+        "producer":{"const":"identity-service"},
+        "aggregateType":{"const":"PasswordResetDelivery"},
+        "payload": {
+          "type":"object",
+          "required":["deliveryId","expiresAt","encryptedPayload"],
+          "properties": {
+            "deliveryId":{"type":"string","format":"uuid"},
+            "expiresAt":{"type":"string","format":"date-time"},
+            "encryptedPayload":{"type":"string","minLength":1,"maxLength":16000}
+          }
+        }
+      }
+    }
+  ]
+}

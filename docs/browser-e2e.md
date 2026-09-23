@@ -1,5 +1,10 @@
 # Browser regression baseline (IROIT S1 + S2)
 
+S6 working-tree update: notification inbox and mail delivery now have a separate owner,
+RabbitMQ and guarded data cutover. Read the [S6 runbook](notification-service.md) before starting
+the new Compose stack; historical S5 startup/test instructions below need that cutover.
+
+
 S4a extends the shared suite to 18 scenarios in native gateway/H2 and isolated
 Compose/MySQL. Six new scenarios cover API/form session rotation and old-ID/token
 rejection, missing/invalid/foreign JSON/form/multipart tokens, stale checkout

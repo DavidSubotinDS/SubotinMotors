@@ -31,7 +31,7 @@ import lithan.autostrada.auctions.dto.api.AuctionSummaryResponse;
 import lithan.autostrada.auctions.dto.api.ListingSummaryResponse;
 import lithan.autostrada.auctions.dto.api.PageResponse;
 import lithan.autostrada.auctions.dto.api.PartSummaryResponse;
-import lithan.autostrada.auctions.entity.AuctionNotification;
+
 import lithan.autostrada.auctions.entity.Car;
 import lithan.autostrada.auctions.entity.CarBidding;
 import lithan.autostrada.auctions.entity.CarListing;
@@ -199,17 +199,6 @@ public class ApiModelMapper {
         map(bookedTestDrives.stream(), this::testDrive).toList(),
         map(listingTestRideRequests.stream(), this::listingTestRide).toList(),
         map(listingTestRides.stream(), this::listingTestRide).toList());
-  }
-
-  public NotificationResponse notification(AuctionNotification notification) {
-    return new NotificationResponse(
-        notification.getIdNotification(),
-        notification.getNotificationType(),
-        notification.getMessage(),
-        notification.getCreatedAt(),
-        notification.getReadAt(),
-        notification.isRead(),
-        auction(notification.getCar()));
   }
 
   public CartItemResponse cartItem(CartItem item) {
@@ -380,7 +369,6 @@ public class ApiModelMapper {
     else if (value instanceof CarBidding bid) { ids.add(bid.getUserId()); collectIds(bid.getCar(), ids); }
     else if (value instanceof TestDrive ride) { ids.add(ride.getUserId()); collectIds(ride.getCar(), ids); }
     else if (value instanceof ListingTestRide ride) { ids.add(ride.getUserId()); collectIds(ride.getListing(), ids); }
-    else if (value instanceof AuctionNotification notification) collectIds(notification.getCar(), ids);
     else if (value instanceof StoreOrder order) ids.add(order.getUserId());
     else if (value instanceof ListingDeposit deposit) { ids.add(deposit.getBuyerId()); collectIds(deposit.getListing(), ids); }
     else if (value instanceof PaymentOrder payment) {

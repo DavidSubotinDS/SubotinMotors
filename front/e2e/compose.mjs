@@ -16,10 +16,12 @@ const emptyEnv = resolve(directory, 'empty.env');
 const token = randomBytes(32).toString('hex');
 const schema = `e2e_${id}`;
 const identitySchema = `identity_${id}`;
+const notificationSchema = `notification_${id}`;
 const browser = !process.argv.includes('--integration-only');
 const upgradeFrom = process.argv.find(arg => arg.startsWith('--upgrade-from='))?.slice('--upgrade-from='.length);
+assert.ok(!upgradeFrom, 'The historical S4b --upgrade-from mode is incompatible with S6 cutover. Use the built-in staged copy/parity test.');
 const env = Object.fromEntries(Object.entries(process.env).filter(([key]) =>
-  !/^(COMPOSE_|MYSQL_|DB_|E2E_|SPRING_|STRIPE_|APP_|SMTP_|PAYMENTS_|AUCTION_|VITE_|GATEWAY_|PUBLIC_URL$|SESSION_|SERVER_|MANAGEMENT_|LOGGING_|JAVA_TOOL_OPTIONS$|JDK_JAVA_OPTIONS$|_JAVA_OPTIONS$)/i.test(key)));
+  !/^(COMPOSE_|MYSQL_|DB_|E2E_|IDENTITY_|NOTIFICATION_|RABBITMQ_|SPRING_|STRIPE_|APP_|SMTP_|PAYMENTS_|AUCTION_|VITE_|GATEWAY_|PUBLIC_URL$|SESSION_|SERVER_|MANAGEMENT_|LOGGING_|JAVA_TOOL_OPTIONS$|JDK_JAVA_OPTIONS$|_JAVA_OPTIONS$)/i.test(key)));
 Object.assign(env, { MYSQL_DATABASE: schema, MYSQL_USER: 'e2e', MYSQL_PASSWORD: randomBytes(32).toString('hex'),
   MYSQL_ROOT_PASSWORD: randomBytes(32).toString('hex'), APP_DEMO_DATA_ACK: 'I_ACCEPT_EXISTING_DEMO_DATA',
   E2E_CONTROL_TOKEN: token, TZ: 'UTC' });
@@ -82,6 +84,11 @@ async function freePort() {
   return port;
 }
 async function saveConfig() { await writeFile(overlay, JSON.stringify(config, null, 2)); }
+async function eventually(check, description) {
+  const deadline = Date.now() + 45000;
+  while (Date.now() < deadline) { if (await check()) return; await new Promise(done => setTimeout(done, 250)); }
+  throw new Error(`Timed out: ${description}`);
+}
 async function sql(statement, { rootUser = false, allowFailure = false } = {}) {
   return compose(['exec', '-T', 'mysql', 'sh', '-c', rootUser
     ? 'MYSQL_PWD="$MYSQL_ROOT_PASSWORD" exec mysql -uroot --batch --skip-column-names "$MYSQL_DATABASE"'
@@ -188,6 +195,14 @@ try {
   Object.assign(env, {
     IDENTITY_DB_URL: `jdbc:mysql://mysql:3306/${identitySchema}?serverTimezone=UTC&connectionTimeZone=UTC&forceConnectionTimeZoneToSession=true&allowPublicKeyRetrieval=true&useSSL=false`,
     IDENTITY_DB_NAME: identitySchema,
+    NOTIFICATION_DB_NAME: notificationSchema,
+    NOTIFICATION_DB_USERNAME: 'notification_e2e',
+    NOTIFICATION_DB_PASSWORD: randomBytes(32).toString('hex'),
+    NOTIFICATION_DELIVERY_KEY: randomBytes(32).toString('base64'),
+    RABBITMQ_BACKEND_PASSWORD: randomBytes(32).toString('hex'),
+    RABBITMQ_IDENTITY_PASSWORD: randomBytes(32).toString('hex'),
+    RABBITMQ_NOTIFICATION_PASSWORD: randomBytes(32).toString('hex'),
+    RABBITMQ_OPERATOR_PASSWORD: randomBytes(32).toString('hex'),
     IDENTITY_DB_USERNAME: 'identity_e2e',
     IDENTITY_DB_PASSWORD: randomBytes(32).toString('hex'),
     DB_RUNTIME_USERNAME: 'backend_runtime',
@@ -231,6 +246,9 @@ try {
   assert.match(seedGuard.stderr + seedGuard.stdout, /I_ACCEPT_EXISTING_DEMO_DATA/);
   await compose(['up', '--detach', '--wait', '--wait-timeout', '240', 'mysql'], { timeout: 300000 });
   await sql(`CREATE DATABASE IF NOT EXISTS \`${identitySchema}\`;
+    CREATE DATABASE IF NOT EXISTS \`${notificationSchema}\`;
+    CREATE USER IF NOT EXISTS 'notification_e2e'@'%' IDENTIFIED BY ${mysqlLiteral(env.NOTIFICATION_DB_PASSWORD)};
+    GRANT ALL PRIVILEGES ON \`${notificationSchema}\`.* TO 'notification_e2e'@'%';
     CREATE USER IF NOT EXISTS 'identity_e2e'@'%' IDENTIFIED BY ${mysqlLiteral(env.IDENTITY_DB_PASSWORD)};
     GRANT ALL PRIVILEGES ON \`${identitySchema}\`.* TO 'identity_e2e'@'%';
     CREATE USER IF NOT EXISTS 'backend_runtime'@'%' IDENTIFIED BY ${mysqlLiteral(env.DB_RUNTIME_PASSWORD)};
@@ -249,6 +267,36 @@ try {
   await compose(['up', '--detach', '--wait', '--wait-timeout', '240', 'backend'], { timeout: 300000 });
   assert.equal(await value('SELECT COUNT(*) FROM flyway_schema_history WHERE success=1 AND version BETWEEN 1 AND 18'), '18');
   await copyIdentityTables();
+  config.services.backend.environment.SPRING_FLYWAY_TARGET = '20';
+  await saveConfig();
+  await compose(['up', '--detach', '--wait', '--wait-timeout', '240', 'backend', 'notification', 'rabbitmq'], { timeout: 300000 });
+  await compose(['stop', 'backend', 'notification']);
+  // Existing-data cutover: preserve both read and unread legacy inbox entries.
+  await sql(`INSERT INTO tb_auction_notification(id_user,id_car,notification_type,message,created_at,read_at)
+    SELECT 2,id_car,'AUCTION_ENDING_SOON',CONCAT('S6 import ',id_car),'2025-01-01 12:00:00.123456',
+      CASE WHEN id_car=1 THEN '2025-01-01 12:01:00.123456' ELSE NULL END
+    FROM tb_car WHERE id_car IN (1,2)`);
+  assert.equal(await value("SELECT COUNT(*) FROM tb_auction_notification WHERE message LIKE 'S6 import %'"), '2');
+  const importedCount = await value('SELECT COUNT(*) FROM tb_auction_notification');
+  const importedReadCount = await value('SELECT COUNT(*) FROM tb_auction_notification WHERE read_at IS NOT NULL');
+  config.services['notification-copy'] = {
+    build: { context: resolve(root, 'services/notification-service'), target: 'e2e' },
+    entrypoint: ['java', '-cp', '/test/test-classes:/test/classes:/test/lib/*'],
+    command: ['lithan.autostrada.notification.NotificationCopy'],
+    environment: {
+      CUTOVER_WRITE_FREEZE: 'I_HAVE_STOPPED_ALL_WRITERS', CUTOVER_SOURCE_TIMEZONE: 'UTC',
+      CUTOVER_SOURCE_URL: `jdbc:mysql://mysql:3306/${schema}?serverTimezone=UTC&allowPublicKeyRetrieval=true&useSSL=false`,
+      CUTOVER_SOURCE_USER: 'e2e', CUTOVER_SOURCE_PASSWORD: env.MYSQL_PASSWORD,
+      CUTOVER_TARGET_URL: `jdbc:mysql://mysql:3306/${notificationSchema}?serverTimezone=UTC&allowPublicKeyRetrieval=true&useSSL=false`,
+      CUTOVER_TARGET_USER: env.NOTIFICATION_DB_USERNAME, CUTOVER_TARGET_PASSWORD: env.NOTIFICATION_DB_PASSWORD,
+    }, networks: ['database'],
+  };
+  await saveConfig();
+  await compose(['build', 'notification-copy']);
+  await compose(['run', '--rm', '--no-deps', 'notification-copy']);
+  assert.equal(await rootValue(`SELECT COUNT(*) FROM \`${notificationSchema}\`.tb_notification`), importedCount);
+  assert.equal(await rootValue(`SELECT COUNT(*) FROM \`${notificationSchema}\`.tb_notification WHERE read_at IS NOT NULL`), importedReadCount);
+  delete config.services['notification-copy'];
   delete config.services.backend.environment.SPRING_FLYWAY_TARGET;
   await saveConfig();
   await compose(['up', '--detach', '--wait', '--wait-timeout', '240'], { timeout: 300000 });
@@ -271,7 +319,26 @@ try {
   }
   await compose(['images', '--format', 'json']);
   assert.equal(await value('SELECT COUNT(*) FROM flyway_schema_history WHERE success=1 AND version BETWEEN 1 AND 19'), '19');
-  assert.equal(await rootValue(`SELECT COUNT(*) FROM \`${identitySchema}\`.flyway_schema_history WHERE success=1`), '1');
+  assert.equal(await rootValue(`SELECT COUNT(*) FROM \`${identitySchema}\`.flyway_schema_history WHERE success=1`), '2');
+  assert.equal(await value('SELECT COUNT(*) FROM flyway_schema_history WHERE success=1'), '21');
+  assert.equal(await rootValue(`SELECT COUNT(*) FROM \`${notificationSchema}\`.flyway_schema_history WHERE success=1`), '1');
+  assert.notEqual((await runtimeSql('SELECT COUNT(*) FROM archive_notification_tb_auction_notification', { allowFailure: true })).code, 0);
+  await record('S6 notification copy parity, V21 archive cutover and runtime archive denial passed.');
+  config.services['broker-probe'] = {
+    build: { context: resolve(root, 'services/notification-service'), target: 'e2e' },
+    entrypoint: ['java', '-cp', '/test/test-classes:/test/classes:/test/lib/*'],
+    command: ['lithan.autostrada.notification.BrokerProbe'],
+    environment: {
+      E2E_NOTIFICATION_DATABASE: notificationSchema, NOTIFICATION_DB_USERNAME: env.NOTIFICATION_DB_USERNAME,
+      NOTIFICATION_DB_PASSWORD: env.NOTIFICATION_DB_PASSWORD, RABBITMQ_BACKEND_PASSWORD: env.RABBITMQ_BACKEND_PASSWORD,
+      RABBITMQ_IDENTITY_PASSWORD: env.RABBITMQ_IDENTITY_PASSWORD, RABBITMQ_OPERATOR_PASSWORD: env.RABBITMQ_OPERATOR_PASSWORD,
+    }, networks: ['database', 'edge'],
+  };
+  await saveConfig();
+  await compose(['build', 'broker-probe']);
+  await compose(['run', '--rm', '--no-deps', 'broker-probe'], { timeout: 120000 });
+  delete config.services['broker-probe']; await saveConfig();
+  await record('Real RabbitMQ/MySQL delivery, event/business dedupe, producer permissions, poison quarantine, repaired redrive and delayed retry passed.');
   assert.equal(await value('SELECT COUNT(*) FROM flyway_schema_history WHERE success=0'), '0');
   assert.equal((await runtimeSql('SELECT COUNT(*) FROM tb_car_part')).code, 0, 'Backend runtime lost business-table access');
   assert.notEqual((await runtimeSql('SELECT COUNT(*) FROM archive_identity_tb_user', { allowFailure: true })).code, 0,
@@ -280,11 +347,11 @@ try {
   await writeFile(resolve(directory, 'migrations.tsv'), (await sql('SELECT version,script,checksum,success FROM flyway_schema_history ORDER BY installed_rank')).stdout);
   await writeFile(resolve(directory, 'identity-migrations.tsv'),
     (await sql(`SELECT version,script,checksum,success FROM \`${identitySchema}\`.flyway_schema_history ORDER BY installed_rank`, { rootUser: true })).stdout);
-  for (const service of ['identity', 'backend', 'frontend', 'gateway']) {
+  for (const service of ['identity', 'notification', 'backend', 'frontend', 'gateway']) {
     assert.notEqual((await compose(['exec', '-T', service, 'id', '-u'])).stdout.trim(), '0');
   }
   const rendered = JSON.parse((await compose(['config', '--format', 'json'], { log: false })).stdout);
-  for (const service of ['mysql', 'identity', 'backend', 'frontend']) assert.ok(!rendered.services[service].ports?.length, `${service} unexpectedly published`);
+  for (const service of ['mysql', 'rabbitmq', 'notification', 'identity', 'backend', 'frontend']) assert.ok(!rendered.services[service].ports?.length, `${service} unexpectedly published`);
   await checkHttp('/actuator/health/readiness');
   await checkHttp('/auctions/1');
   await checkHttp('/api/session');
@@ -320,12 +387,23 @@ try {
   await checkHttp('/api/session', 403, { headers: { Origin: 'https://untrusted.invalid' } });
   const redirect = await checkHttp('/cars', 302, { headers: { 'X-Forwarded-Host': 'untrusted.invalid', 'X-Forwarded-Proto': 'https' } });
   assert.equal(new URL(redirect.headers.get('location')).origin, env.PUBLIC_URL);
+  await compose(['stop', 'rabbitmq']);
+  await checkHttp('/api/user/notifications', 200, { headers: { Cookie: signedInCookie } });
+  const probeCar = await value("INSERT INTO tb_car(make,model,production_year,status,price,id_user,auction_end_time) VALUES ('S6','Outage Probe','2025','ACTIVE',10000,1,CURRENT_TIMESTAMP + INTERVAL 2 HOUR); SELECT LAST_INSERT_ID()");
+  await checkHttp(`/api/user/auctions/${probeCar}/follow`, 200, { method: 'POST', headers: { Cookie: signedInCookie, 'X-CSRF-TOKEN': signedInToken } });
+  assert.equal(await value(`SELECT COUNT(*) FROM tb_notification_outbox WHERE dedupe_key LIKE '%:${probeCar}:ENDING_SOON' AND published_at IS NULL`), '1');
   await checkHttp('/api/auth/password-reset', 200, { method: 'POST', headers: { 'Content-Type': 'application/json',
     Cookie: signedInCookie, 'X-CSRF-TOKEN': signedInToken },
     body: JSON.stringify({ identifier: 'demo_bidder' }) });
   const resetLogs = (await compose(['logs', '--no-color', 'identity'], { log: false })).stdout;
   assert.ok(!/reset-password\?token=/.test(resetLogs), 'Reset links must not enter application logs');
   assert.equal(await rootValue(`SELECT COUNT(*) FROM \`${identitySchema}\`.tb_password_reset_token`), '1');
+  assert.equal(await rootValue(`SELECT COUNT(*) FROM \`${identitySchema}\`.tb_delivery_outbox WHERE published_at IS NULL AND encrypted_payload IS NOT NULL`), '1');
+  await compose(['up', '--detach', '--wait', '--wait-timeout', '120', 'rabbitmq']);
+  await eventually(async () => await value(`SELECT COUNT(*) FROM tb_notification_outbox WHERE dedupe_key LIKE '%:${probeCar}:ENDING_SOON' AND published_at IS NOT NULL`) === '1', 'backend outbox recovery');
+  await eventually(async () => await rootValue(`SELECT COUNT(*) FROM \`${notificationSchema}\`.tb_notification WHERE id_car=${probeCar}`) === '1', 'notification recovery');
+  await eventually(async () => await rootValue(`SELECT COUNT(*) FROM \`${notificationSchema}\`.tb_delivery WHERE state='SUPPRESSED' AND encrypted_payload IS NULL`) === '1', 'encrypted reset delivery recovery');
+  await record('Broker outage preserves ending-soon and encrypted reset intents; inbox reads remain available and both outboxes recover after broker restart. Production log-mode delivery is suppressed, not real SMTP.');
   await checkHttp('/api/auth/logout', 200, { method: 'POST', headers: { Cookie: signedInCookie, 'X-CSRF-TOKEN': signedInToken } });
   await record('Production images started non-root; private service ports, SPA/API/exact webhook routing and backend/identity MySQL migrations verified.');
   await record('Production cookie attributes, login rotation/old-session rejection, CSRF, logout, CORS, trusted redirects and reset request without secret logging verified.');
@@ -344,7 +422,7 @@ try {
     ['tb_car', 'id_car', 'id_user'], ['tb_car_bid', 'id_bid', 'id_user'],
     ['tb_test_drive', 'id_test_drive', 'id_user'], ['tb_car_listing', 'id_listing', 'id_seller'],
     ['tb_listing_test_ride', 'id_test_ride', 'id_user'], ['tb_listing_deposit', 'id_deposit', 'id_buyer'],
-    ['tb_auction_follow', 'id_follow', 'id_user'], ['tb_auction_notification', 'id_notification', 'id_user'],
+    ['tb_auction_follow', 'id_follow', 'id_user'], ['archive_notification_tb_auction_notification', 'id_notification', 'id_user'],
     ['tb_listing_comment', 'id_comment', 'id_user'], ['tb_cart_item', 'id_cart_item', 'id_user'],
     ['tb_store_order', 'id_order', 'id_user'], ['tb_payment_account', 'id_payment_account', 'id_user'],
     ['tb_payment_order', 'id_payment', 'id_buyer'], ['tb_payment_order', 'id_payment', 'id_seller'],
@@ -383,12 +461,17 @@ try {
   await sql(`UPDATE \`${identitySchema}\`.tb_user_profile SET about='S5 backup sentinel' WHERE id_profile=1`, { rootUser: true });
   const snapshotQuery = "SELECT version,checksum FROM flyway_schema_history ORDER BY installed_rank; SELECT id_picture,SHA2(image,256) FROM tb_car_gallery_picture ORDER BY id_picture";
   const snapshot = await value(snapshotQuery);
+  const notificationSnapshotQuery = `SELECT id_notification,id_user,id_car,notification_type,message,created_at,read_at,SHA2(auction_snapshot,256),dedupe_key FROM \`${notificationSchema}\`.tb_notification ORDER BY id_notification;
+    SELECT consumer_name,event_id,received_at FROM \`${notificationSchema}\`.tb_message_inbox ORDER BY consumer_name,event_id;
+    SELECT delivery_id,state,expires_at,encrypted_payload IS NULL FROM \`${notificationSchema}\`.tb_delivery ORDER BY delivery_id;
+    SELECT version,checksum FROM \`${notificationSchema}\`.flyway_schema_history ORDER BY installed_rank`;
+  const notificationSnapshot = await rootValue(notificationSnapshotQuery);
   const identityDataSnapshot = await rootValue(`SELECT id_user,username,email,password FROM \`${identitySchema}\`.tb_user ORDER BY id_user;
     SELECT id_profile,about FROM \`${identitySchema}\`.tb_user_profile ORDER BY id_profile;
     SELECT id_token,SHA2(token_hash,256),consumed_at FROM \`${identitySchema}\`.tb_password_reset_token ORDER BY id_token;
     SELECT version,checksum FROM \`${identitySchema}\`.flyway_schema_history ORDER BY installed_rank`);
   const dump = await compose(['exec', '-T', 'mysql', 'sh', '-c',
-    `MYSQL_PWD="$MYSQL_ROOT_PASSWORD" exec mysqldump -uroot --single-transaction --no-tablespaces --set-gtid-purged=OFF --hex-blob --databases "$MYSQL_DATABASE" "${identitySchema}"`], { log: false });
+    `MYSQL_PWD="$MYSQL_ROOT_PASSWORD" exec mysqldump -uroot --single-transaction --no-tablespaces --set-gtid-purged=OFF --hex-blob --databases "$MYSQL_DATABASE" "${identitySchema}" "${notificationSchema}"`], { log: false });
   await writeFile(resolve(directory, 'backup.sql'), dump.stdout);
   await compose(['down', '--timeout', '20']); // Intentionally preserve volume.
   await compose(['up', '--detach', '--wait', '--wait-timeout', '240'], { timeout: 300000 });
@@ -399,9 +482,10 @@ try {
     SELECT id_token,SHA2(token_hash,256),consumed_at FROM \`${identitySchema}\`.tb_password_reset_token ORDER BY id_token;
     SELECT version,checksum FROM \`${identitySchema}\`.flyway_schema_history ORDER BY installed_rank`), identityDataSnapshot);
   await record('Preserved-volume recreation passed: business IDs, identity IDs, password hashes, reset state, profile sentinel, image hashes and Flyway checksums unchanged.');
-  await compose(['stop', 'gateway', 'backend', 'identity']);
+  assert.equal(await rootValue(notificationSnapshotQuery), notificationSnapshot);
+  await compose(['stop', 'gateway', 'backend', 'identity', 'notification']);
   // Only the generated schemas in our generated container can be restored.
-  await sql(`DROP DATABASE \`${schema}\`; DROP DATABASE \`${identitySchema}\`;`, { rootUser: true });
+  await sql(`DROP DATABASE \`${schema}\`; DROP DATABASE \`${identitySchema}\`; DROP DATABASE \`${notificationSchema}\`;`, { rootUser: true });
   await compose(['exec', '-T', 'mysql', 'sh', '-c', 'MYSQL_PWD="$MYSQL_ROOT_PASSWORD" exec mysql -uroot'],
     { input: await readFile(resolve(directory, 'backup.sql'), 'utf8'), log: false, timeout: 90000 });
   await compose(['up', '--detach', '--wait', '--wait-timeout', '240'], { timeout: 300000 });
@@ -412,6 +496,8 @@ try {
     SELECT id_token,SHA2(token_hash,256),consumed_at FROM \`${identitySchema}\`.tb_password_reset_token ORDER BY id_token;
     SELECT version,checksum FROM \`${identitySchema}\`.flyway_schema_history ORDER BY installed_rank`), identityDataSnapshot);
   await record('S5: all business row IDs, scalar identity references, identity credentials, profile data and reset state survived restart and restore unchanged.');
+  assert.equal(await rootValue(notificationSnapshotQuery), notificationSnapshot);
+  await record('S6: notification IDs, snapshots, read state, inbox dedupe, delivery state and migration checksums survived volume restart and logical restore.');
   await record('Logical backup restored to the isolated backend and identity schemas; Flyway/Hibernate startup and data parity passed.');
 
   await compose(['stop', 'mysql']);
@@ -454,8 +540,23 @@ try {
       IDENTITY_BACKEND_SECRET: env.IDENTITY_BACKEND_SECRET,
     };
     await saveConfig();
-    await compose(['build', 'identity', 'backend']);
+    const notificationControlPort = await freePort();
+    env.E2E_NOTIFICATION_CONTROL_URL = `http://127.0.0.1:${notificationControlPort}`;
+    await sql(`CREATE TABLE \`${notificationSchema}\`.e2e_guard (token VARCHAR(64) NOT NULL); INSERT INTO \`${notificationSchema}\`.e2e_guard VALUES ('${token}');`, { rootUser: true });
+    config.services.notification = {
+      build: { context: resolve(root, 'services/notification-service'), target: 'e2e' },
+      ports: [`127.0.0.1:${notificationControlPort}:8080`],
+      environment: { E2E_NOTIFICATION_DATABASE: notificationSchema, E2E_CONTROL_TOKEN: token },
+    };
+    await saveConfig();
+    await compose(['build', 'identity', 'backend', 'notification']);
     await compose(['up', '--detach', '--wait', '--wait-timeout', '240'], { timeout: 300000 });
+    // A replaced owner's old Docker IP can be assigned to a different service.
+    // Assert owner routing recovers before starting browser mutations; never replay a mutation.
+    await eventually(async () => {
+      const response = await fetch(env.PUBLIC_URL + '/api/csrf', { signal: AbortSignal.timeout(3000) });
+      return response.ok && typeof (await response.json()).token === 'string';
+    }, 'identity routing after owner container replacement');
     if (process.argv.includes('--verify-failure-cleanup')) throw new Error('Intentional post-startup failure to verify Compose cleanup');
     if (process.argv.includes('--verify-browser-failure')) env.E2E_FAILURE_PROBE = 'true';
     const result = await execute(process.execPath, ['node_modules/@playwright/test/cli.js', 'test',

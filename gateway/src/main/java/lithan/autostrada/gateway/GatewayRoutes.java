@@ -35,6 +35,7 @@ class GatewayRoutes {
   RouteLocator routes(RouteLocatorBuilder builder,
       @Value("${gateway.backend-url}") String backend,
       @Value("${gateway.identity-url:http://127.0.0.1:8082}") String identity,
+      @Value("${gateway.notification-url:http://127.0.0.1:8083}") String notification,
       @Value("${gateway.frontend-url}") String frontend) {
     return builder.routes()
         .route("csrf", r -> r.path("/api/csrf").and().method(HttpMethod.GET)
@@ -42,6 +43,8 @@ class GatewayRoutes {
         .route("identity-api", r -> r.path("/api/auth/**", "/api/session", "/api/user/profile",
             "/api/user/profile/picture", "/api/admin/dashboard", "/api/admin/users/**", "/api/public/profiles/{id}")
             .filters(f -> f.preserveHostHeader()).uri(identity))
+        .route("notification-api", r -> r.path("/api/user/notifications", "/api/user/notifications/**")
+            .filters(f -> f.preserveHostHeader()).uri(notification))
         .route("api", r -> r.path("/api", "/api/**")
             .filters(f -> f.preserveHostHeader()).uri(backend))
         .route("stripe-webhook", r -> r.predicate(e -> "/webhooks/stripe".equals(e.getRequest().getURI().getRawPath()))
@@ -52,6 +55,8 @@ class GatewayRoutes {
             "/user", "/user/my-profile", "/user/edit-profile", "/user/editProfileProcess", "/user/upload-picture",
             "/user/uploadPicture", "/admin", "/admin/dashboard", "/admin/edit-user", "/admin/editProfileProcess", "/admin/mark-admin/{id}")
             .filters(f -> f.preserveHostHeader()).uri(identity))
+        .route("notification-legacy", r -> r.path("/user/notifications/**")
+            .filters(f -> f.preserveHostHeader()).uri(notification))
         .route("legacy", r -> r.path(LEGACY).filters(f -> f.preserveHostHeader()).uri(backend))
         .route("frontend-assets", r -> r.path("/assets/**", "/images/**", "/favicon.ico", "/vite.svg",
             "/@vite/**", "/@react-refresh", "/src/**", "/node_modules/**")

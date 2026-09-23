@@ -5,20 +5,23 @@ import { createServer } from 'node:net';
 import { delimiter, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { randomBytes, webcrypto } from 'node:crypto';
+import { messagePump } from './local-message-pump.mjs';
 
 const front = fileURLToPath(new URL('../', import.meta.url));
 const back = resolve(front, '../back');
 const gateway = resolve(front, '../gateway');
 const identity = resolve(front, '../services/identity-service');
+const notification = resolve(front, '../services/notification-service');
 const windows = process.platform === 'win32';
 const children = new Set();
 // Do not inherit developer Spring/Stripe/mail/Vite configuration or .env files.
 const env = Object.fromEntries(Object.entries(process.env).filter(([key]) =>
-  !/^(E2E_|SPRING_|STRIPE_|APP_|SMTP_|PAYMENTS_|AUCTION_|VITE_|GATEWAY_|SERVER_|MANAGEMENT_|LOGGING_|JAVA_TOOL_OPTIONS$|JDK_JAVA_OPTIONS$|_JAVA_OPTIONS$)/i.test(key)));
+  !/^(E2E_|IDENTITY_|NOTIFICATION_|RABBITMQ_|MYSQL_|DB_|PUBLIC_URL$|SESSION_|SPRING_|STRIPE_|APP_|SMTP_|PAYMENTS_|AUCTION_|VITE_|GATEWAY_|SERVER_|MANAGEMENT_|LOGGING_|JAVA_TOOL_OPTIONS$|JDK_JAVA_OPTIONS$|_JAVA_OPTIONS$)/i.test(key)));
 env.E2E_CONTROL_TOKEN = randomBytes(32).toString('hex');
 env.VITE_API_BASE_URL = '';
 env.TZ = 'UTC';
 let stopping;
+let messages;
 
 async function signingMaterial() {
   const kid = `e2e-${randomBytes(8).toString('hex')}`;
@@ -64,6 +67,7 @@ async function run(command, args, cwd, log) {
 async function stop() {
   if (stopping) return stopping;
   stopping = (async () => {
+    if (messages) { try { await messages.stop(); } catch (error) { console.error(error.message); process.exitCode = 1; } }
     for (const child of [...children].reverse()) {
       if (!child.pid || child.exitCode !== null || child.signalCode !== null) continue;
       if (windows) {
@@ -110,6 +114,7 @@ try {
   await mkdir(resolve(front, 'e2e-results'), { recursive: true });
   await assertPortFree(18080);
   await assertPortFree(18082);
+  await assertPortFree(18083);
   await assertPortFree(15173);
   await assertPortFree(18081);
   const keys = await signingMaterial();
@@ -122,9 +127,16 @@ try {
   env.GATEWAY_IDENTITY_URL = env.IDENTITY_URL;
   env.GATEWAY_IDENTITY_SECRET = env.IDENTITY_GATEWAY_SECRET;
   env.E2E_IDENTITY_CONTROL_URL = env.IDENTITY_URL;
+  env.NOTIFICATION_DELIVERY_KEY = randomBytes(32).toString('base64');
+  env.NOTIFICATION_RELAY_ENABLED = 'false';
+  env.E2E_CONTROL_URL = 'http://127.0.0.1:18080';
+  env.E2E_NOTIFICATION_CONTROL_URL = 'http://127.0.0.1:18083';
+  env.GATEWAY_NOTIFICATION_URL = env.E2E_NOTIFICATION_CONTROL_URL;
   console.log('Compiling test-only identity/backend launchers and building isolated frontend...');
   const mavenArgs = ['--batch-mode', '--no-transfer-progress', 'test-compile', 'dependency:build-classpath',
     '-Dmdep.outputFile=target/e2e-classpath.txt', '-Dmdep.includeScope=test'];
+  if (windows) await run('cmd.exe', ['/d', '/s', '/c', 'mvnw.cmd', ...mavenArgs], notification, 'build-notification.log');
+  else await run('bash', ['./mvnw', ...mavenArgs], notification, 'build-notification.log');
   if (windows) await run('cmd.exe', ['/d', '/s', '/c', 'mvnw.cmd', ...mavenArgs], identity, 'build-identity.log');
   else await run('bash', ['./mvnw', ...mavenArgs], identity, 'build-identity.log');
   if (windows) await run('cmd.exe', ['/d', '/s', '/c', 'mvnw.cmd', ...mavenArgs], back, 'build-backend.log');
@@ -138,12 +150,17 @@ try {
   const backendClasspath = [resolve(back, 'target/test-classes'), resolve(back, 'target/classes'),
     (await readFile(resolve(back, 'target/e2e-classpath.txt'), 'utf8')).trim()].join(delimiter);
   const java = env.JAVA_HOME ? resolve(env.JAVA_HOME, 'bin', windows ? 'java.exe' : 'java') : 'java';
+  const notificationClasspath = [resolve(notification, 'target/test-classes'), resolve(notification, 'target/classes'),
+    (await readFile(resolve(notification, 'target/e2e-classpath.txt'), 'utf8')).trim()].join(delimiter);
+  const notificationServer = start(java, ['-Duser.timezone=UTC', '-cp', notificationClasspath, 'e2e.E2eApplication'], notification, 'notification.log');
+  await ready(notificationServer, 'http://127.0.0.1:18083/__e2e/ready', true);
   const identityServer = start(java, ['-Duser.timezone=UTC', '-Dspring.devtools.restart.enabled=false', '-cp', identityClasspath,
     'e2e.E2eApplication'], identity, 'identity.log');
   await ready(identityServer, 'http://127.0.0.1:18082/__e2e/ready', true);
   const backend = start(java, ['-Duser.timezone=UTC', '-Dspring.devtools.restart.enabled=false', '-cp', backendClasspath,
     'e2e.E2eApplication'], back, 'backend.log');
   await ready(backend, 'http://127.0.0.1:18080/__e2e/ready', true);
+  messages = messagePump(env);
   const frontend = start(process.execPath, ['node_modules/vite/bin/vite.js', 'preview', '--config', 'vite.e2e.config.js'], front, 'frontend.log');
   await ready(frontend, 'http://127.0.0.1:15173');
   const edge = start(java, ['-jar', resolve(gateway, 'target/gateway-0.0.1-SNAPSHOT.jar'),

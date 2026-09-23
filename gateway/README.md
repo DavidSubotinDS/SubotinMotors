@@ -1,5 +1,10 @@
 # Autostrada pass-through gateway (IROIT S2)
 
+S6 working-tree update: notification inbox and mail delivery now have a separate owner,
+RabbitMQ and guarded data cutover. Read the [S6 runbook](../docs/notification-service.md) before starting
+the new Compose stack; historical S5 startup/test instructions below need that cutover.
+
+
 S4a: an explicit `GET /api/csrf` route reaches the existing backend session owner.
 All API/legacy unsafe requests are now backend-CSRF protected except exact signed
 `POST /webhooks/stripe`. Cookie and `X-CSRF-TOKEN` transport and CORS are tested;

@@ -1,5 +1,10 @@
 # Autostrada Auctions React Frontend
 
+S6 working-tree update: notification inbox and mail delivery now have a separate owner,
+RabbitMQ and guarded data cutover. Read the [S6 runbook](../docs/notification-service.md) before starting
+the new Compose stack; historical S5 startup/test instructions below need that cutover.
+
+
 S4a: the shared request client obtains `GET /api/csrf`, keeps the token in memory
 and sends `X-CSRF-TOKEN` on unsafe JSON/multipart requests. It refreshes after
 login/logout and stale-token rejection; it never replays a mutation automatically.

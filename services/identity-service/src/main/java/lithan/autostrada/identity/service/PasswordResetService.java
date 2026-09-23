@@ -81,11 +81,7 @@ public class PasswordResetService {
         .queryParam("token", rawToken)
         .build()
         .toUriString();
-    emailService.send(
-        user.getEmail(),
-        "Reset your Autostrada Auctions password",
-        "Use this link to reset your password. It expires in "
-            + expiry.toMinutes() + " minutes:\n" + link);
+    emailService.sendReset(user.getEmail(),link,now.plus(expiry).toInstant(java.time.ZoneOffset.UTC));
     return Optional.of(rawToken);
   }
 

@@ -1,5 +1,10 @@
 # S3 container and MySQL runbook
 
+S6 working-tree update: notification inbox and mail delivery now have a separate owner,
+RabbitMQ and guarded data cutover. Read the [S6 runbook](notification-service.md) before starting
+the new Compose stack; historical S5 startup/test instructions below need that cutover.
+
+
 S4a uses the same topology and adds [session/CSRF protection](session-csrf.md).
 Deploy frontend/backend/gateway as one compatible revision; preserve MySQL data.
 Current measured gates and Docker status are in [S4a handoff](session-csrf-pr.md).

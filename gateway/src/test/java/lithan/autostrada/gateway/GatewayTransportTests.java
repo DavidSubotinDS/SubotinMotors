@@ -71,6 +71,7 @@ class GatewayTransportTests {
 
   @DynamicPropertySource static void properties(DynamicPropertyRegistry registry) {
     registry.add("gateway.backend-url", () -> "http://127.0.0.1:" + backend.port());
+    registry.add("gateway.notification-url", () -> "http://127.0.0.1:" + backend.port());
     registry.add("gateway.identity-url", () -> "http://127.0.0.1:" + identity.port());
     registry.add("gateway.identity-secret", () -> GATEWAY_SECRET);
     registry.add("gateway.frontend-url", () -> "http://127.0.0.1:" + frontend.port());
@@ -89,6 +90,21 @@ class GatewayTransportTests {
     Received received = identityRequests.poll(3, TimeUnit.SECONDS);
     assertThat(received).isNotNull();
     return received;
+  }
+
+  @ParameterizedTest @ValueSource(strings = {"/api/user/notifications/7/read", "/api/user/notifications/read-all", "/user/notifications/7/read", "/user/notifications/read-all"})
+  void notificationMutationsExchangeForTheirOwnerAndStripBrowserCredentials(String path) throws Exception {
+    client.post().uri(path).header("Cookie", "AUTOSTRADA_SESSION=fixture")
+        .header("X-CSRF-TOKEN", "csrf-fixture").exchange().expectStatus().isOk();
+    var exchange = new com.fasterxml.jackson.databind.ObjectMapper().readTree(receivedIdentity().body());
+    assertThat(exchange.path("audience").asText()).isEqualTo("notification-service");
+    assertThat(exchange.path("method").asText()).isEqualTo("POST");
+    assertThat(exchange.path("csrfToken").asText()).isEqualTo("csrf-fixture");
+    var downstream = received();
+    assertThat(downstream.uri()).isEqualTo(path);
+    assertThat(downstream.headers()).doesNotContainKeys("Cookie", "X-CSRF-TOKEN");
+    assertThat(downstream.headers().get("Authorization")).isEqualTo("Bearer signed-user-assertion");
+    assertThat(requests).isEmpty();
   }
 
   @ParameterizedTest @ValueSource(strings = {"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"})

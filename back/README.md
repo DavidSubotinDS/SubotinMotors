@@ -1,5 +1,10 @@
 # Autostrada Auctions Backend
 
+S6 working-tree update: notification inbox and mail delivery now have a separate owner,
+RabbitMQ and guarded data cutover. Read the [S6 runbook](../docs/notification-service.md) before starting
+the new Compose stack; historical S5 startup/test instructions below need that cutover.
+
+
 S4a: backend remains sole session owner. `GET /api/csrf` creates/reuses an
 anonymous session and returns non-cacheable `{token}`. All unsafe API/legacy
 requests require `X-CSRF-TOKEN` (or legacy `_csrf` body field); only exact signed

@@ -47,6 +47,7 @@ jobs:
             back/.mvn/wrapper/maven-wrapper.properties
             gateway/pom.xml
             gateway/.mvn/wrapper/maven-wrapper.properties
+            services/notification-service/pom.xml
             services/identity-service/pom.xml
             services/identity-service/.mvn/wrapper/maven-wrapper.properties
 
@@ -57,6 +58,29 @@ jobs:
       - name: Independently test and package identity service
         working-directory: services/identity-service
         run: bash ./mvnw --batch-mode --no-transfer-progress clean verify
+
+      - name: Independently test and package notification service
+        working-directory: services/notification-service
+        run: bash ./mvnw --batch-mode --no-transfer-progress clean verify
+
+      - name: Upload notification test reports
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: notification-service-test-reports
+          path: services/notification-service/target/surefire-reports/
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Upload service JARs
+        uses: actions/upload-artifact@v7
+        with:
+          name: extracted-service-jars
+          path: |
+            services/identity-service/target/*.jar
+            services/notification-service/target/*.jar
+          if-no-files-found: error
+          retention-days: 7
 
       - name: Build identity service container
         working-directory: services/identity-service
@@ -259,6 +283,7 @@ jobs:
           cache-dependency-path: |
             back/pom.xml
             gateway/pom.xml
+            services/notification-service/pom.xml
             services/identity-service/pom.xml
 
       - name: Install Playwright Chromium and OS dependencies

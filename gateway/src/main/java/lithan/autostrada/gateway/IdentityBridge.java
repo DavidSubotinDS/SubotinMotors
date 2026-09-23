@@ -29,8 +29,8 @@ class IdentityBridge implements GlobalFilter, Ordered {
       @Value("${gateway.identity-secret:}") String secret) {
     this.secret=secret;
     var pool=ConnectionProvider.builder("identity-exchange").maxConnections(32).pendingAcquireMaxCount(64)
-        .pendingAcquireTimeout(Duration.ofMillis(300)).maxIdleTime(Duration.ofSeconds(30)).build();
-    var client=HttpClient.create(pool).disableRetry(true).option(io.netty.channel.ChannelOption.CONNECT_TIMEOUT_MILLIS,300)
+        .pendingAcquireTimeout(Duration.ofMillis(300)).maxIdleTime(Duration.ofSeconds(5)).maxLifeTime(Duration.ofSeconds(5)).build();
+    var client=UpstreamTransport.bounded(HttpClient.create(pool)).option(io.netty.channel.ChannelOption.CONNECT_TIMEOUT_MILLIS,300)
         .responseTimeout(Duration.ofSeconds(2));
     identity=WebClient.builder().baseUrl(url).clientConnector(new ReactorClientHttpConnector(client))
         .codecs(c->c.defaultCodecs().maxInMemorySize(65536)).build();
@@ -38,7 +38,7 @@ class IdentityBridge implements GlobalFilter, Ordered {
   @Override public int getOrder(){return -10;}
   @Override public Mono<Void> filter(ServerWebExchange exchange,GatewayFilterChain chain) {
     Route route=exchange.getAttribute(ServerWebExchangeUtils.GATEWAY_ROUTE_ATTR);
-    if(route==null || !Set.of("api","legacy").contains(route.getId())) return chain.filter(exchange);
+    if(route==null || !Set.of("api","legacy","notification-api","notification-legacy").contains(route.getId())) return chain.filter(exchange);
     var request=exchange.getRequest();
     boolean read=Set.of(HttpMethod.GET,HttpMethod.HEAD,HttpMethod.OPTIONS).contains(request.getMethod());
     String path=request.getPath().value();
@@ -74,7 +74,8 @@ class IdentityBridge implements GlobalFilter, Ordered {
       boolean anonymousOnUnauthorized) {
     if(secret.length()<32) return EdgeBoundary.error(exchange,HttpStatus.SERVICE_UNAVAILABLE);
     var cookie=exchange.getRequest().getCookies().getFirst("AUTOSTRADA_SESSION");
-    Map<String,String> body=new HashMap<>();body.put("audience","legacy-backend");
+    Route route=exchange.getAttribute(ServerWebExchangeUtils.GATEWAY_ROUTE_ATTR);
+    Map<String,String> body=new HashMap<>();body.put("audience",route.getId().startsWith("notification-") ? "notification-service" : "legacy-backend");
     body.put("method",exchange.getRequest().getMethod().name());if(csrf!=null)body.put("csrfToken",csrf);
     return identity.post().uri("/internal/v1/session-exchange").headers(h->{
       h.setBasicAuth("gateway",secret);

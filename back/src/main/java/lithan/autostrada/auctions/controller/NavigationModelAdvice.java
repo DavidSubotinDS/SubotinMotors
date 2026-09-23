@@ -23,18 +23,16 @@ public class NavigationModelAdvice {
   }
 
   @ModelAttribute("unreadNotificationCount")
-  public long unreadNotificationCount() {
+  public long unreadNotificationCount(jakarta.servlet.http.HttpServletRequest request) {
+    // REST DTOs compose their own counts; this MVC model must not add a peer call to every API request.
+    if(request.getRequestURI().startsWith("/api/"))return 0;
     Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
     if (authentication == null
         || !authentication.isAuthenticated()
         || authentication instanceof AnonymousAuthenticationToken) {
       return 0;
     }
-    try {
-      return notificationService.unreadCount();
-    } catch (RuntimeException exception) {
-      return 0;
-    }
+    return notificationService.unreadCount();
   }
 
   @ModelAttribute("cartItemCount")

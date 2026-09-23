@@ -1,5 +1,10 @@
 # Autostrada Auctions
 
+S6 working-tree update: notification inbox and mail delivery now have a separate owner,
+RabbitMQ and guarded data cutover. Read the [S6 runbook](docs/notification-service.md) before starting
+the new Compose stack; historical S5 startup/test instructions below need that cutover.
+
+
 IROIT S4a adds [session/CSRF protection](docs/session-csrf.md) inside the existing
 backend: anonymous `GET /api/csrf`, protected unsafe requests, login session
 rotation and frontend token recovery without automatic mutation retries. Deploy

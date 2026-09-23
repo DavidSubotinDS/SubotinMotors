@@ -1,0 +1,41 @@
+services:
+  backend:
+    environment:
+      SPRING_FLYWAY_TARGET: ${BACKEND_FLYWAY_TARGET:?Bootstrap must set BACKEND_FLYWAY_TARGET}
+
+  identity-copy:
+    image: autostrada/identity:${DEPLOY_SHA:?Set DEPLOY_SHA}
+    entrypoint: ["java", "-Dloader.main=lithan.autostrada.identity.migration.IdentityCopy", "-cp", "/app/app.jar", "org.springframework.boot.loader.launch.PropertiesLauncher"]
+    environment:
+      CUTOVER_WRITE_FREEZE: I_HAVE_STOPPED_ALL_WRITERS
+      CUTOVER_SOURCE_TIMEZONE: UTC
+      CUTOVER_SOURCE_URL: jdbc:mysql://mysql:3306/${MYSQL_DATABASE:-autostrada}?serverTimezone=UTC&connectionTimeZone=UTC&forceConnectionTimeZoneToSession=true&allowPublicKeyRetrieval=true&useSSL=false
+      CUTOVER_SOURCE_USER: ${DB_MIGRATION_USERNAME:?Set DB_MIGRATION_USERNAME}
+      CUTOVER_SOURCE_PASSWORD: ${DB_MIGRATION_PASSWORD:?Set DB_MIGRATION_PASSWORD}
+      CUTOVER_TARGET_URL: jdbc:mysql://mysql:3306/${IDENTITY_DB_NAME:-autostrada_identity}?serverTimezone=UTC&connectionTimeZone=UTC&forceConnectionTimeZoneToSession=true&allowPublicKeyRetrieval=true&useSSL=false
+      CUTOVER_TARGET_USER: ${IDENTITY_DB_USERNAME:?Set IDENTITY_DB_USERNAME}
+      CUTOVER_TARGET_PASSWORD: ${IDENTITY_DB_PASSWORD:?Set IDENTITY_DB_PASSWORD}
+    networks: [database]
+    read_only: true
+    tmpfs: [/tmp]
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+
+  notification-copy:
+    image: autostrada/notification:${DEPLOY_SHA:?Set DEPLOY_SHA}
+    entrypoint: ["java", "-Dloader.main=lithan.autostrada.notification.NotificationCopy", "-cp", "/app/app.jar", "org.springframework.boot.loader.launch.PropertiesLauncher"]
+    environment:
+      CUTOVER_WRITE_FREEZE: I_HAVE_STOPPED_ALL_WRITERS
+      CUTOVER_SOURCE_TIMEZONE: UTC
+      CUTOVER_SOURCE_URL: jdbc:mysql://mysql:3306/${MYSQL_DATABASE:-autostrada}?serverTimezone=UTC&connectionTimeZone=UTC&forceConnectionTimeZoneToSession=true&allowPublicKeyRetrieval=true&useSSL=false
+      CUTOVER_SOURCE_USER: ${DB_MIGRATION_USERNAME:?Set DB_MIGRATION_USERNAME}
+      CUTOVER_SOURCE_PASSWORD: ${DB_MIGRATION_PASSWORD:?Set DB_MIGRATION_PASSWORD}
+      CUTOVER_TARGET_URL: jdbc:mysql://mysql:3306/${NOTIFICATION_DB_NAME:-autostrada_notification}?serverTimezone=UTC&connectionTimeZone=UTC&forceConnectionTimeZoneToSession=true&allowPublicKeyRetrieval=true&useSSL=false
+      CUTOVER_TARGET_USER: ${NOTIFICATION_DB_USERNAME:?Set NOTIFICATION_DB_USERNAME}
+      CUTOVER_TARGET_PASSWORD: ${NOTIFICATION_DB_PASSWORD:?Set NOTIFICATION_DB_PASSWORD}
+    networks: [database]
+    read_only: true
+    tmpfs: [/tmp]
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+

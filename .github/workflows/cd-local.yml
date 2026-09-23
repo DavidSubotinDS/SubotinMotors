@@ -1,0 +1,77 @@
+name: CD Local
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [master]
+  workflow_dispatch:
+    inputs:
+      sha:
+        description: Full commit SHA already present on master (defaults to master)
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: autostrada-local-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: >-
+      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/master') ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.event == 'push' &&
+       github.event.workflow_run.head_branch == 'master' &&
+       github.event.workflow_run.head_repository.full_name == github.repository)
+    runs-on: [self-hosted, Windows, X64, autostrada-local]
+    timeout-minutes: 45
+    environment:
+      name: local-production
+    env:
+      DEPLOY_ENV_FILE: ${{ vars.LOCAL_DEPLOY_ENV_FILE }}
+      DEPLOY_STATE_ROOT: ${{ vars.LOCAL_DEPLOY_STATE_ROOT }}
+    steps:
+      - name: Resolve deployment revision
+        id: revision
+        shell: pwsh
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          WORKFLOW_SHA: ${{ github.event.workflow_run.head_sha }}
+          MANUAL_SHA: ${{ inputs.sha }}
+        run: |
+          $sha = if ($env:EVENT_NAME -eq 'workflow_run') { $env:WORKFLOW_SHA } elseif ($env:MANUAL_SHA) { $env:MANUAL_SHA } else { '${{ github.sha }}' }
+          if ($sha -notmatch '^[0-9a-f]{40}$') { throw 'Deployment requires a full commit SHA.' }
+          "sha=$sha" >> $env:GITHUB_OUTPUT
+
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.revision.outputs.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Verify revision belongs to master
+        shell: pwsh
+        run: |
+          git fetch --no-tags origin master
+          git merge-base --is-ancestor '${{ steps.revision.outputs.sha }}' origin/master
+          if ($LASTEXITCODE -ne 0) { throw 'Refusing to deploy a revision that is not on origin/master.' }
+
+      - name: Deploy exact revision
+        shell: pwsh
+        run: |
+          if (-not $env:DEPLOY_ENV_FILE) { throw 'Set repository variable LOCAL_DEPLOY_ENV_FILE to an absolute host-only env file.' }
+          if (-not $env:DEPLOY_STATE_ROOT) { throw 'Set repository variable LOCAL_DEPLOY_STATE_ROOT to an absolute host-only state directory.' }
+          ./deploy/local/Deploy-Local.ps1 -Sha '${{ steps.revision.outputs.sha }}' -EnvFile $env:DEPLOY_ENV_FILE -StateRoot $env:DEPLOY_STATE_ROOT
+
+      - name: Upload sanitized deployment evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: local-deployment-${{ steps.revision.outputs.sha }}
+          path: ${{ env.DEPLOY_STATE_ROOT }}/evidence/latest
+          if-no-files-found: warn
+          retention-days: 14

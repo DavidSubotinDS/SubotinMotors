@@ -184,24 +184,6 @@ public class UserWorkspaceApiController {
         .toList();
   }
 
-  @GetMapping("/notifications")
-  public java.util.List<NotificationResponse> notifications() {
-    return mapper.map(notificationService.listCurrentUserNotifications().stream(), mapper::notification)
-        .toList();
-  }
-
-  @PostMapping("/notifications/{notificationId}/read")
-  public ApiMessageResponse markNotificationRead(@PathVariable int notificationId) {
-    notificationService.markRead(notificationId);
-    return new ApiMessageResponse("Notification marked read.", null);
-  }
-
-  @PostMapping("/notifications/read-all")
-  public ApiMessageResponse markAllNotificationsRead() {
-    notificationService.markAllRead();
-    return new ApiMessageResponse("All notifications marked read.", null);
-  }
-
   @GetMapping("/bids")
   public java.util.List<BidResponse> bids() {
     return mapper.map(userCarService.listCurrentUserBids().stream(), mapper::bid).toList();

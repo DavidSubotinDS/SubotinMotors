@@ -10,7 +10,8 @@ import reactor.core.publisher.Mono;
 
 @Component("upstream")
 class UpstreamHealth implements ReactiveHealthIndicator {
-  private final WebClient client = WebClient.create();
+  private final WebClient client = WebClient.builder().clientConnector(new org.springframework.http.client.reactive.ReactorClientHttpConnector(
+      UpstreamTransport.bounded(reactor.netty.http.client.HttpClient.newConnection()))).build();
   private final String backend;
   private final String frontend;
   private final String identity;

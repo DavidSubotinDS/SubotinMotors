@@ -56,7 +56,7 @@ public class E2eApplication {
     MutableClock e2eClock() { return new MutableClock(); }
 
 
-    @Bean @Primary
+    @Bean
     Mailbox e2eMailbox() { return new Mailbox(); }
 
     @Bean
@@ -74,9 +74,9 @@ public class E2eApplication {
     }
   }
 
-  static class Mailbox implements EmailService {
+  static class Mailbox {
     final Map<String, String> messages = new java.util.concurrent.ConcurrentHashMap<>();
-    @Override public void send(String to, String subject, String body) { messages.put(to, body); }
+    public void send(String to, String subject, String body) { messages.put(to, body); }
   }
 
   static class MutableClock extends Clock {
@@ -108,6 +108,15 @@ public class E2eApplication {
     @GetMapping("/__e2e/mail")
     public Map<String, String> mail(@org.springframework.web.bind.annotation.RequestParam String recipient) {
       return Map.of("body", mailbox.messages.getOrDefault(recipient, ""));
+    }
+
+    @GetMapping("/__e2e/outbox")
+    public java.util.List<Map<String,Object>> outbox() {
+      return jdbc.queryForList("SELECT event_id,encrypted_payload,expires_at,created_at FROM tb_delivery_outbox WHERE published_at IS NULL AND encrypted_payload IS NOT NULL");
+    }
+    @PostMapping("/__e2e/outbox-ack")
+    public void ack(@RequestBody Map<String,String> body) {
+      jdbc.update("UPDATE tb_delivery_outbox SET published_at=?,encrypted_payload=NULL WHERE event_id=?",java.sql.Timestamp.from(clock.instant()),body.get("eventId"));
     }
 
     @PostMapping("/__e2e/clock")

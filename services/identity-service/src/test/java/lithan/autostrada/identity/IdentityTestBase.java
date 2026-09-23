@@ -15,6 +15,8 @@ abstract class IdentityTestBase {
   @DynamicPropertySource static void settings(DynamicPropertyRegistry r) {
     r.add("identity.signing-jwk",KEY::toJSONString);r.add("identity.gateway-secret",()->GATEWAY_SECRET);
     r.add("identity.backend-secret",()->BACKEND_SECRET);
+    r.add("notification.delivery-key",()->java.util.Base64.getEncoder().encodeToString(new byte[32]));
+    r.add("notification.relay.enabled",()->"false");
     r.add("spring.datasource.url",()->"jdbc:h2:mem:identity_tests;MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1");
   }
   @Autowired JdbcTemplate fixtureSql;

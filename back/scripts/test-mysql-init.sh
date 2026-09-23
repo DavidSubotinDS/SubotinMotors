@@ -16,6 +16,7 @@ export DB_RUNTIME_USERNAME=test_runtime DB_RUNTIME_PASSWORD=test-only-runtime
 export DB_MIGRATION_USERNAME=test_migration DB_MIGRATION_PASSWORD=test-only-migration
 export IDENTITY_DB_NAME=test_identity IDENTITY_DB_USERNAME=test_identity
 export IDENTITY_DB_PASSWORD=test-only-identity
+export NOTIFICATION_DB_NAME=test_notification NOTIFICATION_DB_USERNAME=test_notification NOTIFICATION_DB_PASSWORD=test-only-notification
 unset MYSQL_ONETIME_PASSWORD MYSQL_RANDOM_ROOT_PASSWORD AUTOSTRADA_E2E
 
 # Match a Linux Git checkout: Git mode 100644 means the entrypoint sources it.

@@ -1,0 +1,103 @@
+openapi: 3.1.0
+info:
+  title: Notification owner API
+  version: 1.0.0
+  description: Browser paths use the public gateway cookie and CSRF exchange. This private owner accepts only audience-specific identity assertions.
+security:
+  - identityAssertion: []
+paths:
+  /api/user/notifications:
+    get:
+      summary: List the authenticated USER recipient's inbox
+      responses:
+        '200':
+          description: Descending creation timestamp and ID
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Notification'
+        '401': {description: Missing or invalid assertion}
+        '403': {description: USER role required}
+        '503': {description: Owner database unavailable}
+  /api/user/notifications/unread-count:
+    get:
+      summary: Count unread items for the authenticated USER
+      responses:
+        '200':
+          description: Count
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Count'}
+  /api/user/notifications/{id}/read:
+    parameters:
+      - {name: id, in: path, required: true, schema: {type: integer, minimum: 1}}
+    post:
+      summary: Mark an owned item read without replacing its first read timestamp
+      responses:
+        '200':
+          description: Read state persisted
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Message'}
+        '403': {description: Item belongs to another recipient or USER role missing}
+        '404': {description: Item does not exist}
+  /api/user/notifications/read-all:
+    post:
+      summary: Mark the authenticated USER's unread items read
+      responses:
+        '200':
+          description: Read state persisted
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Message'}
+  /internal/v1/users/{id}/unread-count:
+    parameters:
+      - {name: id, in: path, required: true, schema: {type: integer, minimum: 1}}
+    get:
+      summary: Backend-only notification-count service grant; never browser-routed
+      responses:
+        '200':
+          description: Count
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Count'}
+        '403': {description: Incorrect token use, caller or scope}
+  /user/notifications/{id}/read:
+    parameters:
+      - {name: id, in: path, required: true, schema: {type: integer, minimum: 1}}
+    post:
+      summary: Legacy mutation with identical recipient authorization
+      responses:
+        '302': {description: Redirect to /user/notifications}
+  /user/notifications/read-all:
+    post:
+      summary: Legacy read-all mutation
+      responses:
+        '302': {description: Redirect to /user/notifications}
+components:
+  securitySchemes:
+    identityAssertion: {type: http, scheme: bearer, bearerFormat: JWT}
+  schemas:
+    Count:
+      type: object
+      required: [count]
+      properties: {count: {type: integer, minimum: 0}}
+    Message:
+      type: object
+      required: [message, redirectUrl]
+      properties:
+        message: {type: string}
+        redirectUrl: {type: 'null'}
+    Notification:
+      type: object
+      required: [idNotification, notificationType, message, createdAt, readAt, read, auction]
+      properties:
+        idNotification: {type: integer, minimum: 1}
+        notificationType: {const: AUCTION_ENDING_SOON}
+        message: {type: string}
+        createdAt: {type: string, description: Legacy UTC LocalDateTime without an offset suffix}
+        readAt: {type: [string, 'null']}
+        read: {type: boolean}
+        auction: {$ref: 'notification-message-v1.schema.json#/oneOf/0/properties/payload/properties/auctionSnapshot'}

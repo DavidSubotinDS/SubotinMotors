@@ -58,25 +58,6 @@ public class AuctionUserController {
     return redirectAfterFollowAction(carId, returnTo);
   }
 
-  @GetMapping("/notifications")
-  public String notifications(Model model) {
-    model.addAttribute(
-        "notifications", notificationService.listCurrentUserNotifications());
-    return "user/notifications";
-  }
-
-  @PostMapping("/notifications/{notificationId}/read")
-  public String markRead(@PathVariable int notificationId) {
-    notificationService.markRead(notificationId);
-    return "redirect:/user/notifications";
-  }
-
-  @PostMapping("/notifications/read-all")
-  public String markAllRead() {
-    notificationService.markAllRead();
-    return "redirect:/user/notifications";
-  }
-
   private String redirectAfterFollowAction(int carId, String returnTo) {
     if ("followed".equals(returnTo)) {
       return "redirect:/user/followed-auctions";

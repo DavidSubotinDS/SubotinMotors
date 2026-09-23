@@ -2,5 +2,5 @@ package lithan.autostrada.identity.service;
 
 public interface EmailService {
 
-  void send(String to, String subject, String body);
+  void sendReset(String recipientEmail,String resetUrl,java.time.Instant expiresAt);
 }

@@ -14,6 +14,9 @@ services:
       IDENTITY_DB_NAME: ${IDENTITY_DB_NAME:-autostrada_identity}
       IDENTITY_DB_USERNAME: ${IDENTITY_DB_USERNAME:?Set the identity database username}
       IDENTITY_DB_PASSWORD: ${IDENTITY_DB_PASSWORD:?Set the identity database password}
+      NOTIFICATION_DB_NAME: ${NOTIFICATION_DB_NAME:-autostrada_notification}
+      NOTIFICATION_DB_USERNAME: ${NOTIFICATION_DB_USERNAME:?Set the notification database username}
+      NOTIFICATION_DB_PASSWORD: ${NOTIFICATION_DB_PASSWORD:?Set the notification database password}
       TZ: UTC
     command: ["--default-time-zone=+00:00"]
     volumes:
@@ -46,6 +49,10 @@ services:
       APP_CORS_ALLOWED_ORIGINS: ${PUBLIC_URL:-http://localhost:8081}
       SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE:-false}
       IDENTITY_URL: http://identity:8080
+      NOTIFICATION_URL: http://notification:8080
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_USERNAME: backend
+      RABBITMQ_PASSWORD: ${RABBITMQ_BACKEND_PASSWORD:?Set a distinct backend broker password}
       IDENTITY_VERIFICATION_JWKS: ${IDENTITY_VERIFICATION_JWKS:?Set identity public verification JWKS}
       IDENTITY_BACKEND_SECRET: ${IDENTITY_BACKEND_SECRET:?Set the backend identity service secret}
       STRIPE_ENABLED: ${STRIPE_ENABLED:-false}
@@ -83,16 +90,12 @@ services:
       PUBLIC_URL: ${PUBLIC_URL:-http://localhost:8081}
       SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE:-false}
       IDENTITY_SIGNING_JWK: ${IDENTITY_SIGNING_JWK:?Set the identity private signing JWK}
+      NOTIFICATION_DELIVERY_KEY: ${NOTIFICATION_DELIVERY_KEY:?Set a base64 256-bit delivery encryption key}
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_USERNAME: identity
+      RABBITMQ_PASSWORD: ${RABBITMQ_IDENTITY_PASSWORD:?Set a distinct identity broker password}
       IDENTITY_GATEWAY_SECRET: ${IDENTITY_GATEWAY_SECRET:?Set the gateway identity exchange secret}
       IDENTITY_BACKEND_SECRET: ${IDENTITY_BACKEND_SECRET:?Set the backend identity service secret}
-      APP_MAIL_MODE: ${APP_MAIL_MODE:-log}
-      APP_MAIL_FROM: ${APP_MAIL_FROM:-no-reply@autostradaauctions.local}
-      SMTP_HOST: ${SMTP_HOST:-}
-      SMTP_PORT: ${SMTP_PORT:-587}
-      SMTP_USERNAME: ${SMTP_USERNAME:-}
-      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
-      SMTP_AUTH: ${SMTP_AUTH:-true}
-      SMTP_STARTTLS: ${SMTP_STARTTLS:-true}
       TZ: UTC
       JAVA_TOOL_OPTIONS: -Duser.timezone=UTC
     depends_on:
@@ -103,6 +106,52 @@ services:
     security_opt: [no-new-privileges:true]
     cap_drop: [ALL]
     stop_grace_period: 30s
+
+  rabbitmq:
+    build: ./infra/rabbitmq
+    hostname: rabbitmq
+    environment:
+      RABBITMQ_BACKEND_PASSWORD: ${RABBITMQ_BACKEND_PASSWORD:?Set a distinct backend broker password}
+      RABBITMQ_IDENTITY_PASSWORD: ${RABBITMQ_IDENTITY_PASSWORD:?Set a distinct identity broker password}
+      RABBITMQ_NOTIFICATION_PASSWORD: ${RABBITMQ_NOTIFICATION_PASSWORD:?Set a distinct notification broker password}
+      RABBITMQ_OPERATOR_PASSWORD: ${RABBITMQ_OPERATOR_PASSWORD:?Set a distinct broker operator password}
+    volumes: [rabbitmq-data:/var/lib/rabbitmq]
+    networks: [edge]
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "check_running"]
+      interval: 5s
+      timeout: 5s
+      start_period: 30s
+      retries: 24
+    stop_grace_period: 30s
+
+  notification:
+    build: ./services/notification-service
+    environment:
+      NOTIFICATION_DB_URL: jdbc:mysql://mysql:3306/${NOTIFICATION_DB_NAME:-autostrada_notification}?serverTimezone=UTC&connectionTimeZone=UTC&forceConnectionTimeZoneToSession=true&allowPublicKeyRetrieval=true&useSSL=false
+      NOTIFICATION_DB_USERNAME: ${NOTIFICATION_DB_USERNAME:?Set the notification database username}
+      NOTIFICATION_DB_PASSWORD: ${NOTIFICATION_DB_PASSWORD:?Set the notification database password}
+      IDENTITY_VERIFICATION_JWKS: ${IDENTITY_VERIFICATION_JWKS:?Set public verification JWKS}
+      NOTIFICATION_DELIVERY_KEY: ${NOTIFICATION_DELIVERY_KEY:?Set the delivery encryption key}
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_USERNAME: notification
+      RABBITMQ_PASSWORD: ${RABBITMQ_NOTIFICATION_PASSWORD:?Set a distinct notification broker password}
+      PUBLIC_URL: ${PUBLIC_URL:-http://localhost:8081}
+      APP_MAIL_MODE: ${APP_MAIL_MODE:-log}
+      APP_MAIL_FROM: ${APP_MAIL_FROM:-no-reply@autostradaauctions.local}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USERNAME: ${SMTP_USERNAME:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_AUTH: ${SMTP_AUTH:-true}
+      SMTP_STARTTLS: ${SMTP_STARTTLS:-true}
+    depends_on:
+      mysql: { condition: service_healthy }
+    networks: [edge, database, outbound]
+    read_only: true
+    tmpfs: [/tmp]
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
 
   frontend:
     build: ./front
@@ -119,6 +168,7 @@ services:
       GATEWAY_BACKEND_URL: http://backend:8080
       GATEWAY_IDENTITY_URL: http://identity:8080
       GATEWAY_IDENTITY_SECRET: ${IDENTITY_GATEWAY_SECRET:?Set the gateway identity exchange secret}
+      GATEWAY_NOTIFICATION_URL: http://notification:8080
       GATEWAY_FRONTEND_URL: http://frontend:8080
       GATEWAY_ALLOWED_ORIGINS: ${PUBLIC_URL:-http://localhost:8081}
     ports:
@@ -140,6 +190,7 @@ services:
 
 volumes:
   mysql-data:
+  rabbitmq-data:
 networks:
   edge: { internal: true }
   database: { internal: true }

@@ -63,6 +63,7 @@ public class SecurityConfig {
         .requestMatchers("/css/**", "/images/**", "/js/**").permitAll()
         .requestMatchers("/actuator/health", "/actuator/health/liveness", "/actuator/health/readiness").permitAll()
         .requestMatchers(STRIPE_WEBHOOK).permitAll()
+        .requestMatchers("/api/user/notifications/**", "/user/notifications/**").denyAll()
         .requestMatchers("/api/auth/**", "/api/session", "/api/csrf", "/loginUser", "/logout",
             "/register/**", "/forgot-password", "/reset-password", "/api/user/profile/**",
             "/api/admin/users/**", "/api/admin/dashboard").denyAll()

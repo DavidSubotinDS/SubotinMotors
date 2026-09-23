@@ -14,12 +14,12 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.transaction.annotation.Transactional;
 
-import lithan.autostrada.auctions.entity.AuctionNotification;
+import fixtures.notification.entity.AuctionNotification;
 import lithan.autostrada.auctions.entity.Car;
 import fixtures.identity.entity.PasswordResetToken;
 import fixtures.identity.entity.UserAccount;
 import lithan.autostrada.auctions.repository.AuctionFollowRepository;
-import lithan.autostrada.auctions.repository.AuctionNotificationRepository;
+import fixtures.notification.repository.AuctionNotificationRepository;
 import lithan.autostrada.auctions.repository.CarRepository;
 import fixtures.identity.repository.PasswordResetTokenRepository;
 import fixtures.identity.repository.UserRepository;
@@ -55,6 +55,7 @@ class AccountAuctionFeatureIntegrationTests {
 
   @Autowired
   private AuctionNotificationRepository notificationRepository;
+  @Autowired private org.springframework.jdbc.core.JdbcTemplate outboxSql;
 
 
 
@@ -116,13 +117,9 @@ class AccountAuctionFeatureIntegrationTests {
     carRepository.saveAndFlush(car);
     assertTrue(notificationService.createEndingSoonNotifications() >= 1);
     assertEquals(0, notificationService.createEndingSoonNotifications());
-    assertTrue(notificationRepository.existsByUserIdAndCarAndNotificationType(user.getIdUser(), car, AuctionNotification.ENDING_SOON));
-    assertEquals(1, notificationService.unreadCount());
-
-    AuctionNotification notification =
-        notificationRepository.findByUserIdOrderByCreatedAtDesc(user.getIdUser()).get(0);
-    notificationService.markRead(notification.getIdNotification());
-    assertEquals(0, notificationService.unreadCount());
+    assertFalse(notificationRepository.existsByUserIdAndCarAndNotificationType(user.getIdUser(), car, AuctionNotification.ENDING_SOON));
+    assertEquals(1L,outboxSql.queryForObject("SELECT COUNT(*) FROM tb_notification_outbox WHERE dedupe_key=?",Long.class,
+        user.getIdUser()+":"+car.getIdCar()+":ENDING_SOON"));
   }
 
   private Car saveCar(

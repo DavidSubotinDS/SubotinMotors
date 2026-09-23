@@ -22,6 +22,11 @@ import lithan.autostrada.auctions.payment.PaymentProviderException;
 @Order(Ordered.HIGHEST_PRECEDENCE)
 @RestControllerAdvice(basePackages = "lithan.autostrada.auctions.controller.api")
 public class ApiExceptionHandler {
+  @ExceptionHandler(lithan.autostrada.auctions.notification.NotificationUnavailableException.class)
+  @ResponseStatus(HttpStatus.SERVICE_UNAVAILABLE)
+  public ApiErrorResponse notificationUnavailable() {
+    return new ApiErrorResponse("Notifications are temporarily unavailable. Try again later.", Map.of());
+  }
 
   @ExceptionHandler(lithan.autostrada.auctions.identity.IdentityUnavailableException.class)
   @ResponseStatus(HttpStatus.SERVICE_UNAVAILABLE)

@@ -28,6 +28,11 @@ public class ComposeE2eApplication {
         "--spring.flyway.password=" + System.getenv("DB_PASSWORD"),
         "--payments.stripe.enabled=false", "--app.mail.mode=log",
         "--auction.notifications.scheduling-enabled=false",
+        "--notification.relay.enabled=true",
+        "--notification.base-url=" + System.getenv("NOTIFICATION_URL"),
+        "--notification.broker.host=" + System.getenv("RABBITMQ_HOST"),
+        "--notification.broker.username=" + System.getenv("RABBITMQ_USERNAME"),
+        "--notification.broker.password=" + System.getenv("RABBITMQ_PASSWORD"),
         "--identity.base-url=" + System.getenv("IDENTITY_URL"),
         "--identity.service-secret=" + System.getenv("IDENTITY_BACKEND_SECRET"),
         "--identity.verification-jwks=" + System.getenv("IDENTITY_VERIFICATION_JWKS"));

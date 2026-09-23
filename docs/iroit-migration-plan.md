@@ -355,17 +355,26 @@ logs; add a log backend only for a concrete rubric/demo need.
 
 ## S13 - Deployment/CD and course acceptance
 
-Choose the actual host/public HTTPS origin/registry and secret injection once
-the original deployment rubric and available host are known. Proposed minimal
-delivery: CI builds and publishes immutable SHA-tagged images to GHCR after
-successful master checks; an owner-triggered protected deployment workflow
-pulls those exact images on one Compose host, backs up data, runs compatible
-migrations, verifies readiness and executes a public-origin smoke. If the course
-requires automatic continuous deployment rather than manually triggered
-delivery, adjust the trigger and approval policy explicitly.
+The local S13 baseline is implemented for the selected course deployment. A
+successful push CI run on `master` triggers `.github/workflows/cd-local.yml`; a
+dedicated labelled Windows self-hosted runner builds commit-SHA-tagged images and
+updates the isolated `autostrada-local` Compose project. Private configuration,
+state and coordinated three-schema backups stay outside the repository. The job
+verifies that the exact SHA belongs to `origin/master`, serializes deployments,
+waits for container health and executes readiness, anonymous-session and frontend
+smokes through the public gateway origin.
+
+One-time initialization explicitly performs the guarded S5/S6 copy/parity
+sequence on new deployment-only volumes and refuses any existing project volume.
+Failed deployments retain private diagnostics and the pre-deploy dump. Automatic
+blind rollback is prohibited because it could restore stale identity/reset,
+notification, outbox or broker state; coordinated recovery and forward repair are
+documented in `deploy/local/README.md`.
 
 - Acceptance: reproducible deployment from immutable artifacts; no secrets in
-  Git/images/logs; external HTTPS, cookie/reset/Stripe URL verification, sandbox
+  Git/images/logs. The selected target is loopback HTTP for local defence, so
+  external HTTPS and secure-cookie verification remain inapplicable until a
+  public host is selected. Reset and Stripe callback URLs remain local; sandbox
   success/deposit/cancel smoke and one REST + event + reactive demonstration.
   Verify every service's independent image/startup and all required CI results
   for the deployed SHA. Document host setup, restore and rollback commands.

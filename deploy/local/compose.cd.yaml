@@ -1,0 +1,20 @@
+services:
+  backend:
+    image: autostrada/backend:${DEPLOY_SHA:?Set DEPLOY_SHA}
+    build: null
+  identity:
+    image: autostrada/identity:${DEPLOY_SHA:?Set DEPLOY_SHA}
+    build: null
+  notification:
+    image: autostrada/notification:${DEPLOY_SHA:?Set DEPLOY_SHA}
+    build: null
+  gateway:
+    image: autostrada/gateway:${DEPLOY_SHA:?Set DEPLOY_SHA}
+    build: null
+  frontend:
+    image: autostrada/frontend:${DEPLOY_SHA:?Set DEPLOY_SHA}
+    build: null
+  rabbitmq:
+    image: autostrada/rabbitmq:${DEPLOY_SHA:?Set DEPLOY_SHA}
+    build: null
+

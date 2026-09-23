@@ -23,6 +23,12 @@ Autostrada Auctions is now split into a Spring Boot backend and a React frontend
 The former JSP pages have been migrated to React routes under `front/`; the backend
 serves REST APIs and redirects legacy page views to the React dev/prod URL.
 
+The local deployment now has a separate automatic CD workflow. After successful
+`master` CI, a labelled self-hosted Windows runner deploys the exact revision to
+an isolated Docker Desktop Compose project. See the
+[local CD runbook](deploy/local/README.md) for setup, guarded initialization,
+backups, health checks and recovery.
+
 ## Repository Structure
 
 ```text

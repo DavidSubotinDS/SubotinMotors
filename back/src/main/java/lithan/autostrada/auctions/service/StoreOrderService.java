@@ -9,7 +9,11 @@ import lithan.autostrada.auctions.payment.StripeWebhookEvent;
 public interface StoreOrderService {
   boolean isStripeEnabled();
 
-  String startCheckout();
+  CheckoutOutcome startCheckout(String requestId);
+
+  default String startCheckout() {
+    return startCheckout(null).checkoutUrl();
+  }
 
   Page<StoreOrder> currentUserOrders(Pageable pageable);
 

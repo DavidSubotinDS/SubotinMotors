@@ -69,6 +69,20 @@ test('network ambiguity never retries a mutation and next user action acquires a
   expect(paths()[2]).toBe('/api/csrf');
 });
 
+test('checkout idempotency key is sent once alongside CSRF without automatic replay', async () => {
+  fetchMock.mockResolvedValueOnce(response({ token: 'csrf' }))
+    .mockResolvedValueOnce(response({ status: 'RECONCILE_REQUIRED', retryable: true }));
+  const result = await client.postJson(
+    '/api/store/checkout', {}, {}, { 'Idempotency-Key': 'checkout-request-123' },
+  );
+  expect(result.retryable).toBe(true);
+  expect(paths()).toEqual(['/api/csrf', '/api/store/checkout']);
+  expect(fetchMock.mock.calls[1][1].headers).toMatchObject({
+    'Idempotency-Key': 'checkout-request-123',
+    'X-CSRF-TOKEN': 'csrf',
+  });
+});
+
 test('failed initial acquisition sends no mutation and can recover', async () => {
   fetchMock.mockResolvedValueOnce(response({}, 503));
   await expect(client.postJson('/api/auth/login')).rejects.toMatchObject({ code: 'CSRF_UNAVAILABLE' });

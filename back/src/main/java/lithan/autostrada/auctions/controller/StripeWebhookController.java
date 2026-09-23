@@ -9,27 +9,19 @@ import org.springframework.web.bind.annotation.RestController;
 import lithan.autostrada.auctions.payment.StripeGateway;
 import lithan.autostrada.auctions.payment.PaymentProviderException;
 import lithan.autostrada.auctions.payment.StripeWebhookEvent;
-import lithan.autostrada.auctions.service.PaymentService;
-import lithan.autostrada.auctions.service.ListingDepositService;
-import lithan.autostrada.auctions.service.StoreOrderService;
+import lithan.autostrada.auctions.service.CheckoutWebhookInboxService;
 
 @RestController
 public class StripeWebhookController {
 
   private final StripeGateway stripeGateway;
-  private final PaymentService paymentService;
-  private final StoreOrderService storeOrderService;
-  private final ListingDepositService listingDepositService;
+  private final CheckoutWebhookInboxService webhookInbox;
 
   public StripeWebhookController(
       StripeGateway stripeGateway,
-      PaymentService paymentService,
-      StoreOrderService storeOrderService,
-      ListingDepositService listingDepositService) {
+      CheckoutWebhookInboxService webhookInbox) {
     this.stripeGateway = stripeGateway;
-    this.paymentService = paymentService;
-    this.storeOrderService = storeOrderService;
-    this.listingDepositService = listingDepositService;
+    this.webhookInbox = webhookInbox;
   }
 
   @PostMapping("/webhooks/stripe")
@@ -38,10 +30,7 @@ public class StripeWebhookController {
       @RequestHeader("Stripe-Signature") String signature) {
     try {
       StripeWebhookEvent event = stripeGateway.verifyAndParseWebhook(payload, signature);
-      if (!storeOrderService.processWebhook(event)
-          && !listingDepositService.processWebhook(event)) {
-        paymentService.processWebhook(event);
-      }
+      webhookInbox.receive(event);
       return ResponseEntity.ok().build();
     } catch (PaymentProviderException exception) {
       return ResponseEntity.badRequest().build();

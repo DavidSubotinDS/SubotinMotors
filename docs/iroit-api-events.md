@@ -1,5 +1,13 @@
 # IROIT API, event contracts and business flows
 
+Current status (2026-09-23): S7 is implemented locally inside the existing
+backend. Store and listing-deposit checkout accept `Idempotency-Key`; successful
+responses retain `checkoutUrl` and add `attemptId`, `status` and `retryable`.
+Ambiguous provider outcomes are durably reconciled and the UI waits for explicit
+retry without mutation replay. Verified Stripe events are stored before dispatch,
+including unmatched early events. The S8 internal payment REST/event contracts
+below remain proposed. See [the implemented contract](checkout-reliability.md).
+
 Current status (2026-09-22): S5 is merged at
 `cddde6da41d32d3d37fae9a8eaa71cc4027cca73`, with Backend and Frontend success
 verified on that exact commit (Actions run 35673771885). Identity owns sessions,
@@ -155,9 +163,12 @@ stable idempotency key to request provider expiry. Payment checks caller/busines
 ownership and returns the authoritative current state, or `202` while unresolved.
 Expiry is a request to the provider, not proof that stock may already be released.
 
-The existing browser `POST /api/store/checkout` currently returns
-`{checkoutUrl}`. Keep that successful response. Before remote checkout is
-enabled, ship frontend handling for an additive `202 {status,statusUrl}` with
+The existing browser `POST /api/store/checkout` now returns the additive
+`{checkoutUrl,attemptId,status,retryable}` contract. Successful responses retain
+the original `checkoutUrl`. S7 pending handling is implemented without exposing
+an internal status URL; a user explicitly retries the same key while the backend
+reconciler also resumes it. Before remote S8 checkout is enabled, add the proposed
+`202 {status,statusUrl}` with
 bounded polling of an **owner-scoped public commerce checkout-status endpoint**,
 not the internal URL. Preserve the idempotency key across retry/reload until
 resolved. The listing-deposit checkout needs the same handling. Show a familiar

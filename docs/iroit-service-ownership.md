@@ -1,5 +1,13 @@
 # IROIT source inventory and data ownership
 
+Current status (2026-09-23): S6 and local CD are merged at `39e750e`. S7 is
+implemented locally without extracting another process. The backend owns new
+`tb_checkout_attempt`, `tb_stock_hold` and `tb_checkout_webhook_inbox` tables,
+plus nullable unique attempt links on store orders and listing deposits. It
+still owns Stripe creation/reconciliation and the business stock/reservation
+transitions. Identity and notification ownership remain unchanged. See
+[S7 ownership](checkout-reliability.md); payment ownership moves only in S8.
+
 Current status (2026-09-22): S5 is merged at
 `cddde6da41d32d3d37fae9a8eaa71cc4027cca73`, with Backend and Frontend success
 verified on that exact commit (Actions run 35673771885). Identity owns sessions,
@@ -76,7 +84,10 @@ separate repositories remain within their aggregate. Split
 `ListingCommentRepository`; payment migration replaces cross-domain queries in
 `PaymentOrderRepository`. No shared persistence library is proposed.
 
-New payment storage should introduce purpose-neutral `payment_attempt` records
+S7 now provides a backend-local purpose-neutral `tb_checkout_attempt` record
+for store orders and listing deposits, plus explicit holds and a verified-event
+inbox. These are the safe extraction source for S8; they are not yet owned by an
+independent payment process. S8 payment storage should introduce service-owned records
 with `(sourceService, businessType, businessId, attemptNumber)` uniqueness and a
 separate attempt UUID. Import existing auction payment rows and provider fields
 from store orders/deposits with a durable mapping of original table/ID to new

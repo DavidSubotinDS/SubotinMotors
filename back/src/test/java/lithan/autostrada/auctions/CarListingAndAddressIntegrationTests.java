@@ -96,14 +96,14 @@ class CarListingAndAddressIntegrationTests {
   @BeforeEach
   void configureStripeSandbox() {
     when(stripeGateway.isEnabled()).thenReturn(true);
-    when(stripeGateway.createStoreCheckoutSession(any(StoreOrder.class), org.mockito.ArgumentMatchers.anyString()))
+    when(stripeGateway.createStoreCheckoutSession(any(StoreOrder.class), org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.anyString()))
         .thenAnswer(invocation -> {
           StoreOrder order = invocation.getArgument(0);
           return new StripeCheckoutResult(
               "cs_address_" + order.getIdOrder(),
               "https://checkout.stripe.test/store/" + order.getIdOrder());
         });
-    when(stripeGateway.createListingDepositCheckoutSession(any(ListingDeposit.class), org.mockito.ArgumentMatchers.anyString()))
+    when(stripeGateway.createListingDepositCheckoutSession(any(ListingDeposit.class), org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.anyString()))
         .thenAnswer(invocation -> {
           ListingDeposit deposit = invocation.getArgument(0);
           return new StripeCheckoutResult(

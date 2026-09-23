@@ -1,5 +1,13 @@
 # Autostrada Auctions Backend
 
+S7 working-tree update: checkout preparation is now a committed local state
+transition followed by an idempotent provider call. Flyway V22/V23 add attempts,
+stock holds, verified webhook inbox storage and least-privilege runtime grants.
+`POST /api/store/checkout` and listing deposits accept `Idempotency-Key`; the
+additive result includes `attemptId`, `status` and `retryable`. See the
+[S7 runbook](../docs/checkout-reliability.md). Stripe/webhook ownership remains
+in this backend until S8.
+
 S6 working-tree update: notification inbox and mail delivery now have a separate owner,
 RabbitMQ and guarded data cutover. Read the [S6 runbook](../docs/notification-service.md) before starting
 the new Compose stack; historical S5 startup/test instructions below need that cutover.

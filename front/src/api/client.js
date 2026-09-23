@@ -14,12 +14,12 @@ export async function getJson(path, params = {}) {
   return requestJson(path, { params });
 }
 
-export async function postJson(path, body = {}, params = {}) {
+export async function postJson(path, body = {}, params = {}, headers = {}) {
   return requestJson(path, {
     method: 'POST',
     params,
     body: JSON.stringify(body),
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...headers },
   });
 }
 

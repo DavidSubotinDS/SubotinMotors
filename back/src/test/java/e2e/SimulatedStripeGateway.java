@@ -18,10 +18,10 @@ final class SimulatedStripeGateway implements StripeGateway {
   }
 
   @Override public boolean isEnabled() { return true; }
-  @Override public StripeCheckoutResult createStoreCheckoutSession(StoreOrder order, String customerEmail) {
+  @Override public StripeCheckoutResult createStoreCheckoutSession(StoreOrder order, String customerEmail, String idempotencyKey) {
     return checkout("store", order.getIdOrder());
   }
-  @Override public StripeCheckoutResult createListingDepositCheckoutSession(ListingDeposit deposit, String customerEmail) {
+  @Override public StripeCheckoutResult createListingDepositCheckoutSession(ListingDeposit deposit, String customerEmail, String idempotencyKey) {
     return checkout("deposit", deposit.getIdDeposit());
   }
   private StripeCheckoutResult checkout(String purpose, int id) {

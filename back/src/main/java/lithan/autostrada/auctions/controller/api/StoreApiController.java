@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RestController;
 
 import lithan.autostrada.auctions.dto.api.ApiModels.ApiMessageResponse;
@@ -79,8 +80,11 @@ public class StoreApiController {
   }
 
   @PostMapping("/checkout")
-  public CheckoutResponse checkout() {
-    return new CheckoutResponse(orderService.startCheckout());
+  public CheckoutResponse checkout(
+      @RequestHeader(name = "Idempotency-Key", required = false) String requestId) {
+    var result = orderService.startCheckout(requestId);
+    return new CheckoutResponse(
+        result.checkoutUrl(), result.attemptId(), result.status(), result.retryable());
   }
 
   @GetMapping("/checkout/success")

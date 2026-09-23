@@ -57,7 +57,9 @@ export const userApi = {
   updateListing: (id, body, files) => putForm(`/api/user/listings/${id}`, objectForm(body, { imageFiles: files })),
   activateListing: (id) => postJson(`/api/user/listings/${id}/activate`),
   deactivateListing: (id) => postJson(`/api/user/listings/${id}/deactivate`),
-  listingDeposit: (id) => postJson(`/api/user/listings/${id}/deposit`),
+  listingDeposit: (id, requestId) => postJson(
+    `/api/user/listings/${id}/deposit`, {}, {}, { 'Idempotency-Key': requestId },
+  ),
   scheduleListingTestRide: (id, scheduledAt) => postJson(`/api/user/listings/${id}/test-rides`, { scheduledAt }),
   rescheduleListingTestRide: (id, scheduledAt) => postJson(`/api/user/listing-test-rides/${id}/reschedule`, {}, { scheduledAt }),
   cancelListingTestRide: (id) => postJson(`/api/user/listing-test-rides/${id}/cancel`),
@@ -73,7 +75,9 @@ export const storeApi = {
   addToCart: (idPart, quantity = 1) => postJson('/api/store/cart/items', { idPart, quantity }),
   updateCartItem: (id, quantity) => putJson(`/api/store/cart/items/${id}`, { quantity }),
   removeCartItem: (id) => postJson(`/api/store/cart/items/${id}/remove`),
-  checkout: () => postJson('/api/store/checkout'),
+  checkout: (requestId) => postJson(
+    '/api/store/checkout', {}, {}, { 'Idempotency-Key': requestId },
+  ),
   checkoutSuccess: (sessionId) => getJson('/api/store/checkout/success', { session_id: sessionId }),
   orders: (page = 0) => getJson('/api/store/orders', { page }),
   order: (id) => getJson(`/api/store/orders/${id}`),

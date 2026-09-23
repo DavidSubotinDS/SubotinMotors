@@ -218,7 +218,10 @@ try {
   config = { services: {
     mysql: { environment: { AUTOSTRADA_E2E: 'true' } },
     backend: { environment: { AUCTION_NOTIFICATION_SCHEDULING: 'false',
-      SPRING_FLYWAY_TARGET: '18' } },
+      SPRING_FLYWAY_TARGET: '18',
+      // S7 entities are present in the new binary before V22 can run. Bootstrap
+      // stages deliberately stop at V18/V20 while copy cutovers are prepared.
+      SPRING_JPA_HIBERNATE_DDL_AUTO: 'none' } },
   } };
   if (upgradeFrom) {
     assert.ok(!browser, '--upgrade-from requires --integration-only');
@@ -298,6 +301,7 @@ try {
   assert.equal(await rootValue(`SELECT COUNT(*) FROM \`${notificationSchema}\`.tb_notification WHERE read_at IS NOT NULL`), importedReadCount);
   delete config.services['notification-copy'];
   delete config.services.backend.environment.SPRING_FLYWAY_TARGET;
+  delete config.services.backend.environment.SPRING_JPA_HIBERNATE_DDL_AUTO;
   await saveConfig();
   await compose(['up', '--detach', '--wait', '--wait-timeout', '240'], { timeout: 300000 });
   if (upgradeFrom) {
@@ -320,7 +324,9 @@ try {
   await compose(['images', '--format', 'json']);
   assert.equal(await value('SELECT COUNT(*) FROM flyway_schema_history WHERE success=1 AND version BETWEEN 1 AND 19'), '19');
   assert.equal(await rootValue(`SELECT COUNT(*) FROM \`${identitySchema}\`.flyway_schema_history WHERE success=1`), '2');
-  assert.equal(await value('SELECT COUNT(*) FROM flyway_schema_history WHERE success=1'), '21');
+  assert.equal(await value('SELECT COUNT(*) FROM flyway_schema_history WHERE success=1'), '23');
+  assert.equal(await value("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name IN ('tb_checkout_attempt','tb_stock_hold','tb_checkout_webhook_inbox')"), '3');
+  assert.equal(await value("SELECT COUNT(*) FROM information_schema.columns WHERE table_schema=DATABASE() AND column_name='checkout_attempt_id' AND table_name IN ('tb_store_order','tb_listing_deposit')"), '2');
   assert.equal(await rootValue(`SELECT COUNT(*) FROM \`${notificationSchema}\`.flyway_schema_history WHERE success=1`), '1');
   assert.notEqual((await runtimeSql('SELECT COUNT(*) FROM archive_notification_tb_auction_notification', { allowFailure: true })).code, 0);
   await record('S6 notification copy parity, V21 archive cutover and runtime archive denial passed.');

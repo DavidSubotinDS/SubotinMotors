@@ -27,7 +27,8 @@ public final class ApiModels {
   public record ApiErrorResponse(String message, Map<String, String> fieldErrors) {
   }
 
-  public record CheckoutResponse(String checkoutUrl) {
+  public record CheckoutResponse(
+      String checkoutUrl, String attemptId, String status, boolean retryable) {
   }
 
   public record RegistrationRequest(

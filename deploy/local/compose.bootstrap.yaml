@@ -2,6 +2,9 @@ services:
   backend:
     environment:
       SPRING_FLYWAY_TARGET: ${BACKEND_FLYWAY_TARGET:?Bootstrap must set BACKEND_FLYWAY_TARGET}
+      # The current binary maps post-cutover tables which are intentionally not
+      # present during the V18/V20 copy phases. Final startup restores validation.
+      SPRING_JPA_HIBERNATE_DDL_AUTO: none
 
   identity-copy:
     image: autostrada/identity:${DEPLOY_SHA:?Set DEPLOY_SHA}

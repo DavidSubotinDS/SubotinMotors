@@ -26,6 +26,8 @@ public class ComposeE2eApplication {
         "--spring.datasource.url=" + url, "--spring.flyway.url=" + url,
         "--spring.datasource.username=e2e", "--spring.flyway.user=e2e",
         "--spring.flyway.password=" + System.getenv("DB_PASSWORD"),
+        "--spring.flyway.locations=classpath:db/migration",
+        "--spring.flyway.target=latest",
         "--payments.stripe.enabled=false", "--app.mail.mode=log",
         "--auction.notifications.scheduling-enabled=false",
         "--notification.relay.enabled=true",

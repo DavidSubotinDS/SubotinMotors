@@ -17,5 +17,7 @@ public interface ListingDepositRepository extends JpaRepository<ListingDeposit, 
 
   Optional<ListingDeposit> findByCheckoutSessionId(String checkoutSessionId);
 
+  Optional<ListingDeposit> findByCheckoutAttemptId(String checkoutAttemptId);
+
   Page<ListingDeposit> findByBuyerId(int buyerId, Pageable pageable);
 }

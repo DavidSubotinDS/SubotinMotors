@@ -10,7 +10,11 @@ public interface ListingDepositService {
 
   boolean isStripeEnabled();
 
-  String startCheckout(int listingId);
+  CheckoutOutcome startCheckout(int listingId, String requestId);
+
+  default String startCheckout(int listingId) {
+    return startCheckout(listingId, null).checkoutUrl();
+  }
 
   Page<ListingDeposit> currentUserDeposits(Pageable pageable);
 

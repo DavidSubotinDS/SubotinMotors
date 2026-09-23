@@ -37,7 +37,10 @@ public class E2eApplication {
     }
     String databaseUrl = "jdbc:h2:mem:e2e_" + UUID.randomUUID()
         + ";MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1";
-    org.flywaydb.core.Flyway.configure().dataSource(databaseUrl,"sa","").target("18").load().migrate();
+    org.flywaydb.core.Flyway.configure().dataSource(databaseUrl,"sa","")
+        .locations("classpath:db/migration", "classpath:db/test-migration",
+            "classpath:db/e2e-migration")
+        .target("18.2").load().migrate();
     try(var connection=java.sql.DriverManager.getConnection(databaseUrl,"sa","");var statement=connection.createStatement()) {
       statement.execute("CREATE TABLE identity_cutover(id INT PRIMARY KEY,state VARCHAR(40),manifest VARCHAR(4096))");
       statement.execute("INSERT INTO identity_cutover VALUES(1,'PARITY_VERIFIED','synthetic disposable browser fixtures; not copy evidence')");
@@ -52,6 +55,8 @@ public class E2eApplication {
         "--spring.datasource.driver-class-name=org.h2.Driver",
         "--spring.datasource.username=sa", "--spring.datasource.password=",
         "--spring.flyway.url=" + databaseUrl, "--spring.flyway.user=sa", "--spring.flyway.password=",
+        "--spring.flyway.locations=classpath:db/migration,classpath:db/test-migration,classpath:db/e2e-migration",
+        "--spring.flyway.target=18.2",
         "--server.address=127.0.0.1", "--server.port=18080",
         "--payments.stripe.enabled=false", "--app.mail.mode=log",
         "--auction.notifications.scheduling-enabled=false",

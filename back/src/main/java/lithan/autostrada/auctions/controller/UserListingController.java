@@ -117,7 +117,11 @@ public class UserListingController {
       @PathVariable int listingId,
       RedirectAttributes redirectAttributes) {
     try {
-      return "redirect:" + depositService.startCheckout(listingId);
+      var result = depositService.startCheckout(listingId, null);
+      if (result.checkoutUrl() != null) return "redirect:" + result.checkoutUrl();
+      redirectAttributes.addFlashAttribute(
+          "listingMessage", "Deposit checkout is pending and will be retried safely.");
+      return "redirect:/listing-deposits";
     } catch (IllegalArgumentException | IllegalStateException exception) {
       redirectAttributes.addFlashAttribute("listingError", exception.getMessage());
       return "redirect:/listings/" + listingId;

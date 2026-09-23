@@ -41,12 +41,14 @@ public class DisabledStripeGateway implements StripeGateway {
   }
 
   @Override
-  public StripeCheckoutResult createStoreCheckoutSession(StoreOrder order, String customerEmail) {
+  public StripeCheckoutResult createStoreCheckoutSession(
+      StoreOrder order, String customerEmail, String idempotencyKey) {
     throw disabled();
   }
 
   @Override
-  public StripeCheckoutResult createListingDepositCheckoutSession(ListingDeposit deposit, String customerEmail) {
+  public StripeCheckoutResult createListingDepositCheckoutSession(
+      ListingDeposit deposit, String customerEmail, String idempotencyKey) {
     throw disabled();
   }
 

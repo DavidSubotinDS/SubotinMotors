@@ -15,9 +15,11 @@ public interface StripeGateway {
 
   StripeCheckoutResult createCheckoutSession(PaymentOrder paymentOrder, String destinationAccountId);
 
-  StripeCheckoutResult createStoreCheckoutSession(StoreOrder order, String customerEmail);
+  StripeCheckoutResult createStoreCheckoutSession(
+      StoreOrder order, String customerEmail, String idempotencyKey);
 
-  StripeCheckoutResult createListingDepositCheckoutSession(ListingDeposit deposit, String customerEmail);
+  StripeCheckoutResult createListingDepositCheckoutSession(
+      ListingDeposit deposit, String customerEmail, String idempotencyKey);
 
   StripeWebhookEvent verifyAndParseWebhook(String payload, String signature);
 }

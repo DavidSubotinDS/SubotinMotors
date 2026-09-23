@@ -12,6 +12,7 @@ import com.stripe.model.StripeObject;
 import com.stripe.model.checkout.Session;
 import com.stripe.model.v2.core.Account;
 import com.stripe.model.v2.core.AccountLink;
+import com.stripe.net.RequestOptions;
 import com.stripe.param.checkout.SessionCreateParams;
 import com.stripe.param.v2.core.AccountCreateParams;
 import com.stripe.param.v2.core.AccountLinkCreateParams;
@@ -172,7 +173,8 @@ public class StripeConnectGateway implements StripeGateway {
   }
 
   @Override
-  public StripeCheckoutResult createStoreCheckoutSession(StoreOrder order, String customerEmail) {
+  public StripeCheckoutResult createStoreCheckoutSession(
+      StoreOrder order, String customerEmail, String idempotencyKey) {
     try {
       SessionCreateParams.Builder builder = SessionCreateParams.builder()
           .setMode(SessionCreateParams.Mode.PAYMENT)
@@ -201,7 +203,8 @@ public class StripeConnectGateway implements StripeGateway {
             .build());
       }
 
-      Session session = stripeClient.checkout().sessions().create(builder.build());
+      Session session = stripeClient.checkout().sessions().create(
+          builder.build(), RequestOptions.builder().setIdempotencyKey(idempotencyKey).build());
       return new StripeCheckoutResult(session.getId(), session.getUrl());
     } catch (StripeException exception) {
       throw new PaymentProviderException("Unable to create Stripe store checkout", exception);
@@ -209,7 +212,8 @@ public class StripeConnectGateway implements StripeGateway {
   }
 
   @Override
-  public StripeCheckoutResult createListingDepositCheckoutSession(ListingDeposit deposit, String customerEmail) {
+  public StripeCheckoutResult createListingDepositCheckoutSession(
+      ListingDeposit deposit, String customerEmail, String idempotencyKey) {
     try {
       SessionCreateParams.LineItem.PriceData.ProductData productData =
           SessionCreateParams.LineItem.PriceData.ProductData.builder()
@@ -244,7 +248,8 @@ public class StripeConnectGateway implements StripeGateway {
           .putMetadata("listing_id", Integer.toString(deposit.getListing().getIdListing()))
           .build();
 
-      Session session = stripeClient.checkout().sessions().create(params);
+      Session session = stripeClient.checkout().sessions().create(
+          params, RequestOptions.builder().setIdempotencyKey(idempotencyKey).build());
       return new StripeCheckoutResult(session.getId(), session.getUrl());
     } catch (StripeException exception) {
       throw new PaymentProviderException("Unable to create listing deposit checkout", exception);

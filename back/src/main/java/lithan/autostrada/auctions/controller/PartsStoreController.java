@@ -119,7 +119,11 @@ public class PartsStoreController {
   @PostMapping("/store/checkout")
   public String checkout(RedirectAttributes redirectAttributes) {
     try {
-      return "redirect:" + orderService.startCheckout();
+      var result = orderService.startCheckout(null);
+      if (result.checkoutUrl() != null) return "redirect:" + result.checkoutUrl();
+      redirectAttributes.addFlashAttribute(
+          "storeMessage", "Checkout is pending and will be retried safely.");
+      return "redirect:/orders";
     } catch (MissingShippingAddressException exception) {
       redirectAttributes.addFlashAttribute("addressError", exception.getMessage());
       return "redirect:/user/edit-profile?addressRequired";

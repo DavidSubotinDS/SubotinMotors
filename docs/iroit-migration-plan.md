@@ -1,5 +1,13 @@
 # IROIT incremental migration and implementation backlog
 
+Current status (2026-09-23): S6 and guarded local CD are merged at `39e750e`.
+S7 is implemented in the focused working tree with durable attempts, request
+hashes, explicit holds, provider idempotency, reconciliation, durable verified
+webhook ingress and pending UI handling. Local acceptance is documented in the
+[S7 handoff](checkout-reliability-pr.md); exact-commit remote CI and real Stripe
+sandbox checks remain owner gates. S8 payment-service extraction is next and is
+not part of S7.
+
 Current status (2026-09-22): S5 is merged at
 `cddde6da41d32d3d37fae9a8eaa71cc4027cca73`, with Backend and Frontend success
 verified on that exact commit (Actions run 35673771885). Identity owns sessions,
@@ -225,6 +233,10 @@ restricted command queue only when the consumer and expiry handling are ready.
   event creation without a shared business dedupe key in the destination owner.
 
 ## S7 - Durable checkout preparation inside the existing backend
+
+Implementation record: see [checkout reliability](checkout-reliability.md).
+The implementation deliberately keeps provider/webhook ownership in the backend;
+S8 remains responsible for crossing that network and data boundary.
 
 Before network extraction, separate provider adapters from commerce and deposit
 transactions, introduce attempt IDs/request hashes/local durable intent and

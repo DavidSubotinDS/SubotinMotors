@@ -14,4 +14,6 @@ public interface StoreOrderRepository extends JpaRepository<StoreOrder, Integer>
   Optional<StoreOrder> findByIdOrderAndUserId(int idOrder, int userId);
 
   Optional<StoreOrder> findByCheckoutSessionId(String checkoutSessionId);
+
+  Optional<StoreOrder> findByCheckoutAttemptId(String checkoutAttemptId);
 }

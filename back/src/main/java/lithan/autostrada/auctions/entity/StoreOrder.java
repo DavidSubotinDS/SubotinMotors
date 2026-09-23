@@ -65,6 +65,9 @@ public class StoreOrder {
   @Column(name = "payment_intent_id", unique = true)
   private String paymentIntentId;
 
+  @Column(name = "checkout_attempt_id", unique = true, length = 36)
+  private String checkoutAttemptId;
+
   @Column(name = "created_at", nullable = false)
   private Instant createdAt;
 
@@ -186,6 +189,14 @@ public class StoreOrder {
 
   public void setPaymentIntentId(String paymentIntentId) {
     this.paymentIntentId = paymentIntentId;
+  }
+
+  public String getCheckoutAttemptId() {
+    return checkoutAttemptId;
+  }
+
+  public void setCheckoutAttemptId(String checkoutAttemptId) {
+    this.checkoutAttemptId = checkoutAttemptId;
   }
 
   public Instant getCreatedAt() {

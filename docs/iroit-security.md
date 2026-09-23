@@ -1,5 +1,13 @@
 # IROIT authentication and authorization design
 
+Current status (2026-09-23): S7 keeps the merged S5 identity assertion/session
+boundary and S4a CSRF rules. Checkout actors come only from the trusted assertion;
+the browser supplies no owner ID. A stable `Idempotency-Key` travels with the
+protected mutation, and CSRF refresh never automatically replays it. The private
+checkout email snapshot, provider identifiers and webhook receipts remain
+backend-only. Raw-body Stripe signature verification still precedes durable
+webhook storage. See [S7 security and recovery](checkout-reliability.md).
+
 Current status (2026-09-22): S5 is merged at
 `cddde6da41d32d3d37fae9a8eaa71cc4027cca73`, with Backend and Frontend success
 verified on that exact commit (Actions run 35673771885). Identity owns sessions,

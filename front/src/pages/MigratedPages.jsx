@@ -283,6 +283,7 @@ export function AuctionDetailPage() {
 export function ListingDetailPage() {
   const { id } = useParams();
   const { session } = useOutletContext();
+  const checkoutRequestId = useMemo(() => checkoutId(), [id]);
   const state = useLoad(() => publicApi.listing(id), [id]);
   if (state.loading) return <LoadingState label="Loading listing" />;
   if (state.error) return <Alert title="Listing unavailable">{state.error.message}</Alert>;
@@ -307,7 +308,7 @@ export function ListingDetailPage() {
           {session.authenticated && (
             <ActionStack>
               <DateTimeAction label="Request test ride" onSubmit={(scheduledAt) => userApi.scheduleListingTestRide(listing.id, scheduledAt)} />
-              <MutationButton icon={CreditCard} disabled={!stripeEnabled} run={() => userApi.listingDeposit(listing.id).then(openCheckout)}>
+              <MutationButton icon={CreditCard} disabled={!stripeEnabled} run={() => userApi.listingDeposit(listing.id, checkoutRequestId).then(openCheckout)}>
                 Place deposit
               </MutationButton>
             </ActionStack>
@@ -376,6 +377,7 @@ export function PublicProfilePage() {
 
 export function CartPage() {
   const [refresh, setRefresh] = useState(0);
+  const checkoutRequestId = useMemo(checkoutId, [refresh]);
   const state = useLoad(storeApi.cart, [refresh]);
   if (state.loading) return <LoadingState label="Loading cart" />;
   if (state.error) return <Alert title="Cart unavailable">{state.error.message}</Alert>;
@@ -396,7 +398,7 @@ export function CartPage() {
       <Card className="checkout-panel">
         <strong>Total: {moneyMinor(cart.totalMinor, 'EUR')}</strong>
         {!cart.hasShippingAddress && <Alert title="Shipping address needed">Complete your profile shipping address before checkout.</Alert>}
-        <MutationButton icon={CreditCard} disabled={!cart.items.length || !cart.hasShippingAddress} run={() => storeApi.checkout().then(openCheckout)}>
+        <MutationButton icon={CreditCard} disabled={!cart.items.length || !cart.hasShippingAddress} run={() => storeApi.checkout(checkoutRequestId).then(openCheckout)}>
           Checkout
         </MutationButton>
       </Card>
@@ -1143,11 +1145,16 @@ function DateTimeAction({ label, onSubmit }) {
 function MutationButton({ run, onDone, children, icon, variant = 'secondary', disabled = false }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
+  const [notice, setNotice] = useState(null);
   async function click() {
     setBusy(true);
     setError(null);
+    setNotice(null);
     try {
-      await run();
+      const result = await run();
+      if (result?.retryable) {
+        setNotice('Checkout is safely pending. You can retry; the same payment attempt will be resumed.');
+      }
       onDone?.();
     } catch (err) {
       setError(err.message);
@@ -1159,6 +1166,7 @@ function MutationButton({ run, onDone, children, icon, variant = 'secondary', di
     <span className="mutation-wrap">
       <Button icon={icon} variant={variant} onClick={click} disabled={busy || disabled}>{busy ? 'Working' : children}</Button>
       {error && <small className="field-error">{error}</small>}
+      {notice && <small className="field-help">{notice}</small>}
     </span>
   );
 }
@@ -1415,6 +1423,12 @@ function openCheckout(result) {
   if (result.checkoutUrl) {
     window.location.href = result.checkoutUrl;
   }
+  return result;
+}
+
+function checkoutId() {
+  return globalThis.crypto?.randomUUID?.()
+    ?? `checkout-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
 function ShieldIcon(props) {

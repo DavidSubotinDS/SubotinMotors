@@ -1,56 +1,49 @@
 package lithan.autostrada.auctions.service;
 
-import java.time.Instant;
-import java.util.Set;
+import java.time.Clock;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import lithan.autostrada.auctions.config.StripeProperties;
-import lithan.autostrada.auctions.entity.CarListing;
 import lithan.autostrada.auctions.entity.CarListingStatus;
 import lithan.autostrada.auctions.entity.ListingDeposit;
 import lithan.autostrada.auctions.entity.PaymentWebhookEvent;
 import lithan.autostrada.auctions.identity.CurrentIdentity;
 import lithan.autostrada.auctions.error.ResourceNotFoundException;
-import lithan.autostrada.auctions.payment.StripeCheckoutResult;
 import lithan.autostrada.auctions.payment.StripeGateway;
 import lithan.autostrada.auctions.payment.StripeWebhookEvent;
-import lithan.autostrada.auctions.repository.CarListingRepository;
 import lithan.autostrada.auctions.repository.ListingDepositRepository;
 import lithan.autostrada.auctions.repository.PaymentWebhookEventRepository;
 
 @Service
 public class ListingDepositServiceImpl implements ListingDepositService {
 
-  private static final Set<String> ACTIVE_DEPOSIT_STATUSES =
-      Set.of("PENDING_CHECKOUT", "CHECKOUT_CREATED", "PAID");
-
   private final ListingDepositRepository depositRepository;
-  private final CarListingRepository listingRepository;
   private final PaymentWebhookEventRepository webhookEventRepository;
   private final CurrentIdentity currentIdentity;
-  @org.springframework.beans.factory.annotation.Autowired
-  private lithan.autostrada.auctions.identity.CheckoutProfileClient checkoutProfiles;
 
   private final StripeGateway stripeGateway;
-  private final StripeProperties stripeProperties;
+  private final CheckoutCoordinator checkoutCoordinator;
+  private final CheckoutPreparationService checkoutPreparation;
+  private final Clock clock;
 
   public ListingDepositServiceImpl(
       ListingDepositRepository depositRepository,
-      CarListingRepository listingRepository,
       PaymentWebhookEventRepository webhookEventRepository,
       CurrentIdentity currentIdentity,
       StripeGateway stripeGateway,
-      StripeProperties stripeProperties) {
+      CheckoutCoordinator checkoutCoordinator,
+      CheckoutPreparationService checkoutPreparation,
+      Clock clock) {
     this.depositRepository = depositRepository;
-    this.listingRepository = listingRepository;
     this.webhookEventRepository = webhookEventRepository;
     this.currentIdentity = currentIdentity;
     this.stripeGateway = stripeGateway;
-    this.stripeProperties = stripeProperties;
+    this.checkoutCoordinator = checkoutCoordinator;
+    this.checkoutPreparation = checkoutPreparation;
+    this.clock = clock;
   }
 
   @Override
@@ -59,47 +52,8 @@ public class ListingDepositServiceImpl implements ListingDepositService {
   }
 
   @Override
-  @Transactional
-  public String startCheckout(int listingId) {
-    if (!stripeGateway.isEnabled()) {
-      throw new IllegalStateException("Stripe sandbox checkout is not currently enabled");
-    }
-    CarListing listing = listingRepository.findByIdForUpdate(listingId)
-        .orElseThrow(ResourceNotFoundException::new);
-    int buyer = currentIdentity.requireUserId();
-    if (listing.getSellerId() == buyer) {
-      throw new IllegalStateException("You cannot reserve your own listing");
-    }
-    if (listing.getStatus() != CarListingStatus.ACTIVE) {
-      throw new IllegalStateException("This listing is no longer available for reservation");
-    }
-    if (depositRepository.existsByListingAndBuyerIdAndStatusIn(
-        listing, buyer, ACTIVE_DEPOSIT_STATUSES)) {
-      throw new IllegalStateException("You already have an active deposit for this listing");
-    }
-
-    Instant now = Instant.now();
-    ListingDeposit deposit = new ListingDeposit();
-    deposit.setListing(listing);
-    deposit.setBuyerId(buyer);
-    deposit.setAmountMinor(listing.getDepositAmountMinor());
-    deposit.setCurrency(stripeProperties.getCurrency().toLowerCase());
-    deposit.setStatus("PENDING_CHECKOUT");
-    deposit.setCreatedAt(now);
-    deposit.setUpdatedAt(now);
-    depositRepository.saveAndFlush(deposit);
-
-    listing.setStatus(CarListingStatus.RESERVED);
-    listing.setUpdatedAt(now);
-    listingRepository.save(listing);
-
-    StripeCheckoutResult checkout = stripeGateway.createListingDepositCheckoutSession(deposit, checkoutProfiles.current().email());
-    deposit.setCheckoutSessionId(checkout.sessionId());
-    deposit.setCheckoutUrl(checkout.checkoutUrl());
-    deposit.setStatus("CHECKOUT_CREATED");
-    deposit.setUpdatedAt(Instant.now());
-    depositRepository.save(deposit);
-    return checkout.checkoutUrl();
+  public CheckoutOutcome startCheckout(int listingId, String requestId) {
+    return checkoutCoordinator.startDeposit(listingId, requestId);
   }
 
   @Override
@@ -134,10 +88,10 @@ public class ListingDepositServiceImpl implements ListingDepositService {
 
     switch (event.eventType()) {
       case "checkout.session.completed", "checkout.session.async_payment_succeeded" -> {
-        if ("paid".equalsIgnoreCase(event.paymentStatus())) {
-          deposit.setStatus("PAID");
+        if ("paid".equalsIgnoreCase(event.paymentStatus()) && !deposit.getStatus().startsWith("PAID")) {
+          deposit.setStatus(reclaimLateReservation(deposit) ? "PAID" : "PAID_RESERVATION_CONFLICT");
           deposit.setPaymentIntentId(event.paymentIntentId());
-          deposit.setPaidAt(Instant.now());
+          deposit.setPaidAt(clock.instant());
         }
       }
       case "checkout.session.async_payment_failed" -> release(deposit, "PAYMENT_FAILED");
@@ -146,19 +100,21 @@ public class ListingDepositServiceImpl implements ListingDepositService {
         return false;
       }
     }
-    deposit.setUpdatedAt(Instant.now());
+    deposit.setUpdatedAt(clock.instant());
     depositRepository.save(deposit);
+    checkoutPreparation.recordTerminal(
+        deposit.getCheckoutAttemptId(), deposit.getStatus(), deposit.getPaymentIntentId());
 
     PaymentWebhookEvent processed = new PaymentWebhookEvent();
     processed.setProviderEventId(event.eventId());
     processed.setEventType(event.eventType());
-    processed.setProcessedAt(Instant.now());
+    processed.setProcessedAt(clock.instant());
     webhookEventRepository.save(processed);
     return true;
   }
 
   private void release(ListingDeposit deposit, String status) {
-    if ("PAID".equals(deposit.getStatus())
+    if (deposit.getStatus().startsWith("PAID")
         || "PAYMENT_FAILED".equals(deposit.getStatus())
         || "EXPIRED".equals(deposit.getStatus())) {
       return;
@@ -166,7 +122,16 @@ public class ListingDepositServiceImpl implements ListingDepositService {
     deposit.setStatus(status);
     if (deposit.getListing().getStatus() == CarListingStatus.RESERVED) {
       deposit.getListing().setStatus(CarListingStatus.ACTIVE);
-      deposit.getListing().setUpdatedAt(Instant.now());
+      deposit.getListing().setUpdatedAt(clock.instant());
     }
+  }
+
+  private boolean reclaimLateReservation(ListingDeposit deposit) {
+    if (!"EXPIRED".equals(deposit.getStatus())
+        && !"PAYMENT_FAILED".equals(deposit.getStatus())) return true;
+    if (deposit.getListing().getStatus() != CarListingStatus.ACTIVE) return false;
+    deposit.getListing().setStatus(CarListingStatus.RESERVED);
+    deposit.getListing().setUpdatedAt(clock.instant());
+    return true;
   }
 }

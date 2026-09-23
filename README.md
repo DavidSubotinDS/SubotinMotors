@@ -1,5 +1,13 @@
 # Autostrada Auctions
 
+S7 working-tree update: store and listing-deposit checkout now persist durable
+attempts and explicit holds before Stripe, use stable provider idempotency keys,
+reconcile ambiguous outcomes and durably receive verified webhooks. Existing
+routes, session/CSRF behavior and successful checkout responses remain compatible.
+Read the [S7 runbook](docs/checkout-reliability.md) and
+[verification handoff](docs/checkout-reliability-pr.md). Payment-service
+extraction is the next stage and is not included here.
+
 S6 working-tree update: notification inbox and mail delivery now have a separate owner,
 RabbitMQ and guarded data cutover. Read the [S6 runbook](docs/notification-service.md) before starting
 the new Compose stack; historical S5 startup/test instructions below need that cutover.

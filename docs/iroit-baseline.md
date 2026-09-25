@@ -1,5 +1,14 @@
 # IROIT application baseline
 
+> 2026-09-25 implementation update: the owner deferred further S9–S11 extraction.
+> The observability branch adds private metrics, sanitized HTTP traces and curated
+> request logs for the existing four application owners and gateway, plus opt-in
+> local CD checks. Route, data and session ownership are unchanged. RabbitMQ trace
+> propagation and the broader proposed S12 operational dashboards remain future
+> work. See [actual behavior, evidence and limitations](observability.md)
+> and [course defence guide](observability-defense.md); proposed chapters below are
+> not evidence that those future capabilities exist.
+
 **Selected course scope (2026-09-25):** S8 is merged at
 `5ee4cb8b5c0445b8ffded0577709475cd876af8e`; Backend and Frontend passed on that
 exact commit. Its local CD run failed; deployment success is not established.

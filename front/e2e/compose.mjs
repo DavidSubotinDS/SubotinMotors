@@ -19,6 +19,7 @@ const identitySchema = `identity_${id}`;
 const notificationSchema = `notification_${id}`;
 const paymentSchema = `payment_${id}`;
 const browser = !process.argv.includes('--integration-only');
+const observability = process.argv.includes('--observability');
 const upgradeFrom = process.argv.find(arg => arg.startsWith('--upgrade-from='))?.slice('--upgrade-from='.length);
 assert.ok(!upgradeFrom, 'The historical S4b --upgrade-from mode is incompatible with S6 cutover. Use the built-in staged copy/parity test.');
 const env = Object.fromEntries(Object.entries(process.env).filter(([key]) =>
@@ -76,7 +77,7 @@ function execute(command, args, { input, allowFailure = false, timeout = 900000,
   });
 }
 const compose = (args, options) => execute('docker', ['compose', '--project-name', project, '--env-file', emptyEnv,
-  '-f', resolve(root, 'compose.yaml'), '-f', overlay, ...args], options);
+  '-f', resolve(root, 'compose.yaml'), ...(observability ? ['-f', resolve(root, 'compose.observability.yaml')] : []), '-f', overlay, ...args], options);
 async function freePort() {
   const server = createServer();
   await new Promise((done, reject) => { server.once('error', reject); server.listen(0, '127.0.0.1', done); });
@@ -105,6 +106,8 @@ async function runtimeSql(statement, { allowFailure = false } = {}) {
 async function value(statement) { return (await sql(statement)).stdout.trim(); }
 async function rootValue(statement) { return (await sql(statement, { rootUser: true })).stdout.trim(); }
 async function checkHttp(path, status = 200, options = {}) {
+  if (observability && path === '/actuator/health/readiness') path = '/readyz';
+  if (observability && path === '/actuator/health/liveness') path = '/livez';
   const response = await fetch(env.PUBLIC_URL + path, { redirect: 'manual', signal: AbortSignal.timeout(10000), ...options });
   assert.equal(response.status, status, `${path}: ${await response.clone().text()}`);
   assert.match(response.headers.get('x-request-id') || '', /^[a-f0-9-]{36}$/);
@@ -185,6 +188,10 @@ try {
   await writeFile(emptyEnv, '');
   const port = await freePort();
   env.GATEWAY_PORT = String(port); env.PUBLIC_URL = `http://127.0.0.1:${port}`; env.E2E_GATEWAY_URL = env.PUBLIC_URL;
+  if (observability) {
+    env.OBSERVABILITY_ADMIN_PASSWORD = randomBytes(32).toString('hex');
+    env.OBSERVABILITY_GRAFANA_PORT = String(await freePort());
+  }
   const keys = await signingMaterial();
   Object.assign(env, {
     IDENTITY_DB_URL: `jdbc:mysql://mysql:3306/${identitySchema}?serverTimezone=UTC&connectionTimeZone=UTC&forceConnectionTimeZoneToSession=true&allowPublicKeyRetrieval=true&useSSL=false`,
@@ -448,6 +455,55 @@ try {
   await checkHttp('/api/auth/logout', 200, { method: 'POST', headers: { Cookie: signedInCookie, 'X-CSRF-TOKEN': signedInToken } });
   await record('Production images started non-root; private service ports, SPA/API/exact webhook routing and backend/identity MySQL migrations verified.');
   await record('Production cookie attributes, login rotation/old-session rejection, CSRF, logout, CORS, trusted redirects and reset request without secret logging verified.');
+  if (observability) {
+    const grafana = `http://127.0.0.1:${env.OBSERVABILITY_GRAFANA_PORT}`;
+    const headers = { Authorization: `Basic ${Buffer.from(`observer:${env.OBSERVABILITY_ADMIN_PASSWORD}`).toString('base64')}` };
+    const query = async (uid, path) => {
+      const response = await fetch(`${grafana}/api/datasources/proxy/uid/autostrada-${uid}${path}`, { headers, signal: AbortSignal.timeout(5000) });
+      if (!response.ok) throw new Error(`Telemetry query returned ${response.status}`);
+      return response.json();
+    };
+    await checkHttp('/actuator/prometheus', 404);
+    await eventually(async () => {
+      try {
+        const result = await query('prometheus', '/api/v1/query?query=' + encodeURIComponent('up{job="autostrada"}'));
+        return result.data.result.length === 5 && result.data.result.every(sample => sample.value[1] === '1');
+      } catch { return false; }
+    }, 'all five application metrics scrapes');
+    const trace = randomBytes(16).toString('hex');
+    await checkHttp('/api/public/auctions?telemetry=private-sentinel', 200, { headers: { traceparent: `00-${trace}-1234567890123456-01` } });
+    await eventually(async () => {
+      try {
+        const data = JSON.stringify(await query('tempo', `/api/traces/${trace}`));
+        assert.ok(!data.includes('private-sentinel'), 'Query data leaked into trace storage');
+        return data.includes('gateway') && data.includes('backend');
+      } catch { return false; }
+    }, 'real gateway/backend trace storage');
+    await eventually(async () => {
+      try {
+        const data = JSON.stringify(await query('loki', '/loki/api/v1/query_range?query=' + encodeURIComponent(`{service="gateway"} |= "${trace}"`)));
+        assert.ok(!data.includes('private-sentinel'), 'Query data leaked into request logs');
+        return data.includes(trace);
+      } catch { return false; }
+    }, 'real application log delivery through Alloy');
+    await eventually(async () => {
+      try {
+        const logs = await query('loki', '/loki/api/v1/query_range?query=' + encodeURIComponent('{service=~"gateway|backend|identity|notification|payment"}') + '&limit=1000');
+        return new Set(logs.data.result.map(stream => stream.stream.service)).size === 5;
+      } catch { return false; }
+    }, 'request logs from all five processes');
+    await compose(['stop', 'tempo', 'loki', 'prometheus', 'alloy']);
+    await checkHttp('/api/session');
+    await checkHttp('/readyz');
+    await compose(['up', '--detach', 'tempo', 'loki', 'prometheus', 'alloy']);
+    await eventually(async () => {
+      try {
+        const result = await query('prometheus', '/api/v1/query?query=' + encodeURIComponent('up{job="autostrada"}'));
+        return result.data.result.length === 5 && result.data.result.every(sample => sample.value[1] === '1');
+      } catch { return false; }
+    }, 'metrics recovery after collector restart');
+    await record('Telemetry: five private scrapes, real gateway/backend trace, trace-correlated Loki logs, public metrics denial and collector outage independence passed.');
+  }
 
   // Real MySQL checks: grants, unique/CHECK enforcement, S5 identity FK extraction, and a competing row lock.
   assert.notEqual((await sql('SELECT * FROM mysql.user', { allowFailure: true })).code, 0);
@@ -552,9 +608,9 @@ try {
   await record('Logical backup restored to all four isolated owner schemas; Flyway/Hibernate startup and data parity passed.');
 
   await compose(['stop', 'mysql']);
-  await compose(['exec', '-T', 'backend', 'curl', '--fail', '--silent', 'http://127.0.0.1:8080/actuator/health/liveness']);
+  await compose(['exec', '-T', 'backend', 'curl', '--fail', '--silent', `http://127.0.0.1:8080/${observability ? 'livez' : 'actuator/health/liveness'}`]);
   const backendReadiness = await compose(['exec', '-T', 'backend', 'curl', '--silent', '--output', '/dev/null',
-    '--write-out', '%{http_code}', 'http://127.0.0.1:8080/actuator/health/readiness']);
+    '--write-out', '%{http_code}', `http://127.0.0.1:8080/${observability ? 'readyz' : 'actuator/health/readiness'}`]);
   assert.equal(backendReadiness.stdout.trim(), '503');
   await checkHttp('/actuator/health/liveness');
   // Gateway dependency probes are bounded; the backend pool has a 3-second timeout.
@@ -627,7 +683,7 @@ try {
     if (process.argv.includes('--verify-failure-cleanup')) throw new Error('Intentional post-startup failure to verify Compose cleanup');
     if (process.argv.includes('--verify-browser-failure')) env.E2E_FAILURE_PROBE = 'true';
     const result = await execute(process.execPath, ['node_modules/@playwright/test/cli.js', 'test',
-      ...(env.E2E_FAILURE_PROBE ? ['--grep', 'register, reject bad login'] : process.argv.slice(2).filter(arg => !['--integration-only', '--verify-failure-cleanup'].includes(arg)))],
+      ...(env.E2E_FAILURE_PROBE ? ['--grep', 'register, reject bad login'] : process.argv.slice(2).filter(arg => !['--integration-only', '--verify-failure-cleanup', '--observability'].includes(arg)))],
     { cwd: resolve(root, 'front'), allowFailure: true, timeout: 600000 });
     console.log(result.stdout);
     assert.equal(result.code, 0, 'Browser suite failed; see Playwright reports and Compose logs');

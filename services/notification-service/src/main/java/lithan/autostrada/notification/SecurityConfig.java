@@ -12,7 +12,7 @@ class SecurityConfig {
         .sessionManagement(s->s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
         .formLogin(c->c.disable()).httpBasic(c->c.disable()).logout(c->c.disable())
         .oauth2ResourceServer(o->o.jwt(j->j.jwtAuthenticationConverter(AssertionSecurity.converter())))
-        .authorizeHttpRequests(a->a.requestMatchers("/actuator/health","/actuator/health/liveness","/actuator/health/readiness").permitAll()
+        .authorizeHttpRequests(a->a.requestMatchers("/livez", "/readyz", "/actuator/health","/actuator/health/liveness","/actuator/health/readiness").permitAll()
             .requestMatchers("/internal/v1/users/*/unread-count").hasAuthority("SCOPE_notification-count")
             .requestMatchers("/api/user/notifications/**","/user/notifications/**").hasRole("USER").anyRequest().denyAll())
         .exceptionHandling(e->e.authenticationEntryPoint((q,r,x)->error(r,401,"Authentication required."))

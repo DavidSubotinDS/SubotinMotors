@@ -1,0 +1,17 @@
+<configuration>
+  <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+  <include resource="org/springframework/boot/logging/logback/console-appender.xml"/>
+  <root level="INFO"><appender-ref ref="CONSOLE"/></root>
+  <springProfile name="observability">
+    <springProperty name="telemetryLogPath" source="telemetry.log-path" defaultValue="${java.io.tmpdir}/autostrada-identity-requests.log"/>
+    <appender name="SAFE_REQUESTS" class="ch.qos.logback.core.rolling.RollingFileAppender">
+      <file>${telemetryLogPath}</file>
+      <encoder><pattern>%msg%n</pattern></encoder>
+      <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+        <fileNamePattern>${telemetryLogPath}.%d{yyyy-MM-dd}.%i.gz</fileNamePattern>
+        <maxFileSize>5MB</maxFileSize><maxHistory>2</maxHistory><totalSizeCap>10MB</totalSizeCap>
+      </rollingPolicy>
+    </appender>
+    <logger name="autostrada.telemetry" level="INFO" additivity="false"><appender-ref ref="SAFE_REQUESTS"/></logger>
+  </springProfile>
+</configuration>

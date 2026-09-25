@@ -36,7 +36,7 @@ class RemoteProfileClientTests {
       exchange.close();
     });
     server.start();
-    client=new RemoteProfileClient("http://127.0.0.1:"+server.getAddress().getPort(),"test-only-secret",()->7);
+    client=new RemoteProfileClient("http://127.0.0.1:"+server.getAddress().getPort(),"test-only-secret",()->7,org.springframework.web.client.RestClient.builder());
   }
   @AfterEach void stop() {server.stop(0);}
   @Test void readsAndMapsProfilesAcrossRealHttp() {

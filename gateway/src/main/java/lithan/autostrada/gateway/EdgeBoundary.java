@@ -35,6 +35,8 @@ class EdgeBoundary implements WebFilter {
   private static final Set<String> PRIVATE_HEADERS = Set.of("authorization", "proxy-authorization",
       "x-role", "x-roles", "x-auth-token", "x-e2e-control", "x-original-url", "x-rewrite-url");
   private final URI publicUrl;
+  @Value("${management.server.port:-1}")
+  private int managementPort;
   private final CorsConfiguration cors = new CorsConfiguration();
 
   EdgeBoundary(@Value("${gateway.public-url}") URI publicUrl,
@@ -58,6 +60,12 @@ class EdgeBoundary implements WebFilter {
 
   @Override
   public Mono<Void> filter(ServerWebExchange exchange, WebFilterChain chain) {
+    var localAddress = exchange.getRequest().getLocalAddress();
+    if (managementPort > 0 && localAddress != null && localAddress.getPort() == managementPort
+        && exchange.getRequest().getMethod() == org.springframework.http.HttpMethod.GET
+        && exchange.getRequest().getPath().value().equals("/actuator/prometheus")) {
+      return chain.filter(exchange);
+    }
     String requestId = UUID.randomUUID().toString(); // Never echo an attacker-controlled log/correlation value.
     long started = System.nanoTime();
     exchange.getResponse().getHeaders().set("X-Request-ID", requestId);

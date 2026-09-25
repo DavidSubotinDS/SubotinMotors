@@ -61,7 +61,7 @@ public class SecurityConfig {
     http.authorizeHttpRequests(configurer -> configurer
         .dispatcherTypeMatchers(DispatcherType.FORWARD, DispatcherType.ERROR).permitAll()
         .requestMatchers("/css/**", "/images/**", "/js/**").permitAll()
-        .requestMatchers("/actuator/health", "/actuator/health/liveness", "/actuator/health/readiness").permitAll()
+        .requestMatchers("/livez", "/readyz", "/actuator/health", "/actuator/health/liveness", "/actuator/health/readiness").permitAll()
         .requestMatchers(STRIPE_WEBHOOK).permitAll()
         .requestMatchers("/api/user/notifications/**", "/user/notifications/**").denyAll()
         .requestMatchers("/api/auth/**", "/api/session", "/api/csrf", "/loginUser", "/logout",

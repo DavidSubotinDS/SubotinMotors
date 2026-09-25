@@ -92,7 +92,7 @@ role, reset, notification, outbox or broker writes, restoring an old image or du
 can re-enable stale security state or duplicate delivery. Diagnose the retained
 logs, preserve all volumes, and prefer a corrected forward deployment.
 
-For disaster recovery, stop public ingress and all writers, restore the three
+For disaster recovery, stop public ingress and all writers, restore all four
 schema dump into a new disposable project first, and verify Flyway histories,
 row counts, identity/profile hashes, notification read state and outbox/dedupe
 state. Restore the coordinated MySQL data, RabbitMQ volume and exact private
@@ -107,4 +107,16 @@ docker compose -p autostrada-local --env-file C:\AutostradaDeploy\autostrada.env
 
 Never run `down --volumes` for `autostrada-local` unless its retained deployment
 data has been intentionally retired and separately verified.
+
+## Optional monitoring
+
+Use `Enable-LocalObservability.ps1 -Path C:\AutostradaDeploy\autostrada.env` before
+the next reviewed deployment to opt in. It preserves existing application secrets
+and generates a missing Grafana password. `Common.ps1` then includes
+`compose.observability.yaml` and verifies five scrapes plus trace/log datasource
+health after deployment. Keep the private env file off screen and out of Git.
+For startup, shutdown and diagnostics with monitoring enabled, source `Common.ps1`
+and use `Invoke-Compose` so the optional overlay is included consistently.
+See [the owner runbook](../../docs/observability.md) for exact commands,
+runner troubleshooting and safe disable/recovery instructions.
 

@@ -20,11 +20,11 @@ public class RemoteProfileClient implements ProfileClient, CheckoutProfileClient
   private final RestClient http; private final String secret; private final CurrentIdentity actor;
   private final Semaphore capacity=new Semaphore(32);
   public RemoteProfileClient(@Value("${identity.base-url}") String url,
-      @Value("${identity.service-secret}") String secret, CurrentIdentity actor) {
+      @Value("${identity.service-secret}") String secret, CurrentIdentity actor, RestClient.Builder builder) {
     var transport=new JdkClientHttpRequestFactory(java.net.http.HttpClient.newBuilder()
         .connectTimeout(Duration.ofMillis(300)).followRedirects(java.net.http.HttpClient.Redirect.NEVER).build());
     transport.setReadTimeout(Duration.ofSeconds(2));
-    this.http=RestClient.builder().baseUrl(url).requestFactory(transport).build(); this.secret=secret; this.actor=actor;
+    this.http=builder.clone().baseUrl(url).requestFactory(transport).build(); this.secret=secret; this.actor=actor;
   }
   public record Token(String accessToken,int expiresIn) { @Override public String toString(){return "Token[redacted]";} }
   private String token() {
@@ -51,7 +51,7 @@ public class RemoteProfileClient implements ProfileClient, CheckoutProfileClient
   private void correlate(HttpHeaders headers) {
     var attrs=org.springframework.web.context.request.RequestContextHolder.getRequestAttributes();
     if(attrs instanceof org.springframework.web.context.request.ServletRequestAttributes servlet) {
-      for(String key:List.of("X-Request-ID","traceparent","tracestate")) {
+      for(String key:List.of("X-Request-ID")) {
         String value=servlet.getRequest().getHeader(key);if(value!=null) headers.set(key,value);
       }
     }

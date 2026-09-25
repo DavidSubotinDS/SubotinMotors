@@ -15,9 +15,10 @@ RUN groupadd --system notification && useradd --system --gid notification notifi
     && apt-get update && apt-get install -y --no-install-recommends curl \
     && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
+RUN mkdir -p /var/log/autostrada && chown notification:notification /var/log/autostrada
 USER notification
 EXPOSE 8080
-HEALTHCHECK --interval=10s --timeout=5s --start-period=60s --retries=6 CMD curl --fail --silent http://127.0.0.1:8080/actuator/health/readiness || exit 1
+HEALTHCHECK --interval=10s --timeout=5s --start-period=60s --retries=6 CMD curl --fail --silent http://127.0.0.1:8080${HEALTHCHECK_PATH:-/actuator/health/readiness} || exit 1
 
 FROM runtime AS e2e
 COPY --from=test-build /build/target/classes /test/classes

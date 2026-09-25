@@ -26,13 +26,13 @@ class IdentityBridge implements GlobalFilter, Ordered {
   private final WebClient identity;
   private final String secret;
   IdentityBridge(@Value("${gateway.identity-url:http://127.0.0.1:8082}") String url,
-      @Value("${gateway.identity-secret:}") String secret) {
+      @Value("${gateway.identity-secret:}") String secret, WebClient.Builder builder) {
     this.secret=secret;
     var pool=ConnectionProvider.builder("identity-exchange").maxConnections(32).pendingAcquireMaxCount(64)
         .pendingAcquireTimeout(Duration.ofMillis(300)).maxIdleTime(Duration.ofSeconds(5)).maxLifeTime(Duration.ofSeconds(5)).build();
     var client=UpstreamTransport.bounded(HttpClient.create(pool)).option(io.netty.channel.ChannelOption.CONNECT_TIMEOUT_MILLIS,300)
         .responseTimeout(Duration.ofSeconds(2));
-    identity=WebClient.builder().baseUrl(url).clientConnector(new ReactorClientHttpConnector(client))
+    identity=builder.clone().baseUrl(url).clientConnector(new ReactorClientHttpConnector(client))
         .codecs(c->c.defaultCodecs().maxInMemorySize(65536)).build();
   }
   @Override public int getOrder(){return -10;}
@@ -80,7 +80,7 @@ class IdentityBridge implements GlobalFilter, Ordered {
     return identity.post().uri("/internal/v1/session-exchange").headers(h->{
       h.setBasicAuth("gateway",secret);
       if(cookie!=null)h.set(HttpHeaders.COOKIE,"AUTOSTRADA_SESSION="+cookie.getValue());
-      for(String name:List.of("X-Request-ID","traceparent","tracestate")) {
+      for(String name:List.of("X-Request-ID")) {
         String value=exchange.getRequest().getHeaders().getFirst(name);if(value!=null)h.set(name,value);
       }
     }).bodyValue(body).exchangeToMono(response -> response.statusCode().is2xxSuccessful()

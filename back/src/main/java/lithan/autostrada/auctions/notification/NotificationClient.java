@@ -19,11 +19,11 @@ public class NotificationClient {
   private final Semaphore capacity=new Semaphore(16);
   public NotificationClient(@Value("${identity.base-url}") String identityUrl,
       @Value("${notification.base-url:http://127.0.0.1:8083}") String notificationUrl,
-      @Value("${identity.service-secret}") String secret,CurrentIdentity actor) {
+      @Value("${identity.service-secret}") String secret,CurrentIdentity actor, RestClient.Builder builder) {
     var transport=new JdkClientHttpRequestFactory(java.net.http.HttpClient.newBuilder().connectTimeout(Duration.ofMillis(300))
         .followRedirects(java.net.http.HttpClient.Redirect.NEVER).build());transport.setReadTimeout(Duration.ofSeconds(2));
-    identity=RestClient.builder().baseUrl(identityUrl).requestFactory(transport).build();
-    notification=RestClient.builder().baseUrl(notificationUrl).requestFactory(transport).build();this.secret=secret;this.actor=actor;
+    identity=builder.clone().baseUrl(identityUrl).requestFactory(transport).build();
+    notification=builder.clone().baseUrl(notificationUrl).requestFactory(transport).build();this.secret=secret;this.actor=actor;
   }
   private record Token(String accessToken) { @Override public String toString(){return "Token[redacted]";} }
   private record Count(long count) {}

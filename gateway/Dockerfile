@@ -12,8 +12,9 @@ RUN groupadd --system gateway && useradd --system --gid gateway gateway \
     && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY --from=build /build/target/gateway-0.0.1-SNAPSHOT.jar app.jar
+RUN mkdir -p /var/log/autostrada && chown gateway:gateway /var/log/autostrada
 USER gateway
 ENV GATEWAY_BIND_ADDRESS=0.0.0.0
 EXPOSE 8081
-HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 CMD curl --fail --silent http://127.0.0.1:${GATEWAY_PORT:-8081}/actuator/health/readiness || exit 1
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 CMD curl --fail --silent http://127.0.0.1:${GATEWAY_PORT:-8081}${HEALTHCHECK_PATH:-/actuator/health/readiness} || exit 1
 ENTRYPOINT ["java", "-jar", "/app/app.jar"]

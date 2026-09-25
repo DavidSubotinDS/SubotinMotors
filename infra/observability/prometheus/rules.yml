@@ -1,0 +1,31 @@
+groups:
+  - name: autostrada-http
+    rules:
+      # Exclude health/scrape traffic so idle services do not look busy.
+      - record: autostrada:http_requests:rate5m
+        expr: sum by (service) (rate(http_server_requests_seconds_count{job="autostrada",uri!~"/actuator.*|/livez|/readyz"}[5m]))
+      - record: autostrada:http_errors:rate5m
+        expr: sum by (service) (rate(http_server_requests_seconds_count{job="autostrada",uri!~"/actuator.*|/livez|/readyz",status=~"5.."}[5m])) or on (service) (0 * autostrada:http_requests:rate5m)
+      # No traffic => no ratio sample, rather than a misleading healthy zero.
+      - record: autostrada:http_error:ratio5m
+        expr: (autostrada:http_errors:rate5m / autostrada:http_requests:rate5m) and on (service) (autostrada:http_requests:rate5m > 0)
+      - record: autostrada:http_latency:p95_seconds5m
+        expr: histogram_quantile(0.95, sum by (service, le) (rate(http_server_requests_seconds_bucket{job="autostrada",uri!~"/actuator.*|/livez|/readyz"}[5m])))
+      - alert: AutostradaServiceUnreachable
+        expr: up{job="autostrada"} == 0
+        for: 2m
+        labels: {severity: critical}
+        annotations:
+          summary: 'Telemetry endpoint for {{ $labels.service }} is unreachable'
+      - alert: AutostradaHttpErrors
+        expr: (autostrada:http_error:ratio5m > 0.05) and on (service) (autostrada:http_requests:rate5m >= 0.1)
+        for: 5m
+        labels: {severity: warning}
+        annotations:
+          summary: '{{ $labels.service }} has sustained HTTP server errors'
+      - alert: AutostradaHttpLatency
+        expr: (autostrada:http_latency:p95_seconds5m > 2) and on (service) (autostrada:http_requests:rate5m >= 0.1)
+        for: 5m
+        labels: {severity: warning}
+        annotations:
+          summary: '{{ $labels.service }} has sustained slow HTTP responses'

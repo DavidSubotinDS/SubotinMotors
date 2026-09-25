@@ -129,13 +129,6 @@ public class AdminController {
     return "desc".equalsIgnoreCase(direction) ? Sort.Direction.DESC : Sort.Direction.ASC;
   }
 
-  private String userSortProperty(String sort) {
-    return switch (sort) {
-      case "idUser", "username", "email", "profile.firstName", "profile.lastName" -> sort;
-      default -> "idUser";
-    };
-  }
-
   private String carSortProperty(String sort) {
     return switch (sort) {
       case "idCar", "make", "model", "year", "price", "status", "auctionEndTime" -> sort;

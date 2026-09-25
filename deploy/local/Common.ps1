@@ -9,8 +9,13 @@ if ($script:ProjectName -ne 'autostrada-local' -and $script:ProjectName -notmatc
     throw 'AUTOSTRADA_DEPLOY_PROJECT may only select autostrada-local or a disposable autostrada-local-test-<12 hex> project.'
 }
 
+function Test-WindowsAbsolutePath([string]$Path) {
+    return -not [string]::IsNullOrWhiteSpace($Path) -and
+        ($Path -match '^[A-Za-z]:[\\/]' -or $Path -match '^[\\/]{2}[^\\/]+[\\/][^\\/]+')
+}
+
 function Assert-AbsoluteExternalPath([string]$Path, [string]$Name) {
-    if (-not [IO.Path]::IsPathFullyQualified($Path)) { throw "$Name must be an absolute path." }
+    if (-not (Test-WindowsAbsolutePath $Path)) { throw "$Name must be an absolute path." }
     $full = [IO.Path]::GetFullPath($Path)
     if ($full.StartsWith($script:RepositoryRoot + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase)) {
         throw "$Name must be outside the repository so secrets and deployment state cannot be committed."

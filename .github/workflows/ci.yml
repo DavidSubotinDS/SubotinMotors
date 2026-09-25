@@ -20,8 +20,25 @@ env:
   CI: "true"
 
 jobs:
+  deployment-scripts:
+    name: Deployment environment scripts
+    runs-on: windows-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Windows PowerShell 5.1 compatibility
+        shell: powershell
+        run: ./deploy/local/Test-EnvironmentScripts.ps1
+      - name: PowerShell 7 compatibility
+        shell: pwsh
+        run: ./deploy/local/Test-EnvironmentScripts.ps1
+
   backend:
     name: Backend
+    needs: [deployment-scripts]
+    if: ${{ always() }}
     runs-on: ubuntu-latest
     timeout-minutes: 40
 
@@ -31,6 +48,11 @@ jobs:
         working-directory: back
 
     steps:
+      - name: Require deployment script checks
+        if: ${{ needs.deployment-scripts.result != 'success' }}
+        working-directory: .
+        run: exit 1
+
       - name: Check out repository
         uses: actions/checkout@v7
         with:
@@ -54,20 +76,20 @@ jobs:
             services/payment-service/.mvn/wrapper/maven-wrapper.properties
 
       - name: Test and package backend
-        run: bash ./mvnw --batch-mode --no-transfer-progress clean verify
+        run: bash ./mvnw --batch-mode --no-transfer-progress -Pstatic-analysis clean verify
 
       # Identity-service failures block the existing required Backend check.
       - name: Independently test and package identity service
         working-directory: services/identity-service
-        run: bash ./mvnw --batch-mode --no-transfer-progress clean verify
+        run: bash ./mvnw --batch-mode --no-transfer-progress -Pstatic-analysis clean verify
 
       - name: Independently test and package notification service
         working-directory: services/notification-service
-        run: bash ./mvnw --batch-mode --no-transfer-progress clean verify
+        run: bash ./mvnw --batch-mode --no-transfer-progress -Pstatic-analysis clean verify
 
       - name: Independently test and package payment service
         working-directory: services/payment-service
-        run: bash ./mvnw --batch-mode --no-transfer-progress clean verify
+        run: bash ./mvnw --batch-mode --no-transfer-progress -Pstatic-analysis clean verify
 
       - name: Upload payment service test reports
         if: ${{ always() }}
@@ -159,7 +181,19 @@ jobs:
       # Gateway failures block the existing required Backend check.
       - name: Independently test and package gateway
         working-directory: gateway
-        run: bash ./mvnw --batch-mode --no-transfer-progress clean verify
+        run: bash ./mvnw --batch-mode --no-transfer-progress -Pstatic-analysis clean verify
+
+      - name: Upload Java static analysis reports
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: java-static-analysis
+          path: |
+            back/target/pmd.xml
+            gateway/target/pmd.xml
+            services/*/target/pmd.xml
+          if-no-files-found: error
+          retention-days: 14
 
       - name: Build gateway container
         working-directory: gateway
@@ -268,6 +302,18 @@ jobs:
 
       - name: Install frontend dependencies
         run: npm ci
+
+      - name: Analyze frontend and browser harness
+        run: npm run lint:ci
+
+      - name: Upload ESLint report
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: frontend-static-analysis
+          path: front/test-results/eslint.json
+          if-no-files-found: error
+          retention-days: 14
 
       - name: Test frontend
         run: npm test -- --reporter=default --reporter=junit --outputFile=test-results/vitest.xml

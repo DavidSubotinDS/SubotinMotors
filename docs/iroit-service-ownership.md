@@ -1,5 +1,18 @@
 # IROIT source inventory and data ownership
 
+**Selected course scope (2026-09-25):** S8 is merged at
+`5ee4cb8b5c0445b8ffded0577709475cd876af8e`; Backend and Frontend passed on that
+exact commit. Its local CD run failed; deployment success is not established.
+The owner has deferred S9-S11 service extraction. The selected delivery keeps
+backend, identity, notification and payment as four application owners, plus
+the gateway. Commerce/marketplace coupling remains in backend. Continue with
+static analysis, observability/reactive evidence, then defence preparation.
+This decision supersedes later "next S9" statements and the five-service target;
+the extraction chapters remain a future design, not acceptance requirements
+for this delivery. See [the current requirement matrix](iroit-requirements-status.md).
+Earlier dated paragraphs below are historical records.
+
+
 Current status (2026-09-24): S7 is merged at `42cde105`. S8 is implemented in
 the working tree. Payment-service owns provider integration, signed receipts,
 reconciliation, its attempt/outbox tables and copied historical payment audit.

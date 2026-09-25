@@ -2,7 +2,11 @@
 param([Parameter(Mandatory)][string]$Path)
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
-if (-not [IO.Path]::IsPathFullyQualified($Path)) { throw 'Path must be absolute.' }
+function Test-WindowsAbsolutePath([string]$Value) {
+    return -not [string]::IsNullOrWhiteSpace($Value) -and
+        ($Value -match '^[A-Za-z]:[\\/]' -or $Value -match '^[\\/]{2}[^\\/]+[\\/][^\\/]+')
+}
+if (-not (Test-WindowsAbsolutePath $Path)) { throw 'Path must be absolute.' }
 $full = [IO.Path]::GetFullPath($Path)
 if (Test-Path -LiteralPath $full) { throw "Refusing to overwrite existing configuration: $full" }
 
@@ -10,16 +14,22 @@ function ConvertTo-Base64Url([byte[]]$Bytes) {
     return [Convert]::ToBase64String($Bytes).TrimEnd('=').Replace('+', '-').Replace('/', '_')
 }
 function New-HexSecret([int]$Bytes = 32) {
-    $buffer = [byte[]]::new($Bytes); [Security.Cryptography.RandomNumberGenerator]::Fill($buffer)
-    return [Convert]::ToHexString($buffer).ToLowerInvariant()
+    $buffer = New-Object byte[] $Bytes
+    $rng = [Security.Cryptography.RandomNumberGenerator]::Create()
+    try { $rng.GetBytes($buffer) } finally { $rng.Dispose() }
+    return -join ($buffer | ForEach-Object { $_.ToString('x2') })
 }
 
-$rsa = [Security.Cryptography.RSA]::Create(2048)
+$rsa = New-Object Security.Cryptography.RSACryptoServiceProvider 2048
+$rsa.PersistKeyInCsp = $false
 $key = $rsa.ExportParameters($true)
+$rsa.Dispose()
 $kid = 'local-' + (New-HexSecret 8)
 $private = [ordered]@{ kty='RSA'; kid=$kid; alg='RS256'; use='sig'; n=(ConvertTo-Base64Url $key.Modulus); e=(ConvertTo-Base64Url $key.Exponent); d=(ConvertTo-Base64Url $key.D); p=(ConvertTo-Base64Url $key.P); q=(ConvertTo-Base64Url $key.Q); dp=(ConvertTo-Base64Url $key.DP); dq=(ConvertTo-Base64Url $key.DQ); qi=(ConvertTo-Base64Url $key.InverseQ) }
 $public = [ordered]@{ kty='RSA'; kid=$kid; alg='RS256'; use='sig'; n=$private.n; e=$private.e }
-$delivery = [byte[]]::new(32); [Security.Cryptography.RandomNumberGenerator]::Fill($delivery)
+$delivery = New-Object byte[] 32
+$deliveryRng = [Security.Cryptography.RandomNumberGenerator]::Create()
+try { $deliveryRng.GetBytes($delivery) } finally { $deliveryRng.Dispose() }
 
 $values = [ordered]@{
     MYSQL_PASSWORD = New-HexSecret; MYSQL_ROOT_PASSWORD = New-HexSecret

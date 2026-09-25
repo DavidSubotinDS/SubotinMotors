@@ -1,12 +1,15 @@
 # Autostrada Auctions
 
-S8 working-tree update: `services/payment-service` independently owns provider
+S8 is merged: `services/payment-service` independently owns provider
 checkout, signed webhook receipt, reconciliation and payment-result publication,
 with its own schema, build and container. The backend retains business stock,
 order and listing-reservation rules and consumes idempotent RabbitMQ results.
 Read the [S8 runbook](docs/payment-service.md) and
-[verification handoff](docs/payment-service-pr.md). S9 commerce extraction is
-next and is not included here.
+[verification handoff](docs/payment-service-pr.md). Further service extraction
+(S9-S11) is deferred by owner decision. The remaining course work is static
+analysis, observability with reactive communication evidence, and defence.
+See [current requirements](docs/iroit-requirements-status.md) and
+[static analysis](docs/static-analysis.md).
 
 S6 working-tree update: notification inbox and mail delivery now have a separate owner,
 RabbitMQ and guarded data cutover. Read the [S6 runbook](docs/notification-service.md) before starting

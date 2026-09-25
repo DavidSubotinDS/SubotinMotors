@@ -24,7 +24,7 @@ public final class NotificationCopy {
     List<List<Object>> expected=snapshot(source);
     target.setAutoCommit(false);
     try {
-      long count;try(var s=target.createStatement();var r=s.executeQuery("SELECT COUNT(*) FROM tb_notification")){r.next();count=r.getLong(1);}
+      long count;try(var s=target.createStatement();var r=s.executeQuery("SELECT COUNT(*) FROM tb_notification")){if(!r.next())throw new SQLException("Missing target count");count=r.getLong(1);}
       if(count==0)try(var s=target.prepareStatement("INSERT INTO tb_notification(id_notification,id_user,id_car,notification_type,message,created_at,read_at,auction_snapshot,dedupe_key) VALUES (?,?,?,?,?,?,?,?,?)")) {
         for(var row:expected){for(int i=0;i<row.size();i++)s.setObject(i+1,row.get(i));s.executeUpdate();}
       }
@@ -60,7 +60,7 @@ public final class NotificationCopy {
             rows.getTimestamp("created_at"),rows.getTimestamp("read_at"),json.writeValueAsString(a),user+":"+car+":ENDING_SOON"));
       }
     }
-    try(var s=source.createStatement();var r=s.executeQuery("SELECT COUNT(*) FROM tb_auction_notification")){r.next();if(r.getLong(1)!=expected.size())throw new SQLException("Orphan notification detected");}
+    try(var s=source.createStatement();var r=s.executeQuery("SELECT COUNT(*) FROM tb_auction_notification")){if(!r.next())throw new SQLException("Missing source count");if(r.getLong(1)!=expected.size())throw new SQLException("Orphan notification detected");}
     return expected;
   }
   private static void verify(Connection db,List<List<Object>> expected) throws Exception {

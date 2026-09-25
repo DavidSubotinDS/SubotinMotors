@@ -17,10 +17,14 @@ class PaymentResultConsumer {
   }
   @Scheduled(fixedDelayString="${payment.results.poll-ms:1000}")void poll(){
     try(var connection=factory.newConnection("backend-payment-results");var channel=connection.createChannel()){
-      channel.confirmSelect();for(String queue:List.of("commerce.payment-results.v1","marketplace.payment-results.v1"))for(int i=0;i<20;i++){
+      channel.confirmSelect();
+      for(String queue:List.of("commerce.payment-results.v1","marketplace.payment-results.v1")) {
+        // The counter bounds broker work per queue and poll.
+        for(int i=0;i<20;i++){
         var message=channel.basicGet(queue,false);if(message==null)break;
         try{inbox.accept(message.getBody());channel.basicAck(message.getEnvelope().getDeliveryTag(),false);}
         catch(RuntimeException failure){retry(channel,queue,message);}
+        }
       }
     }catch(Exception ignored){ }
   }

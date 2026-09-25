@@ -91,4 +91,25 @@
 		</plugins>
 	</build>
 
+  <profiles>
+    <profile>
+      <id>static-analysis</id>
+      <build><plugins><plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-pmd-plugin</artifactId>
+        <version>3.28.0</version>
+        <configuration>
+          <targetJdk>17</targetJdk>
+          <rulesets><ruleset>${project.basedir}/../../quality/pmd-ruleset.xml</ruleset></rulesets>
+          <includeTests>false</includeTests>
+          <linkXRef>false</linkXRef>
+          <failOnViolation>true</failOnViolation>
+          <failurePriority>5</failurePriority>
+          <maxAllowedViolations>0</maxAllowedViolations>
+          <printFailingErrors>true</printFailingErrors>
+        </configuration>
+        <executions><execution><phase>verify</phase><goals><goal>check</goal></goals></execution></executions>
+      </plugin></plugins></build>
+    </profile>
+  </profiles>
 </project>

@@ -1,5 +1,11 @@
 # Autostrada pass-through gateway (IROIT S2)
 
+S8 working-tree update: exact `POST /webhooks/stripe` and
+`/api/payments/**` now route to payment-service. For browser API reads the
+identity bridge requests a `payment-service` user assertion; the raw webhook
+body/signature is still streamed unchanged. Backend remains the destination for
+commerce/marketplace routes. See [S8 contracts](../docs/payment-service.md).
+
 S6 working-tree update: notification inbox and mail delivery now have a separate owner,
 RabbitMQ and guarded data cutover. Read the [S6 runbook](../docs/notification-service.md) before starting
 the new Compose stack; historical S5 startup/test instructions below need that cutover.
@@ -46,7 +52,8 @@ Queries are forwarded as received; no path rewriting or body filters are used.
 | Local private guard | `/__*`, `/internal/**`, and actuator endpoints other than the three health URLs return 404; never proxy test controls |
 | `csrf` | GET `/api/csrf`, backend; precedes general API routing |
 | `api` | `/api`, `/api/**`, every method, backend; unknown API paths/errors never become SPA HTML |
-| `stripe-webhook` | **POST `/webhooks/stripe` only**, backend; other methods and suffixes are not routed |
+| `stripe-webhook` | **POST `/webhooks/stripe` only**, payment-service; other methods and suffixes are not routed |
+| `payment-api` | `/api/payments/**`, payment-service through the identity assertion bridge |
 | `spa` | GET/HEAD canonical React pages: root/auth/static pages; `/auctions`, `/listings`, `/parts` and their detail IDs; cart/orders/details; profiles; both checkout success pages; canonical user/admin screens and supported edit pages |
 | `legacy` | Remaining methods in the explicitly listed legacy families, including login/logout/registration/reset, bids, follows, comments, uploads, checkout, appointment and admin actions; legacy GET aliases such as `/cars`, `/car-listings`, `/store/parts`, `/user/my-auctions`, retired `/payments/**` go to backend |
 | `frontend-assets` | GET/HEAD `/assets/**`, `/images/**`, favicon and listed Vite development assets go to frontend |

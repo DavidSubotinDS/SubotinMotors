@@ -26,6 +26,11 @@ export function messagePump(env) {
             await request(`${base}/__e2e/outbox-ack`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ eventId: id }) });
           }
         }
+        const paymentRows = await (await request(`${env.E2E_PAYMENT_CONTROL_URL}/__e2e/outbox`)).json();
+        for (const row of paymentRows) {
+          await request(`${env.E2E_CONTROL_URL}/__e2e/payment-result`, { method: 'POST', headers: { 'Content-Type': 'application/octet-stream' }, body: row.payload_json });
+          await request(`${env.E2E_PAYMENT_CONTROL_URL}/__e2e/outbox-ack`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ eventId: row.event_id }) });
+        }
       } catch { failure = new Error('Native test message transport failed; inspect private harness logs.'); }
       await new Promise(resolve => setTimeout(resolve, 100));
     }

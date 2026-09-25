@@ -1,12 +1,12 @@
 # IROIT source inventory and data ownership
 
-Current status (2026-09-23): S6 and local CD are merged at `39e750e`. S7 is
-implemented locally without extracting another process. The backend owns new
-`tb_checkout_attempt`, `tb_stock_hold` and `tb_checkout_webhook_inbox` tables,
-plus nullable unique attempt links on store orders and listing deposits. It
-still owns Stripe creation/reconciliation and the business stock/reservation
-transitions. Identity and notification ownership remain unchanged. See
-[S7 ownership](checkout-reliability.md); payment ownership moves only in S8.
+Current status (2026-09-24): S7 is merged at `42cde105`. S8 is implemented in
+the working tree. Payment-service owns provider integration, signed receipts,
+reconciliation, its attempt/outbox tables and copied historical payment audit.
+Backend owns stock/order/listing/deposit business state and an idempotent result
+inbox; its old checkout attempt is a coexistence projection. See
+[implemented S8 ownership](payment-service.md). S9 and later ownership remains
+proposed.
 
 Current status (2026-09-22): S5 is merged at
 `cddde6da41d32d3d37fae9a8eaa71cc4027cca73`, with Backend and Frontend success
@@ -84,17 +84,14 @@ separate repositories remain within their aggregate. Split
 `ListingCommentRepository`; payment migration replaces cross-domain queries in
 `PaymentOrderRepository`. No shared persistence library is proposed.
 
-S7 now provides a backend-local purpose-neutral `tb_checkout_attempt` record
-for store orders and listing deposits, plus explicit holds and a verified-event
-inbox. These are the safe extraction source for S8; they are not yet owned by an
-independent payment process. S8 payment storage should introduce service-owned records
-with `(sourceService, businessType, businessId, attemptNumber)` uniqueness and a
-separate attempt UUID. Import existing auction payment rows and provider fields
-from store orders/deposits with a durable mapping of original table/ID to new
-attempt ID. Different source tables can contain the same integer ID. Retain
-legacy read compatibility instead of overloading the existing mandatory bid FK.
-New service-owned outbox, inbox and delivery/reservation/idempotency records
-are proposed infrastructure tables, not already implemented entities.
+S7 provided the backend-local `tb_checkout_attempt`, holds and verified-event
+inbox used as the S8 copy source. S8 now stores independent `payment_attempt`,
+`payment_webhook_receipt`, `payment_outbox` and copy-checkpoint records, keyed by
+the existing attempt UUID and namespaced source/business reference. It copies
+legacy account/auction audit separately instead of overloading the mandatory bid
+FK. The backend retains its attempt row as a business/coexistence projection and
+stores normalized terminal events in `tb_payment_result_inbox`; this coupling is
+removed with the owning commerce/marketplace stages.
 
 ## Controller ownership
 

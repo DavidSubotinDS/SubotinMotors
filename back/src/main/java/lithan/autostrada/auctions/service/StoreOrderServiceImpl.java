@@ -85,8 +85,8 @@ public class StoreOrderServiceImpl implements StoreOrderService {
 
   @Override
   public StoreOrder currentUserOrderBySession(String sessionId) {
-    StoreOrder order = orderRepository.findByCheckoutSessionId(sessionId)
-        .orElseThrow(ResourceNotFoundException::new);
+    StoreOrder order = orderRepository.findByCheckoutSessionId(sessionId).orElseGet(()->orderRepository
+        .findByCheckoutAttemptId(stripeGateway.findAttemptByProviderSession(sessionId)).orElseThrow(ResourceNotFoundException::new));
     if (order.getUserId() != currentIdentity.requireUserId()) {
       throw new ResourceNotFoundException();
     }
@@ -131,6 +131,16 @@ public class StoreOrderServiceImpl implements StoreOrderService {
     processed.setProcessedAt(clock.instant());
     webhookEventRepository.save(processed);
     return true;
+  }
+
+  @Transactional
+  public void processPaymentResult(String attemptId,String status,String paymentIntentId) {
+    StoreOrder order=orderRepository.findByCheckoutAttemptId(attemptId).orElseThrow(ResourceNotFoundException::new);
+    if("SUCCEEDED".equals(status)&&!order.getStatus().startsWith("PAID")){
+      order.setStatus(reclaimInventoryForLatePayment(order)?"PAID":"PAID_STOCK_CONFLICT");order.setPaymentIntentId(paymentIntentId);order.setPaidAt(clock.instant());
+    } else if("FAILED".equals(status)) restoreInventory(order,"PAYMENT_FAILED");
+    else if("EXPIRED".equals(status)) restoreInventory(order,"EXPIRED");
+    order.setUpdatedAt(clock.instant());orderRepository.save(order);checkoutPreparation.recordTerminal(attemptId,order.getStatus(),order.getPaymentIntentId());
   }
 
   private void restoreInventory(StoreOrder order, String status) {

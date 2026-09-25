@@ -17,7 +17,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import lithan.autostrada.auctions.config.StripeProperties;
+import lithan.autostrada.auctions.config.PaymentPolicyProperties;
 import lithan.autostrada.auctions.entity.*;
 import lithan.autostrada.auctions.error.MissingShippingAddressException;
 import lithan.autostrada.auctions.error.ResourceNotFoundException;
@@ -38,14 +38,14 @@ public class CheckoutPreparationService {
   private final CartItemRepository cartItems;
   private final CarPartRepository parts;
   private final CarListingRepository listings;
-  private final StripeProperties stripe;
+  private final PaymentPolicyProperties paymentPolicy;
   private final Clock clock;
 
   public CheckoutPreparationService(
       CheckoutAttemptRepository attempts, StockHoldRepository holds,
       StoreOrderRepository orders, ListingDepositRepository deposits,
       CartItemRepository cartItems, CarPartRepository parts,
-      CarListingRepository listings, StripeProperties stripe, Clock clock) {
+      CarListingRepository listings, PaymentPolicyProperties paymentPolicy, Clock clock) {
     this.attempts = attempts;
     this.holds = holds;
     this.orders = orders;
@@ -53,7 +53,7 @@ public class CheckoutPreparationService {
     this.cartItems = cartItems;
     this.parts = parts;
     this.listings = listings;
-    this.stripe = stripe;
+    this.paymentPolicy = paymentPolicy;
     this.clock = clock;
   }
 
@@ -82,7 +82,7 @@ public class CheckoutPreparationService {
 
     StoreOrder order = new StoreOrder();
     order.setUserId(userId);
-    order.setCurrency(stripe.getCurrency().toLowerCase());
+    order.setCurrency(paymentPolicy.getCurrency().toLowerCase());
     order.setStatus("PROVIDER_PENDING");
     order.setCheckoutAttemptId(attempt.getAttemptId());
     order.setShippingName(profile.name());
@@ -154,14 +154,14 @@ public class CheckoutPreparationService {
     }
     Instant now = clock.instant();
     String hash = sha256(userId + "|" + listingId + "|" + listing.getDepositAmountMinor()
-        + "|" + stripe.getCurrency().toLowerCase());
+        + "|" + paymentPolicy.getCurrency().toLowerCase());
     CheckoutAttempt attempt = newAttempt(userId, DEPOSIT, clientRequestId, hash, profile.email(), now);
     attempts.save(attempt);
     ListingDeposit deposit = new ListingDeposit();
     deposit.setListing(listing);
     deposit.setBuyerId(userId);
     deposit.setAmountMinor(listing.getDepositAmountMinor());
-    deposit.setCurrency(stripe.getCurrency().toLowerCase());
+    deposit.setCurrency(paymentPolicy.getCurrency().toLowerCase());
     deposit.setStatus("PROVIDER_PENDING");
     deposit.setCheckoutAttemptId(attempt.getAttemptId());
     deposit.setCreatedAt(now);
@@ -330,7 +330,7 @@ public class CheckoutPreparationService {
   private String storeHash(int userId, CheckoutProfile profile, List<CartItem> cart,
       Map<Integer, CarPart> lockedParts) {
     StringBuilder canonical = new StringBuilder().append(userId).append('|')
-        .append(stripe.getCurrency().toLowerCase()).append('|')
+        .append(paymentPolicy.getCurrency().toLowerCase()).append('|')
         .append(profile.formattedAddress()).append('|');
     cart.stream().sorted((a, b) -> Integer.compare(a.getPart().getIdPart(), b.getPart().getIdPart()))
         .forEach(item -> {

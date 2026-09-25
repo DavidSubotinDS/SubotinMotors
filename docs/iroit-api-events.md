@@ -1,12 +1,11 @@
 # IROIT API, event contracts and business flows
 
-Current status (2026-09-23): S7 is implemented locally inside the existing
-backend. Store and listing-deposit checkout accept `Idempotency-Key`; successful
-responses retain `checkoutUrl` and add `attemptId`, `status` and `retryable`.
-Ambiguous provider outcomes are durably reconciled and the UI waits for explicit
-retry without mutation replay. Verified Stripe events are stored before dispatch,
-including unmatched early events. The S8 internal payment REST/event contracts
-below remain proposed. See [the implemented contract](checkout-reliability.md).
+Current status (2026-09-24): the S8 internal payment REST and terminal RabbitMQ
+contracts below are implemented in the focused working tree. Stable attempt IDs,
+bounded service calls, raw signed ingress, unmatched-event recovery, provider
+reconciliation and idempotent backend result consumption preserve the S7 browser
+contract. See [the implemented S8 contract](payment-service.md); S9 and later
+contracts remain proposed.
 
 Current status (2026-09-22): S5 is merged at
 `cddde6da41d32d3d37fae9a8eaa71cc4027cca73`, with Backend and Frontend success
@@ -167,13 +166,12 @@ The existing browser `POST /api/store/checkout` now returns the additive
 `{checkoutUrl,attemptId,status,retryable}` contract. Successful responses retain
 the original `checkoutUrl`. S7 pending handling is implemented without exposing
 an internal status URL; a user explicitly retries the same key while the backend
-reconciler also resumes it. Before remote S8 checkout is enabled, add the proposed
-`202 {status,statusUrl}` with
-bounded polling of an **owner-scoped public commerce checkout-status endpoint**,
-not the internal URL. Preserve the idempotency key across retry/reload until
-resolved. The listing-deposit checkout needs the same handling. Show a familiar
-pending/retry state without exposing internal service names. Old browser code
-that assumes an immediate URL must never be deployed with a 202 producer alone.
+reconciler also resumes it. S8 deliberately preserves that deployed contract:
+it does not expose or auto-poll an internal payment URL, and the browser never
+replays the mutation. The earlier proposed public `statusUrl` is deferred to the
+owning commerce/marketplace extraction, where owner-scoped status can be added
+without leaking an internal service API. Preserve the same idempotency key across
+explicit retry/reload until resolved.
 
 ## Meaningful reactive interaction: checkout review
 

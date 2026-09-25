@@ -17,6 +17,9 @@ services:
       NOTIFICATION_DB_NAME: ${NOTIFICATION_DB_NAME:-autostrada_notification}
       NOTIFICATION_DB_USERNAME: ${NOTIFICATION_DB_USERNAME:?Set the notification database username}
       NOTIFICATION_DB_PASSWORD: ${NOTIFICATION_DB_PASSWORD:?Set the notification database password}
+      PAYMENT_DB_NAME: ${PAYMENT_DB_NAME:-autostrada_payment}
+      PAYMENT_DB_USERNAME: ${PAYMENT_DB_USERNAME:?Set the payment database username}
+      PAYMENT_DB_PASSWORD: ${PAYMENT_DB_PASSWORD:?Set the payment database password}
       TZ: UTC
     command: ["--default-time-zone=+00:00"]
     volumes:
@@ -50,14 +53,12 @@ services:
       SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE:-false}
       IDENTITY_URL: http://identity:8080
       NOTIFICATION_URL: http://notification:8080
+      PAYMENT_URL: http://payment:8080
       RABBITMQ_HOST: rabbitmq
       RABBITMQ_USERNAME: backend
       RABBITMQ_PASSWORD: ${RABBITMQ_BACKEND_PASSWORD:?Set a distinct backend broker password}
       IDENTITY_VERIFICATION_JWKS: ${IDENTITY_VERIFICATION_JWKS:?Set identity public verification JWKS}
       IDENTITY_BACKEND_SECRET: ${IDENTITY_BACKEND_SECRET:?Set the backend identity service secret}
-      STRIPE_ENABLED: ${STRIPE_ENABLED:-false}
-      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
-      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
       APP_MAIL_MODE: ${APP_MAIL_MODE:-log}
       APP_MAIL_FROM: ${APP_MAIL_FROM:-no-reply@autostradaauctions.local}
       SMTP_HOST: ${SMTP_HOST:-}
@@ -114,6 +115,7 @@ services:
       RABBITMQ_BACKEND_PASSWORD: ${RABBITMQ_BACKEND_PASSWORD:?Set a distinct backend broker password}
       RABBITMQ_IDENTITY_PASSWORD: ${RABBITMQ_IDENTITY_PASSWORD:?Set a distinct identity broker password}
       RABBITMQ_NOTIFICATION_PASSWORD: ${RABBITMQ_NOTIFICATION_PASSWORD:?Set a distinct notification broker password}
+      RABBITMQ_PAYMENT_PASSWORD: ${RABBITMQ_PAYMENT_PASSWORD:?Set a distinct payment broker password}
       RABBITMQ_OPERATOR_PASSWORD: ${RABBITMQ_OPERATOR_PASSWORD:?Set a distinct broker operator password}
     volumes: [rabbitmq-data:/var/lib/rabbitmq]
     networks: [edge]
@@ -153,6 +155,30 @@ services:
     security_opt: [no-new-privileges:true]
     cap_drop: [ALL]
 
+  payment:
+    build: ./services/payment-service
+    environment:
+      PAYMENT_DB_URL: jdbc:mysql://mysql:3306/${PAYMENT_DB_NAME:-autostrada_payment}?serverTimezone=UTC&connectionTimeZone=UTC&forceConnectionTimeZoneToSession=true&allowPublicKeyRetrieval=true&useSSL=false
+      PAYMENT_DB_USERNAME: ${PAYMENT_DB_USERNAME:?Set the payment database username}
+      PAYMENT_DB_PASSWORD: ${PAYMENT_DB_PASSWORD:?Set the payment database password}
+      IDENTITY_VERIFICATION_JWKS: ${IDENTITY_VERIFICATION_JWKS:?Set public verification JWKS}
+      PUBLIC_URL: ${PUBLIC_URL:-http://localhost:8081}
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_USERNAME: payment
+      RABBITMQ_PASSWORD: ${RABBITMQ_PAYMENT_PASSWORD:?Set a distinct payment broker password}
+      STRIPE_ENABLED: ${STRIPE_ENABLED:-false}
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
+      TZ: UTC
+      JAVA_TOOL_OPTIONS: -Duser.timezone=UTC
+    depends_on:
+      mysql: { condition: service_healthy }
+    networks: [edge, database, outbound]
+    read_only: true
+    tmpfs: [/tmp]
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+
   frontend:
     build: ./front
     networks: [edge]
@@ -169,6 +195,7 @@ services:
       GATEWAY_IDENTITY_URL: http://identity:8080
       GATEWAY_IDENTITY_SECRET: ${IDENTITY_GATEWAY_SECRET:?Set the gateway identity exchange secret}
       GATEWAY_NOTIFICATION_URL: http://notification:8080
+      GATEWAY_PAYMENT_URL: http://payment:8080
       GATEWAY_FRONTEND_URL: http://frontend:8080
       GATEWAY_ALLOWED_ORIGINS: ${PUBLIC_URL:-http://localhost:8081}
     ports:
@@ -176,6 +203,7 @@ services:
     depends_on:
       backend: { condition: service_healthy }
       identity: { condition: service_healthy }
+      payment: { condition: service_healthy }
       frontend: { condition: service_healthy }
     networks: [edge, outbound]
     read_only: true

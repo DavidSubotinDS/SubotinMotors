@@ -9,7 +9,7 @@ $paths = Assert-DeployInputs $Sha $EnvFile $StateRoot
 $env:DEPLOY_SHA = $Sha
 $volume = docker volume ls --quiet --filter "label=com.docker.compose.project=$script:ProjectName"
 if ($volume) { throw "Project $script:ProjectName already owns volumes. Initialization is fresh-only; use Deploy-Local.ps1 for upgrades." }
-if (-not $PSCmdlet.ShouldProcess($script:ProjectName, 'create dedicated deployment volumes and perform the S5/S6 copy cutovers')) { return }
+if (-not $PSCmdlet.ShouldProcess($script:ProjectName, 'create dedicated deployment volumes and perform the S5/S6/S8 copy cutovers')) { return }
 
 Build-ReleaseImages $Sha
 $bootstrap = Join-Path $PSScriptRoot 'compose.bootstrap.yaml'
@@ -27,6 +27,11 @@ try {
     Invoke-Compose $paths.EnvFile @('stop', 'backend', 'identity', 'notification') @($bootstrap)
     Invoke-Compose $paths.EnvFile @('run', '--rm', '--no-deps', 'notification-copy') @($bootstrap)
 
+    Remove-Item Env:BACKEND_FLYWAY_TARGET
+    Invoke-Compose $paths.EnvFile @('up', '--detach', '--wait', '--wait-timeout', '240', 'backend', 'payment')
+    Invoke-Compose $paths.EnvFile @('stop', 'backend', 'payment')
+    $env:BACKEND_FLYWAY_TARGET = '26'
+    Invoke-Compose $paths.EnvFile @('run', '--rm', '--no-deps', 'payment-copy') @($bootstrap)
     Remove-Item Env:BACKEND_FLYWAY_TARGET
     Invoke-Compose $paths.EnvFile @('up', '--detach', '--wait', '--wait-timeout', '300', '--remove-orphans')
     Test-PublicOrigin $paths.EnvFile

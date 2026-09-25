@@ -34,7 +34,7 @@ public class InternalIdentityController {
   @PostMapping("/session-exchange")
   public ResponseEntity<?> exchange(@RequestBody ExchangeRequest body, HttpServletRequest request) {
     credential(request, "gateway", gatewaySecret);
-    if (!Set.of("legacy-backend","notification-service").contains(body.audience()) || !Set.of("GET","HEAD","OPTIONS","POST","PUT","PATCH","DELETE").contains(body.method()))
+    if (!Set.of("legacy-backend","notification-service","payment-service").contains(body.audience()) || !Set.of("GET","HEAD","OPTIONS","POST","PUT","PATCH","DELETE").contains(body.method()))
       throw new ResponseStatusException(HttpStatus.FORBIDDEN);
     if (!Set.of("GET","HEAD","OPTIONS").contains(body.method())) {
       var expected=csrf.loadToken(request);
@@ -59,6 +59,9 @@ public class InternalIdentityController {
     if ("notification-service".equals(body.audience()))
       return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(Map.of("accessToken",tokens.issue("legacy-backend",
           "notification-service","service",List.of(),List.of("notification-count")),"expiresIn",60));
+    if ("payment-service".equals(body.audience()))
+      return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(Map.of("accessToken",tokens.issue("legacy-backend",
+          "payment-service","service",List.of(),List.of("create-store-payment","create-deposit-payment","payment-lookup","payment-expire")),"expiresIn",60));
     if (!"identity-service".equals(body.audience())) throw new ResponseStatusException(HttpStatus.FORBIDDEN);
     return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(Map.of("accessToken",tokens.issue("legacy-backend",
         "identity-service","service",List.of(),List.of("public-profiles","checkout-profile","self-profile")),"expiresIn",60));

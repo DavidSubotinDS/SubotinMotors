@@ -38,7 +38,7 @@ class IdentityBridge implements GlobalFilter, Ordered {
   @Override public int getOrder(){return -10;}
   @Override public Mono<Void> filter(ServerWebExchange exchange,GatewayFilterChain chain) {
     Route route=exchange.getAttribute(ServerWebExchangeUtils.GATEWAY_ROUTE_ATTR);
-    if(route==null || !Set.of("api","legacy","notification-api","notification-legacy").contains(route.getId())) return chain.filter(exchange);
+    if(route==null || !Set.of("api","legacy","notification-api","notification-legacy","payment-api").contains(route.getId())) return chain.filter(exchange);
     var request=exchange.getRequest();
     boolean read=Set.of(HttpMethod.GET,HttpMethod.HEAD,HttpMethod.OPTIONS).contains(request.getMethod());
     String path=request.getPath().value();
@@ -75,7 +75,7 @@ class IdentityBridge implements GlobalFilter, Ordered {
     if(secret.length()<32) return EdgeBoundary.error(exchange,HttpStatus.SERVICE_UNAVAILABLE);
     var cookie=exchange.getRequest().getCookies().getFirst("AUTOSTRADA_SESSION");
     Route route=exchange.getAttribute(ServerWebExchangeUtils.GATEWAY_ROUTE_ATTR);
-    Map<String,String> body=new HashMap<>();body.put("audience",route.getId().startsWith("notification-") ? "notification-service" : "legacy-backend");
+    Map<String,String> body=new HashMap<>();body.put("audience",route.getId().startsWith("notification-") ? "notification-service" : route.getId().equals("payment-api") ? "payment-service" : "legacy-backend");
     body.put("method",exchange.getRequest().getMethod().name());if(csrf!=null)body.put("csrfToken",csrf);
     return identity.post().uri("/internal/v1/session-exchange").headers(h->{
       h.setBasicAuth("gateway",secret);

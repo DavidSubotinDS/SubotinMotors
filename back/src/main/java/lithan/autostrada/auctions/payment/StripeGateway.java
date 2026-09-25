@@ -21,5 +21,7 @@ public interface StripeGateway {
   StripeCheckoutResult createListingDepositCheckoutSession(
       ListingDeposit deposit, String customerEmail, String idempotencyKey);
 
+  String findAttemptByProviderSession(String sessionId);
+
   StripeWebhookEvent verifyAndParseWebhook(String payload, String signature);
 }

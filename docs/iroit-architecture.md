@@ -1,13 +1,12 @@
 # IROIT target architecture and decision record
 
-Current status (2026-09-23): S6 and guarded local CD are merged on `master`
-`39e750e521f60f44645d18e9179fcedc9df9db0c`. S7 checkout reliability is
-implemented in the working tree: the existing backend now commits durable
-attempts and holds before Stripe, reconciles with a stable provider idempotency
-key, and durably receives verified webhooks. No new service is introduced and
-payment extraction remains proposed S8. See [actual S7 behavior and recovery](checkout-reliability.md)
-and [local evidence/pending gates](checkout-reliability-pr.md). Older status
-paragraphs are historical.
+Current status (2026-09-24): S7 is merged on `master` at `42cde105`. S8 is
+implemented in the focused working tree: payment-service now owns provider
+checkout, signed receipts, reconciliation, copied payment audit data and the
+terminal-result outbox; backend keeps stock/order/listing invariants and consumes
+normalized results. See [implemented S8 ownership and recovery](payment-service.md)
+and [actual evidence/pending gates](payment-service-pr.md). S9 and later remain
+proposed. Older status paragraphs are historical.
 
 Current status (2026-09-22): S5 is merged at
 `cddde6da41d32d3d37fae9a8eaa71cc4027cca73`; exact-commit Backend and Frontend

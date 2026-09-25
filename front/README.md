@@ -1,5 +1,10 @@
 # Autostrada Auctions React Frontend
 
+S8 working-tree update: checkout UI contracts remain compatible while provider
+ownership moves behind the same gateway origin. Pending attempts remain explicit,
+CSRF refresh does not replay a mutation, and store/deposit success pages remain
+read-only owner-scoped lookups. See [S8 behavior](../docs/payment-service.md).
+
 S6 working-tree update: notification inbox and mail delivery now have a separate owner,
 RabbitMQ and guarded data cutover. Read the [S6 runbook](../docs/notification-service.md) before starting
 the new Compose stack; historical S5 startup/test instructions below need that cutover.

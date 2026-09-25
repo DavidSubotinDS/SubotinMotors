@@ -17,11 +17,12 @@ const token = randomBytes(32).toString('hex');
 const schema = `e2e_${id}`;
 const identitySchema = `identity_${id}`;
 const notificationSchema = `notification_${id}`;
+const paymentSchema = `payment_${id}`;
 const browser = !process.argv.includes('--integration-only');
 const upgradeFrom = process.argv.find(arg => arg.startsWith('--upgrade-from='))?.slice('--upgrade-from='.length);
 assert.ok(!upgradeFrom, 'The historical S4b --upgrade-from mode is incompatible with S6 cutover. Use the built-in staged copy/parity test.');
 const env = Object.fromEntries(Object.entries(process.env).filter(([key]) =>
-  !/^(COMPOSE_|MYSQL_|DB_|E2E_|IDENTITY_|NOTIFICATION_|RABBITMQ_|SPRING_|STRIPE_|APP_|SMTP_|PAYMENTS_|AUCTION_|VITE_|GATEWAY_|PUBLIC_URL$|SESSION_|SERVER_|MANAGEMENT_|LOGGING_|JAVA_TOOL_OPTIONS$|JDK_JAVA_OPTIONS$|_JAVA_OPTIONS$)/i.test(key)));
+  !/^(COMPOSE_|MYSQL_|DB_|E2E_|IDENTITY_|NOTIFICATION_|PAYMENT_|RABBITMQ_|SPRING_|STRIPE_|APP_|SMTP_|PAYMENTS_|AUCTION_|VITE_|GATEWAY_|PUBLIC_URL$|SESSION_|SERVER_|MANAGEMENT_|LOGGING_|JAVA_TOOL_OPTIONS$|JDK_JAVA_OPTIONS$|_JAVA_OPTIONS$)/i.test(key)));
 Object.assign(env, { MYSQL_DATABASE: schema, MYSQL_USER: 'e2e', MYSQL_PASSWORD: randomBytes(32).toString('hex'),
   MYSQL_ROOT_PASSWORD: randomBytes(32).toString('hex'), APP_DEMO_DATA_ACK: 'I_ACCEPT_EXISTING_DEMO_DATA',
   E2E_CONTROL_TOKEN: token, TZ: 'UTC' });
@@ -198,10 +199,14 @@ try {
     NOTIFICATION_DB_NAME: notificationSchema,
     NOTIFICATION_DB_USERNAME: 'notification_e2e',
     NOTIFICATION_DB_PASSWORD: randomBytes(32).toString('hex'),
+    PAYMENT_DB_NAME: paymentSchema,
+    PAYMENT_DB_USERNAME: 'payment_e2e',
+    PAYMENT_DB_PASSWORD: randomBytes(32).toString('hex'),
     NOTIFICATION_DELIVERY_KEY: randomBytes(32).toString('base64'),
     RABBITMQ_BACKEND_PASSWORD: randomBytes(32).toString('hex'),
     RABBITMQ_IDENTITY_PASSWORD: randomBytes(32).toString('hex'),
     RABBITMQ_NOTIFICATION_PASSWORD: randomBytes(32).toString('hex'),
+    RABBITMQ_PAYMENT_PASSWORD: randomBytes(32).toString('hex'),
     RABBITMQ_OPERATOR_PASSWORD: randomBytes(32).toString('hex'),
     IDENTITY_DB_USERNAME: 'identity_e2e',
     IDENTITY_DB_PASSWORD: randomBytes(32).toString('hex'),
@@ -235,7 +240,7 @@ try {
     assert.equal(result.stdout.trim(), '', 'Project collision; refusing reuse');
   }
   owned = true;
-  await writeFile(resolve(directory, 'project.json'), JSON.stringify({ project, port, schema, identitySchema }));
+  await writeFile(resolve(directory, 'project.json'), JSON.stringify({ project, port, schema, identitySchema, paymentSchema }));
   await compose(['config', '--quiet']);
   // Reproduce Linux's sourced (mode 100644) init hook even on Windows mounts.
   // Uses the actual pinned image's entrypoint helpers, with SQL stubbed.
@@ -250,8 +255,11 @@ try {
   await compose(['up', '--detach', '--wait', '--wait-timeout', '240', 'mysql'], { timeout: 300000 });
   await sql(`CREATE DATABASE IF NOT EXISTS \`${identitySchema}\`;
     CREATE DATABASE IF NOT EXISTS \`${notificationSchema}\`;
+    CREATE DATABASE IF NOT EXISTS \`${paymentSchema}\`;
     CREATE USER IF NOT EXISTS 'notification_e2e'@'%' IDENTIFIED BY ${mysqlLiteral(env.NOTIFICATION_DB_PASSWORD)};
     GRANT ALL PRIVILEGES ON \`${notificationSchema}\`.* TO 'notification_e2e'@'%';
+    CREATE USER IF NOT EXISTS 'payment_e2e'@'%' IDENTIFIED BY ${mysqlLiteral(env.PAYMENT_DB_PASSWORD)};
+    GRANT ALL PRIVILEGES ON \`${paymentSchema}\`.* TO 'payment_e2e'@'%';
     CREATE USER IF NOT EXISTS 'identity_e2e'@'%' IDENTIFIED BY ${mysqlLiteral(env.IDENTITY_DB_PASSWORD)};
     GRANT ALL PRIVILEGES ON \`${identitySchema}\`.* TO 'identity_e2e'@'%';
     CREATE USER IF NOT EXISTS 'backend_runtime'@'%' IDENTIFIED BY ${mysqlLiteral(env.DB_RUNTIME_PASSWORD)};
@@ -303,6 +311,38 @@ try {
   delete config.services.backend.environment.SPRING_FLYWAY_TARGET;
   delete config.services.backend.environment.SPRING_JPA_HIBERNATE_DDL_AUTO;
   await saveConfig();
+  await compose(['up', '--detach', '--wait', '--wait-timeout', '240', 'backend', 'payment', 'notification', 'rabbitmq'], { timeout: 300000 });
+  await compose(['stop', 'backend', 'payment']);
+  const importedAttempt = '810e61d2-8892-4b17-a338-a91c8ef50301';
+  await sql(`INSERT INTO tb_checkout_attempt(attempt_id,id_user,purpose,client_request_id,request_hash,customer_email,status,provider_session_id,provider_checkout_url,payment_intent_id,failure_count,expires_at,created_at,updated_at,version)
+    VALUES ('${importedAttempt}',3,'STORE_ORDER','s8-existing','aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa','buyer@example.test','CHECKOUT_CREATED','cs_s8_existing','https://checkout.stripe.test/existing','pi_s8_existing',0,CURRENT_TIMESTAMP + INTERVAL 1 DAY,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP,2);
+    INSERT INTO tb_store_order(id_user,total_minor,currency,status,shipping_name,shipping_address,shipping_street_address,shipping_city,shipping_postal_code,shipping_country,checkout_session_id,checkout_url,payment_intent_id,created_at,updated_at,version,checkout_attempt_id)
+    VALUES (3,19900,'eur','CHECKOUT_CREATED','S8 Buyer','Test Street 1','Test Street 1','Test City','10000','RS','cs_s8_existing','https://checkout.stripe.test/existing','pi_s8_existing',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP,1,'${importedAttempt}');
+    UPDATE tb_checkout_attempt SET aggregate_id=(SELECT id_order FROM tb_store_order WHERE checkout_attempt_id='${importedAttempt}') WHERE attempt_id='${importedAttempt}';
+    INSERT INTO tb_checkout_webhook_inbox(provider_event_id,event_type,checkout_session_id,payment_intent_id,payment_status,status,delivery_count,received_at,updated_at,processed_at)
+    VALUES ('evt_s8_existing','checkout.session.completed','cs_s8_existing','pi_s8_existing','paid','PROCESSED',1,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP);
+    UPDATE payment_cutover SET state='COPYING',verified_at=NULL WHERE id=1;`);
+  config.services['payment-copy'] = {
+    build: { context: resolve(root, 'services/payment-service'), target: 'e2e' },
+    entrypoint: ['java', '-cp', '/test/test-classes:/test/classes:/test/lib/*'],
+    command: ['lithan.autostrada.payment.PaymentCopy'],
+    environment: {
+      CUTOVER_WRITE_FREEZE: 'I_HAVE_STOPPED_ALL_PAYMENT_WRITERS', CUTOVER_SOURCE_TIMEZONE: 'UTC',
+      CUTOVER_SOURCE_URL: `jdbc:mysql://mysql:3306/${schema}?serverTimezone=UTC&allowPublicKeyRetrieval=true&useSSL=false`,
+      CUTOVER_SOURCE_USER: 'e2e', CUTOVER_SOURCE_PASSWORD: env.MYSQL_PASSWORD,
+      CUTOVER_TARGET_URL: `jdbc:mysql://mysql:3306/${paymentSchema}?serverTimezone=UTC&allowPublicKeyRetrieval=true&useSSL=false`,
+      CUTOVER_TARGET_USER: env.PAYMENT_DB_USERNAME, CUTOVER_TARGET_PASSWORD: env.PAYMENT_DB_PASSWORD,
+    }, networks: ['database'],
+  };
+  await saveConfig();
+  await compose(['build', 'payment-copy']);
+  await compose(['run', '--rm', '--no-deps', 'payment-copy'], { timeout: 120000 });
+  assert.equal(await rootValue(`SELECT COUNT(*) FROM \`${paymentSchema}\`.payment_attempt`), await value('SELECT COUNT(*) FROM tb_checkout_attempt'));
+  assert.equal(await rootValue(`SELECT SUM(amount_minor) FROM \`${paymentSchema}\`.payment_attempt`), await value('SELECT SUM(CASE WHEN purpose=\'STORE_ORDER\' THEN o.total_minor ELSE d.amount_minor END) FROM tb_checkout_attempt a LEFT JOIN tb_store_order o ON o.checkout_attempt_id=a.attempt_id LEFT JOIN tb_listing_deposit d ON d.checkout_attempt_id=a.attempt_id'));
+  assert.equal(await rootValue(`SELECT CONCAT(provider_session_id,'|',provider_payment_intent_id) FROM \`${paymentSchema}\`.payment_attempt WHERE attempt_id='${importedAttempt}'`), 'cs_s8_existing|pi_s8_existing');
+  assert.equal(await value('SELECT state FROM payment_cutover WHERE id=1'), 'PARITY_VERIFIED');
+  assert.equal(await rootValue(`SELECT state FROM \`${paymentSchema}\`.payment_copy_checkpoint WHERE id=1`), 'PARITY_VERIFIED');
+  delete config.services['payment-copy']; await saveConfig();
   await compose(['up', '--detach', '--wait', '--wait-timeout', '240'], { timeout: 300000 });
   if (upgradeFrom) {
     // Start the old production binary first, then replace only the backend on
@@ -324,10 +364,12 @@ try {
   await compose(['images', '--format', 'json']);
   assert.equal(await value('SELECT COUNT(*) FROM flyway_schema_history WHERE success=1 AND version BETWEEN 1 AND 19'), '19');
   assert.equal(await rootValue(`SELECT COUNT(*) FROM \`${identitySchema}\`.flyway_schema_history WHERE success=1`), '2');
-  assert.equal(await value('SELECT COUNT(*) FROM flyway_schema_history WHERE success=1'), '23');
+  assert.equal(await value('SELECT COUNT(*) FROM flyway_schema_history WHERE success=1'), '26');
   assert.equal(await value("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name IN ('tb_checkout_attempt','tb_stock_hold','tb_checkout_webhook_inbox')"), '3');
   assert.equal(await value("SELECT COUNT(*) FROM information_schema.columns WHERE table_schema=DATABASE() AND column_name='checkout_attempt_id' AND table_name IN ('tb_store_order','tb_listing_deposit')"), '2');
   assert.equal(await rootValue(`SELECT COUNT(*) FROM \`${notificationSchema}\`.flyway_schema_history WHERE success=1`), '1');
+  assert.equal(await rootValue(`SELECT COUNT(*) FROM \`${paymentSchema}\`.flyway_schema_history WHERE success=1`), '1');
+  await record('S8 payment copy passed with attempt count, amount and provider-ID parity; source and target cutover markers are PARITY_VERIFIED.');
   assert.notEqual((await runtimeSql('SELECT COUNT(*) FROM archive_notification_tb_auction_notification', { allowFailure: true })).code, 0);
   await record('S6 notification copy parity, V21 archive cutover and runtime archive denial passed.');
   config.services['broker-probe'] = {
@@ -353,11 +395,11 @@ try {
   await writeFile(resolve(directory, 'migrations.tsv'), (await sql('SELECT version,script,checksum,success FROM flyway_schema_history ORDER BY installed_rank')).stdout);
   await writeFile(resolve(directory, 'identity-migrations.tsv'),
     (await sql(`SELECT version,script,checksum,success FROM \`${identitySchema}\`.flyway_schema_history ORDER BY installed_rank`, { rootUser: true })).stdout);
-  for (const service of ['identity', 'notification', 'backend', 'frontend', 'gateway']) {
+  for (const service of ['identity', 'notification', 'payment', 'backend', 'frontend', 'gateway']) {
     assert.notEqual((await compose(['exec', '-T', service, 'id', '-u'])).stdout.trim(), '0');
   }
   const rendered = JSON.parse((await compose(['config', '--format', 'json'], { log: false })).stdout);
-  for (const service of ['mysql', 'rabbitmq', 'notification', 'identity', 'backend', 'frontend']) assert.ok(!rendered.services[service].ports?.length, `${service} unexpectedly published`);
+  for (const service of ['mysql', 'rabbitmq', 'notification', 'identity', 'payment', 'backend', 'frontend']) assert.ok(!rendered.services[service].ports?.length, `${service} unexpectedly published`);
   await checkHttp('/actuator/health/readiness');
   await checkHttp('/auctions/1');
   await checkHttp('/api/session');
@@ -472,12 +514,18 @@ try {
     SELECT delivery_id,state,expires_at,encrypted_payload IS NULL FROM \`${notificationSchema}\`.tb_delivery ORDER BY delivery_id;
     SELECT version,checksum FROM \`${notificationSchema}\`.flyway_schema_history ORDER BY installed_rank`;
   const notificationSnapshot = await rootValue(notificationSnapshotQuery);
+  const paymentSnapshotQuery = `SELECT payment_id,attempt_id,source_service,business_type,business_id,buyer_id,amount_minor,currency,status,provider_session_id,provider_payment_intent_id,aggregate_version FROM \`${paymentSchema}\`.payment_attempt ORDER BY payment_id;
+    SELECT provider_event_id,event_type,provider_session_id,provider_payment_intent_id,status,delivery_count,payload_hash FROM \`${paymentSchema}\`.payment_webhook_receipt ORDER BY provider_event_id;
+    SELECT original_id,user_id,provider_account_id,status,transfers_enabled FROM \`${paymentSchema}\`.payment_provider_account_audit ORDER BY original_id;
+    SELECT original_id,bid_id,buyer_id,seller_id,amount_minor,platform_fee_minor,currency,status,purpose,provider_session_id,provider_payment_intent_id,version FROM \`${paymentSchema}\`.payment_legacy_audit ORDER BY original_id;
+    SELECT version,checksum FROM \`${paymentSchema}\`.flyway_schema_history ORDER BY installed_rank`;
+  const paymentSnapshot = await rootValue(paymentSnapshotQuery);
   const identityDataSnapshot = await rootValue(`SELECT id_user,username,email,password FROM \`${identitySchema}\`.tb_user ORDER BY id_user;
     SELECT id_profile,about FROM \`${identitySchema}\`.tb_user_profile ORDER BY id_profile;
     SELECT id_token,SHA2(token_hash,256),consumed_at FROM \`${identitySchema}\`.tb_password_reset_token ORDER BY id_token;
     SELECT version,checksum FROM \`${identitySchema}\`.flyway_schema_history ORDER BY installed_rank`);
   const dump = await compose(['exec', '-T', 'mysql', 'sh', '-c',
-    `MYSQL_PWD="$MYSQL_ROOT_PASSWORD" exec mysqldump -uroot --single-transaction --no-tablespaces --set-gtid-purged=OFF --hex-blob --databases "$MYSQL_DATABASE" "${identitySchema}" "${notificationSchema}"`], { log: false });
+    `MYSQL_PWD="$MYSQL_ROOT_PASSWORD" exec mysqldump -uroot --single-transaction --no-tablespaces --set-gtid-purged=OFF --hex-blob --databases "$MYSQL_DATABASE" "${identitySchema}" "${notificationSchema}" "${paymentSchema}"`], { log: false });
   await writeFile(resolve(directory, 'backup.sql'), dump.stdout);
   await compose(['down', '--timeout', '20']); // Intentionally preserve volume.
   await compose(['up', '--detach', '--wait', '--wait-timeout', '240'], { timeout: 300000 });
@@ -489,9 +537,11 @@ try {
     SELECT version,checksum FROM \`${identitySchema}\`.flyway_schema_history ORDER BY installed_rank`), identityDataSnapshot);
   await record('Preserved-volume recreation passed: business IDs, identity IDs, password hashes, reset state, profile sentinel, image hashes and Flyway checksums unchanged.');
   assert.equal(await rootValue(notificationSnapshotQuery), notificationSnapshot);
-  await compose(['stop', 'gateway', 'backend', 'identity', 'notification']);
+  assert.equal(await rootValue(paymentSnapshotQuery), paymentSnapshot);
+  await record('S8: payment attempts, provider identifiers, receipts, audit rows and migration checksums survived volume restart.');
+  await compose(['stop', 'gateway', 'backend', 'identity', 'notification', 'payment']);
   // Only the generated schemas in our generated container can be restored.
-  await sql(`DROP DATABASE \`${schema}\`; DROP DATABASE \`${identitySchema}\`; DROP DATABASE \`${notificationSchema}\`;`, { rootUser: true });
+  await sql(`DROP DATABASE \`${schema}\`; DROP DATABASE \`${identitySchema}\`; DROP DATABASE \`${notificationSchema}\`; DROP DATABASE \`${paymentSchema}\`;`, { rootUser: true });
   await compose(['exec', '-T', 'mysql', 'sh', '-c', 'MYSQL_PWD="$MYSQL_ROOT_PASSWORD" exec mysql -uroot'],
     { input: await readFile(resolve(directory, 'backup.sql'), 'utf8'), log: false, timeout: 90000 });
   await compose(['up', '--detach', '--wait', '--wait-timeout', '240'], { timeout: 300000 });
@@ -503,8 +553,10 @@ try {
     SELECT version,checksum FROM \`${identitySchema}\`.flyway_schema_history ORDER BY installed_rank`), identityDataSnapshot);
   await record('S5: all business row IDs, scalar identity references, identity credentials, profile data and reset state survived restart and restore unchanged.');
   assert.equal(await rootValue(notificationSnapshotQuery), notificationSnapshot);
+  assert.equal(await rootValue(paymentSnapshotQuery), paymentSnapshot);
   await record('S6: notification IDs, snapshots, read state, inbox dedupe, delivery state and migration checksums survived volume restart and logical restore.');
-  await record('Logical backup restored to the isolated backend and identity schemas; Flyway/Hibernate startup and data parity passed.');
+  await record('S8: payment IDs, amounts, provider references, receipts, audit rows and copy marker survived logical restore.');
+  await record('Logical backup restored to all four isolated owner schemas; Flyway/Hibernate startup and data parity passed.');
 
   await compose(['stop', 'mysql']);
   await compose(['exec', '-T', 'backend', 'curl', '--fail', '--silent', 'http://127.0.0.1:8080/actuator/health/liveness']);
@@ -554,9 +606,25 @@ try {
       ports: [`127.0.0.1:${notificationControlPort}:8080`],
       environment: { E2E_NOTIFICATION_DATABASE: notificationSchema, E2E_CONTROL_TOKEN: token },
     };
+    const paymentControlPort = await freePort();
+    env.E2E_PAYMENT_CONTROL_URL = `http://127.0.0.1:${paymentControlPort}`;
+    config.services.payment = {
+      build: { context: resolve(root, 'services/payment-service'), target: 'e2e' },
+      ports: [`127.0.0.1:${paymentControlPort}:8080`],
+      environment: { E2E_CONTROL_TOKEN: token, E2E_PAYMENT_BROKER_ENABLED: 'true' },
+    };
     await saveConfig();
-    await compose(['build', 'identity', 'backend', 'notification']);
+    await compose(['build', 'identity', 'backend', 'notification', 'payment']);
+    // Replace owner services before their consumers so Docker DNS never leaves a
+    // newly started backend or gateway holding an address for a removed owner.
+    await compose(['up', '--detach', '--wait', '--wait-timeout', '240',
+      'identity', 'notification', 'payment'], { timeout: 300000 });
     await compose(['up', '--detach', '--wait', '--wait-timeout', '240'], { timeout: 300000 });
+    await eventually(async () => {
+      const response = await fetch(env.E2E_CONTROL_URL + '/__e2e/payment-ready', {
+        headers: { 'X-E2E-Control': token }, signal: AbortSignal.timeout(3000) });
+      return response.ok;
+    }, 'backend-to-payment capability routing');
     // A replaced owner's old Docker IP can be assigned to a different service.
     // Assert owner routing recovers before starting browser mutations; never replay a mutation.
     await eventually(async () => {

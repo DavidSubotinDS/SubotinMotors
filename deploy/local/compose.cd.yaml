@@ -8,6 +8,9 @@ services:
   notification:
     image: autostrada/notification:${DEPLOY_SHA:?Set DEPLOY_SHA}
     build: null
+  payment:
+    image: autostrada/payment:${DEPLOY_SHA:?Set DEPLOY_SHA}
+    build: null
   gateway:
     image: autostrada/gateway:${DEPLOY_SHA:?Set DEPLOY_SHA}
     build: null

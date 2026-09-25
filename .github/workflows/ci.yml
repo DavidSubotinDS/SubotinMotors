@@ -50,6 +50,8 @@ jobs:
             services/notification-service/pom.xml
             services/identity-service/pom.xml
             services/identity-service/.mvn/wrapper/maven-wrapper.properties
+            services/payment-service/pom.xml
+            services/payment-service/.mvn/wrapper/maven-wrapper.properties
 
       - name: Test and package backend
         run: bash ./mvnw --batch-mode --no-transfer-progress clean verify
@@ -62,6 +64,19 @@ jobs:
       - name: Independently test and package notification service
         working-directory: services/notification-service
         run: bash ./mvnw --batch-mode --no-transfer-progress clean verify
+
+      - name: Independently test and package payment service
+        working-directory: services/payment-service
+        run: bash ./mvnw --batch-mode --no-transfer-progress clean verify
+
+      - name: Upload payment service test reports
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: payment-service-test-reports
+          path: services/payment-service/target/surefire-reports/
+          if-no-files-found: error
+          retention-days: 7
 
       - name: Upload notification test reports
         if: ${{ always() }}
@@ -79,12 +94,17 @@ jobs:
           path: |
             services/identity-service/target/*.jar
             services/notification-service/target/*.jar
+            services/payment-service/target/*.jar
           if-no-files-found: error
           retention-days: 7
 
       - name: Build identity service container
         working-directory: services/identity-service
         run: docker build --tag autostrada-identity-service:ci .
+
+      - name: Build payment service container
+        working-directory: services/payment-service
+        run: docker build --tag autostrada-payment-service:ci .
 
       - name: Smoke identity service container without a database
         working-directory: services/identity-service
@@ -285,6 +305,7 @@ jobs:
             gateway/pom.xml
             services/notification-service/pom.xml
             services/identity-service/pom.xml
+            services/payment-service/pom.xml
 
       - name: Install Playwright Chromium and OS dependencies
         run: npx playwright install --with-deps chromium

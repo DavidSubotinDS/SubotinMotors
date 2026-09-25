@@ -1,12 +1,11 @@
 # IROIT application baseline
 
-Current status (2026-09-23): `master` is
-`39e750e521f60f44645d18e9179fcedc9df9db0c`; it contains merged S5 identity,
-S6 notification and guarded local CD. S7 is implemented locally on the focused
-checkout-reliability branch. It adds an additive V22/V23 state machine inside
-the backend and does not claim payment-service extraction. See the
-[S7 runbook](checkout-reliability.md) and [evidence handoff](checkout-reliability-pr.md).
-Remote checks for the eventual S7 commit are not yet evidence.
+Current status (2026-09-24): `master` is
+`42cde105c2c3f744f6a60bfb1984f842c3383cd2`; it contains merged S7 checkout
+reliability. S8 payment-service extraction is implemented locally on the focused
+branch with an independent schema/artifact/container and guarded copy. See the
+[S8 runbook](payment-service.md) and [evidence handoff](payment-service-pr.md).
+Remote checks for the eventual S8 commit are not yet evidence.
 
 Current status (2026-09-22): S5 is merged at
 `cddde6da41d32d3d37fae9a8eaa71cc4027cca73`, with Backend and Frontend success

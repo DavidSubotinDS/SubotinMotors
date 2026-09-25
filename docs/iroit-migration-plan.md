@@ -1,12 +1,12 @@
 # IROIT incremental migration and implementation backlog
 
-Current status (2026-09-23): S6 and guarded local CD are merged at `39e750e`.
-S7 is implemented in the focused working tree with durable attempts, request
-hashes, explicit holds, provider idempotency, reconciliation, durable verified
-webhook ingress and pending UI handling. Local acceptance is documented in the
-[S7 handoff](checkout-reliability-pr.md); exact-commit remote CI and real Stripe
-sandbox checks remain owner gates. S8 payment-service extraction is next and is
-not part of S7.
+Current status (2026-09-24): S7 is merged at `42cde105`. S8 payment-service
+extraction is implemented in the focused working tree with its own schema,
+artifact/container, guarded copy, fixed trust grant, signed ingress,
+reconciliation and RabbitMQ terminal results. Local acceptance is recorded in
+the [S8 handoff](payment-service-pr.md); exact-commit remote CI and real Stripe
+sandbox checks remain owner gates. S9 commerce extraction is next and is not
+part of S8.
 
 Current status (2026-09-22): S5 is merged at
 `cddde6da41d32d3d37fae9a8eaa71cc4027cca73`, with Backend and Frontend success
@@ -258,6 +258,11 @@ auction-flow redirects. Do not add a new business service here.
   previous application image alone cannot undo a created Stripe session.
 
 ## S8 - Extract payment-service
+
+Implementation record: see [payment-service extraction](payment-service.md).
+The code below is now implemented in the focused S8 working tree; acceptance
+results and unverified remote/real-provider gates are in
+[the owner handoff](payment-service-pr.md).
 
 Move provider integration, payment attempts/legacy audit and webhook receipts
 to `services/payment-service/`. Import Stripe identifiers from **all** payment

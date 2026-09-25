@@ -36,6 +36,7 @@ class GatewayRoutes {
       @Value("${gateway.backend-url}") String backend,
       @Value("${gateway.identity-url:http://127.0.0.1:8082}") String identity,
       @Value("${gateway.notification-url:http://127.0.0.1:8083}") String notification,
+      @Value("${gateway.payment-url:http://127.0.0.1:8084}") String payment,
       @Value("${gateway.frontend-url}") String frontend) {
     return builder.routes()
         .route("csrf", r -> r.path("/api/csrf").and().method(HttpMethod.GET)
@@ -45,11 +46,13 @@ class GatewayRoutes {
             .filters(f -> f.preserveHostHeader()).uri(identity))
         .route("notification-api", r -> r.path("/api/user/notifications", "/api/user/notifications/**")
             .filters(f -> f.preserveHostHeader()).uri(notification))
+        .route("payment-api", r -> r.path("/api/payments/**")
+            .filters(f -> f.preserveHostHeader()).uri(payment))
         .route("api", r -> r.path("/api", "/api/**")
             .filters(f -> f.preserveHostHeader()).uri(backend))
         .route("stripe-webhook", r -> r.predicate(e -> "/webhooks/stripe".equals(e.getRequest().getURI().getRawPath()))
             .and().method(HttpMethod.POST)
-            .filters(f -> f.preserveHostHeader()).uri(backend))
+            .filters(f -> f.preserveHostHeader()).uri(payment))
         .route("spa", r -> r.path(SPA).and().method(HttpMethod.GET, HttpMethod.HEAD).uri(frontend))
         .route("identity-legacy", r -> r.path("/loginUser", "/logout", "/register/**", "/forgot-password", "/reset-password",
             "/user", "/user/my-profile", "/user/edit-profile", "/user/editProfileProcess", "/user/upload-picture",

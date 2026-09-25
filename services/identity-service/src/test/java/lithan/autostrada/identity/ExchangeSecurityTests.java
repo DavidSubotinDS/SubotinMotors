@@ -82,6 +82,11 @@ class ExchangeSecurityTests extends IdentityTestBase {
     mvc.perform(get("/api/admin/dashboard").header("Authorization","Bearer "+token)).andExpect(status().isUnauthorized());
     mvc.perform(get("/internal/v1/users/3/checkout-profile").header("Authorization","Bearer "+token))
         .andExpect(status().isOk()).andExpect(jsonPath("$.userId").value(3));
+    var payment=mvc.perform(post("/internal/v1/service-token").header("Authorization",basic("legacy-backend",BACKEND_SECRET))
+        .contentType(MediaType.APPLICATION_JSON).content("{\"audience\":\"payment-service\"}" )).andExpect(status().isOk()).andReturn();
+    var paymentClaims=SignedJWT.parse(json.readTree(payment.getResponse().getContentAsByteArray()).get("accessToken").asText()).getJWTClaimsSet();
+    assertThat(paymentClaims.getAudience()).containsExactly("payment-service");
+    assertThat(paymentClaims.getStringListClaim("scopes")).containsExactly("create-store-payment","create-deposit-payment","payment-lookup","payment-expire");
   }
   @Test void privateEndpointRejectsUserTokensAndPublicLookupOmitsPrivateFields() throws Exception {
     String user=tokens.issue("3","identity-service","user",List.of("ROLE_ADMIN"),List.of("checkout-profile"));

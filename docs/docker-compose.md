@@ -1,5 +1,11 @@
 # S3 container and MySQL runbook
 
+S8 working-tree update: the current generated topology also includes independent
+identity, notification and payment services, RabbitMQ, four restricted owner
+schemas and guarded S5/S6/S8 copies. Payment provider secrets exist only in the
+payment container. Use the [S8 runbook](payment-service.md) for payment cutover,
+backup and recovery; the original S3 topology text below is historical.
+
 S6 working-tree update: notification inbox and mail delivery now have a separate owner,
 RabbitMQ and guarded data cutover. Read the [S6 runbook](notification-service.md) before starting
 the new Compose stack; historical S5 startup/test instructions below need that cutover.

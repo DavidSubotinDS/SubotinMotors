@@ -30,6 +30,7 @@ import reactor.netty.http.server.HttpServer;
 class GatewayTransportTests {
   record Received(String method, String uri, Map<String, String> headers, byte[] body) { }
   static final LinkedBlockingQueue<Received> requests = new LinkedBlockingQueue<>();
+  static final LinkedBlockingQueue<Received> paymentRequests = new LinkedBlockingQueue<>();
   static final LinkedBlockingQueue<Received> identityRequests = new LinkedBlockingQueue<>();
   static final String GATEWAY_SECRET = "gateway-transport-secret-32-bytes";
   static final DisposableServer backend = HttpServer.create().host("127.0.0.1").port(0)
@@ -66,12 +67,20 @@ class GatewayTransportTests {
         if (request.uri().equals("/actuator/health")) return response.sendString(Mono.just("{\"status\":\"UP\"}")).then();
         return response.header("Content-Type", "application/json").sendString(Mono.just("{\"ok\":true}")).then();
       })).bindNow();
+  static final DisposableServer payment = HttpServer.create().host("127.0.0.1").port(0)
+      .handle((request,response)->request.receive().aggregate().asByteArray().defaultIfEmpty(new byte[0]).flatMap(bytes->{
+        Map<String,String> headers=new java.util.TreeMap<>(String.CASE_INSENSITIVE_ORDER);
+        request.requestHeaders().forEach(entry->headers.put(entry.getKey(),entry.getValue()));
+        paymentRequests.add(new Received(request.method().name(),request.uri(),headers,bytes));
+        return response.header("Content-Type","application/octet-stream").sendByteArray(Mono.just(bytes)).then();
+      })).bindNow();
   static final DisposableServer frontend = HttpServer.create().host("127.0.0.1").port(0)
       .handle((req, res) -> res.header("Content-Type", "text/html").sendString(Mono.just("<html>React assets</html>"))).bindNow();
 
   @DynamicPropertySource static void properties(DynamicPropertyRegistry registry) {
     registry.add("gateway.backend-url", () -> "http://127.0.0.1:" + backend.port());
     registry.add("gateway.notification-url", () -> "http://127.0.0.1:" + backend.port());
+    registry.add("gateway.payment-url", () -> "http://127.0.0.1:" + payment.port());
     registry.add("gateway.identity-url", () -> "http://127.0.0.1:" + identity.port());
     registry.add("gateway.identity-secret", () -> GATEWAY_SECRET);
     registry.add("gateway.frontend-url", () -> "http://127.0.0.1:" + frontend.port());
@@ -79,8 +88,8 @@ class GatewayTransportTests {
   }
   @Autowired WebTestClient client;
   @org.springframework.boot.test.web.server.LocalServerPort int port;
-  @BeforeEach void clear() { requests.clear(); identityRequests.clear(); }
-  @AfterAll static void stop() { backend.disposeNow(); identity.disposeNow(); frontend.disposeNow(); }
+  @BeforeEach void clear() { requests.clear(); paymentRequests.clear(); identityRequests.clear(); }
+  @AfterAll static void stop() { backend.disposeNow(); identity.disposeNow(); payment.disposeNow(); frontend.disposeNow(); }
   Received received() throws Exception {
     Received received = requests.poll(3, TimeUnit.SECONDS);
     assertThat(received).isNotNull();
@@ -105,6 +114,17 @@ class GatewayTransportTests {
     assertThat(downstream.headers()).doesNotContainKeys("Cookie", "X-CSRF-TOKEN");
     assertThat(downstream.headers().get("Authorization")).isEqualTo("Bearer signed-user-assertion");
     assertThat(requests).isEmpty();
+  }
+  Received receivedPayment() throws Exception {
+    Received received=paymentRequests.poll(3,TimeUnit.SECONDS);assertThat(received).isNotNull();return received;
+  }
+
+  @Test void paymentReadsUsePaymentAudienceAndStripSessionCookie() throws Exception {
+    client.get().uri("/api/payments/one").header("Cookie","AUTOSTRADA_SESSION=fixture").exchange().expectStatus().isOk();
+    var exchange=new com.fasterxml.jackson.databind.ObjectMapper().readTree(receivedIdentity().body());
+    assertThat(exchange.path("audience").asText()).isEqualTo("payment-service");
+    var downstream=receivedPayment();assertThat(downstream.uri()).isEqualTo("/api/payments/one");assertThat(requests).isEmpty();
+    assertThat(downstream.headers()).doesNotContainKey("Cookie");assertThat(downstream.headers().get("Authorization")).isEqualTo("Bearer signed-user-assertion");
   }
 
   @ParameterizedTest @ValueSource(strings = {"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"})
@@ -172,9 +192,10 @@ class GatewayTransportTests {
         .body(Flux.just(buffers.wrap(java.util.Arrays.copyOfRange(body, 0, 9)),
             buffers.wrap(java.util.Arrays.copyOfRange(body, 9, body.length))), org.springframework.core.io.buffer.DataBuffer.class)
         .exchange().expectStatus().isOk().expectBody(byte[].class).isEqualTo(body);
-    Received actual = received();
+    Received actual = receivedPayment();
     assertThat(actual.body()).isEqualTo(body);
     assertThat(actual.headers().get("Stripe-Signature")).isEqualTo("t=123,v1=original");
+    assertThat(requests).isEmpty();
   }
 
   @Test void multipartStreamsPastCodecBufferLimitWithoutRewriting() throws Exception {

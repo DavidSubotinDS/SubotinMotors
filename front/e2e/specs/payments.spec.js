@@ -40,6 +40,7 @@ test('shipping address, cart, signed payment result, order snapshots and admin i
   await sendEvent(page, { ...event, headers: { ...event.headers, 'Stripe-Signature': 't=1,v1=invalid' } }, 400);
   expect((await json(page, lookup)).status).toBe('CHECKOUT_CREATED');
   await sendEvent(page, event);
+  await expect.poll(async () => (await json(page, lookup)).status).toBe('PAID');
   order = await json(page, lookup);
   expect(order.status).toBe('PAID');
   expect(order.paidAt).toBeTruthy();
@@ -88,6 +89,7 @@ test('cancel return and unpaid completion never pay; signed expiry restores stoc
   const expiry = signedEvent(session, fixtures.stripeApiVersion, 'checkout.session.expired', 'unpaid', 'evt_e2e_expired');
   await sendEvent(page, expiry);
   await sendEvent(page, expiry);
+  await expect.poll(async () => (await json(page, lookup)).status).toBe('EXPIRED');
   const order = await json(page, lookup);
   expect(order).toMatchObject({ status: 'EXPIRED', paidAt: null });
   expect((await json(page, '/api/public/parts/1')).part.stockQuantity).toBe(10);
@@ -118,6 +120,7 @@ test('listing deposit return is read-only; signed success reserves the listing w
   const event = signedEvent(session, fixtures.stripeApiVersion, 'checkout.session.completed', 'paid', 'evt_e2e_deposit');
   await sendEvent(page, event);
   await sendEvent(page, event);
+  await expect.poll(async () => (await json(page, lookup)).status).toBe('PAID');
   await page.goto(`${gateway}/listing-deposits/success?session_id=${session}`);
   await expect(page).toHaveURL(`${gateway}/listing-deposits/success?session_id=${session}`);
   await expect(page.getByRole('heading', { name: 'Deposit confirmed', exact: true })).toBeVisible();
@@ -141,6 +144,7 @@ test('deposit cancel leaves reservation pending until a signed expiry releases i
   const event = signedEvent(session, fixtures.stripeApiVersion, 'checkout.session.expired', 'unpaid', 'evt_e2e_deposit_expired');
   await sendEvent(page, event);
   await sendEvent(page, event);
+  await expect.poll(async () => (await json(page, `/api/user/listing-deposits/success?session_id=${session}`)).status).toBe('EXPIRED');
   await page.reload();
   await expect(page.getByText('ACTIVE', { exact: true })).toBeVisible();
   await page.goto('/user/listing-deposits');

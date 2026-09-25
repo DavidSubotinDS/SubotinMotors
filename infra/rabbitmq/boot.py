@@ -8,7 +8,7 @@ import os
 def definitions():
     users = []
     passwords = []
-    for name in ("backend", "identity", "notification", "operator"):
+    for name in ("backend", "identity", "notification", "payment", "operator"):
         password = os.environ.get("RABBITMQ_" + name.upper() + "_PASSWORD", "")
         if len(password) < 32 or password in passwords:
             raise ValueError("Distinct broker credentials of at least 32 characters are required")
@@ -17,7 +17,7 @@ def definitions():
         users.append({"name": name, "password_hash": base64.b64encode(salt + hashlib.sha256(salt + password.encode()).digest()).decode(),
                       "hashing_algorithm": "rabbit_password_hashing_sha256", "tags": ["management"] if name == "operator" else []})
     exchanges = [{"name": name, "vhost": "autostrada", "type": "topic", "durable": True, "auto_delete": False, "internal": False, "arguments": {}}
-                 for name in ("autostrada.events", "autostrada.commands", "autostrada.notification-routing")]
+                 for name in ("autostrada.events", "autostrada.commands", "autostrada.notification-routing", "autostrada.payment-routing")]
     queues, bindings = [], []
     for queue, exchange, routing in (("notification.business.v1", "autostrada.events", "marketplace.auction-ending-soon.v1"),
                                      ("notification.delivery.v1", "autostrada.commands", "identity.password-reset-delivery.v1")):
@@ -34,18 +34,35 @@ def definitions():
     for queue in queues:
         bindings.append({"source": "autostrada.notification-routing", "vhost": "autostrada", "destination": queue["name"],
                          "destination_type": "queue", "routing_key": queue["name"], "arguments": {}})
+    for queue in ("commerce.payment-results.v1", "marketplace.payment-results.v1"):
+        queues.append({"name": queue, "vhost": "autostrada", "durable": True, "auto_delete": False, "arguments": {}})
+        for routing in ("payment.succeeded.v1", "payment.failed.v1", "payment.expired.v1"):
+            bindings.append({"source": "autostrada.events", "vhost": "autostrada", "destination": queue,
+                             "destination_type": "queue", "routing_key": routing, "arguments": {}})
+        queues.append({"name": queue + ".dlq", "vhost": "autostrada", "durable": True, "auto_delete": False, "arguments": {}})
+        for attempt, delay in enumerate((5000, 30000, 120000), 1):
+            retry = queue + ".retry." + str(attempt)
+            queues.append({"name": retry, "vhost": "autostrada", "durable": True, "auto_delete": False,
+                           "arguments": {"x-message-ttl": delay, "x-dead-letter-exchange": "", "x-dead-letter-routing-key": queue}})
+        for suffix in (".retry.1", ".retry.2", ".retry.3", ".dlq"):
+            bindings.append({"source": "autostrada.payment-routing", "vhost": "autostrada", "destination": queue + suffix,
+                             "destination_type": "queue", "routing_key": queue + suffix, "arguments": {}})
     permissions = [
-        {"user": "backend", "vhost": "autostrada", "configure": "^$", "write": "^autostrada\\.events$", "read": "^$"},
+        {"user": "backend", "vhost": "autostrada", "configure": "^$", "write": "^autostrada\\.(events|payment-routing)$", "read": "^(commerce|marketplace)\\.payment-results\\.v1(\\.(retry\\.[123]|dlq))?$"},
         {"user": "identity", "vhost": "autostrada", "configure": "^$", "write": "^autostrada\\.commands$", "read": "^$"},
         {"user": "notification", "vhost": "autostrada", "configure": "^$", "write": "^autostrada\\.notification-routing$",
          "read": "^notification\\.(business|delivery)\\.v1(\\.(retry\\.[123]|dlq))?$"},
-        {"user": "operator", "vhost": "autostrada", "configure": "^$", "write": "^autostrada\\.notification-routing$",
-         "read": "^notification\\.(business|delivery)\\.v1(\\.(retry\\.[123]|dlq))?$"}]
+        {"user": "payment", "vhost": "autostrada", "configure": "^$", "write": "^autostrada\\.events$", "read": "^$"},
+        {"user": "operator", "vhost": "autostrada", "configure": "^$", "write": "^autostrada\\.(notification-routing|payment-routing)$",
+         "read": "^(notification\\.(business|delivery)\\.v1|(commerce|marketplace)\\.payment-results\\.v1)(\\.(retry\\.[123]|dlq))?$"}]
     return {"users": users, "vhosts": [{"name": "autostrada"}], "permissions": permissions, "exchanges": exchanges, "queues": queues, "bindings": bindings,
             "topic_permissions": [{"user": "backend", "vhost": "autostrada", "exchange": "autostrada.events", "write": "^marketplace\\.auction-ending-soon\\.v1$", "read": "^$"},
                                   {"user": "identity", "vhost": "autostrada", "exchange": "autostrada.commands", "write": "^identity\\.password-reset-delivery\\.v1$", "read": "^$"},
+                                  {"user": "payment", "vhost": "autostrada", "exchange": "autostrada.events", "write": "^payment\\.(succeeded|failed|expired)\\.v1$", "read": "^$"},
+                                  {"user": "backend", "vhost": "autostrada", "exchange": "autostrada.payment-routing", "write": "^(commerce|marketplace)\\.payment-results\\.v1\\.(retry\\.[123]|dlq)$", "read": "^$"},
                                   {"user": "notification", "vhost": "autostrada", "exchange": "autostrada.notification-routing", "write": "^notification\\.(business|delivery)\\.v1\\.(retry\\.[123]|dlq)$", "read": "^$"},
-                                  {"user": "operator", "vhost": "autostrada", "exchange": "autostrada.notification-routing", "write": "^notification\\.(business|delivery)\\.v1(\\.(retry\\.[123]|dlq))?$", "read": "^$"}]}
+                                  {"user": "operator", "vhost": "autostrada", "exchange": "autostrada.notification-routing", "write": "^notification\\.(business|delivery)\\.v1(\\.(retry\\.[123]|dlq))?$", "read": "^$"},
+                                  {"user": "operator", "vhost": "autostrada", "exchange": "autostrada.payment-routing", "write": "^(commerce|marketplace)\\.payment-results\\.v1(\\.(retry\\.[123]|dlq))?$", "read": "^$"}]}
 
 
 if __name__ == "__main__":

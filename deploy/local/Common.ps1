@@ -43,6 +43,7 @@ function Build-ReleaseImages([string]$Sha) {
         [pscustomobject]@{ Image='autostrada/backend:' + $Sha; Context='back'; Target='production' }
         [pscustomobject]@{ Image='autostrada/identity:' + $Sha; Context='services/identity-service'; Target='production' }
         [pscustomobject]@{ Image='autostrada/notification:' + $Sha; Context='services/notification-service'; Target='production' }
+        [pscustomobject]@{ Image='autostrada/payment:' + $Sha; Context='services/payment-service'; Target='production' }
         [pscustomobject]@{ Image='autostrada/gateway:' + $Sha; Context='gateway'; Target='' }
         [pscustomobject]@{ Image='autostrada/frontend:' + $Sha; Context='front'; Target='' }
         [pscustomobject]@{ Image='autostrada/rabbitmq:' + $Sha; Context='infra/rabbitmq'; Target='' }

@@ -1,12 +1,12 @@
 # Autostrada Auctions
 
-S7 working-tree update: store and listing-deposit checkout now persist durable
-attempts and explicit holds before Stripe, use stable provider idempotency keys,
-reconcile ambiguous outcomes and durably receive verified webhooks. Existing
-routes, session/CSRF behavior and successful checkout responses remain compatible.
-Read the [S7 runbook](docs/checkout-reliability.md) and
-[verification handoff](docs/checkout-reliability-pr.md). Payment-service
-extraction is the next stage and is not included here.
+S8 working-tree update: `services/payment-service` independently owns provider
+checkout, signed webhook receipt, reconciliation and payment-result publication,
+with its own schema, build and container. The backend retains business stock,
+order and listing-reservation rules and consumes idempotent RabbitMQ results.
+Read the [S8 runbook](docs/payment-service.md) and
+[verification handoff](docs/payment-service-pr.md). S9 commerce extraction is
+next and is not included here.
 
 S6 working-tree update: notification inbox and mail delivery now have a separate owner,
 RabbitMQ and guarded data cutover. Read the [S6 runbook](docs/notification-service.md) before starting
@@ -40,9 +40,12 @@ backups, health checks and recovery.
 ## Repository Structure
 
 ```text
-back/   Spring Boot backend, REST API, Flyway, tests
+back/   Coexistence backend for commerce/marketplace rules, REST API, Flyway, tests
 front/  React frontend built with Vite
 gateway/ Independent Java 17 WebFlux pass-through gateway
+services/identity-service/ Independent identity/session owner
+services/notification-service/ Independent inbox/delivery owner
+services/payment-service/ Independent provider/payment owner
 docs/   Project notes and CRUD/lifecycle coverage
 documentation/  Longer project documentation
 images/ Demo screenshots and supporting documentation images

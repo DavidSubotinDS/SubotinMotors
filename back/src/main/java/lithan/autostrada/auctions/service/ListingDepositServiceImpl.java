@@ -63,8 +63,8 @@ public class ListingDepositServiceImpl implements ListingDepositService {
 
   @Override
   public ListingDeposit currentUserDepositBySession(String sessionId) {
-    ListingDeposit deposit = depositRepository.findByCheckoutSessionId(sessionId)
-        .orElseThrow(ResourceNotFoundException::new);
+    ListingDeposit deposit = depositRepository.findByCheckoutSessionId(sessionId).orElseGet(()->depositRepository
+        .findByCheckoutAttemptId(stripeGateway.findAttemptByProviderSession(sessionId)).orElseThrow(ResourceNotFoundException::new));
     if (deposit.getBuyerId() != currentIdentity.requireUserId()) {
       throw new ResourceNotFoundException();
     }
@@ -111,6 +111,16 @@ public class ListingDepositServiceImpl implements ListingDepositService {
     processed.setProcessedAt(clock.instant());
     webhookEventRepository.save(processed);
     return true;
+  }
+
+  @Transactional
+  public void processPaymentResult(String attemptId,String status,String paymentIntentId) {
+    ListingDeposit deposit=depositRepository.findByCheckoutAttemptId(attemptId).orElseThrow(ResourceNotFoundException::new);
+    if("SUCCEEDED".equals(status)&&!deposit.getStatus().startsWith("PAID")){
+      deposit.setStatus(reclaimLateReservation(deposit)?"PAID":"PAID_RESERVATION_CONFLICT");deposit.setPaymentIntentId(paymentIntentId);deposit.setPaidAt(clock.instant());
+    } else if("FAILED".equals(status)) release(deposit,"PAYMENT_FAILED");
+    else if("EXPIRED".equals(status)) release(deposit,"EXPIRED");
+    deposit.setUpdatedAt(clock.instant());depositRepository.save(deposit);checkoutPreparation.recordTerminal(attemptId,deposit.getStatus(),deposit.getPaymentIntentId());
   }
 
   private void release(ListingDeposit deposit, String status) {

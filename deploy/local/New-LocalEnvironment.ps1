@@ -35,7 +35,8 @@ $values = [ordered]@{
     STRIPE_ENABLED = 'false'; STRIPE_SECRET_KEY = ''; STRIPE_WEBHOOK_SECRET = ''
     APP_MAIL_MODE = 'log'; APP_MAIL_FROM = 'no-reply@autostradaauctions.local'; SMTP_HOST = ''; SMTP_PORT = '587'; SMTP_USERNAME = ''; SMTP_PASSWORD = ''; SMTP_AUTH = 'true'; SMTP_STARTTLS = 'true'
     NOTIFICATION_DB_NAME = 'autostrada_notification'; NOTIFICATION_DB_USERNAME = 'notification_runtime'; NOTIFICATION_DB_PASSWORD = New-HexSecret
-    RABBITMQ_BACKEND_PASSWORD = New-HexSecret; RABBITMQ_IDENTITY_PASSWORD = New-HexSecret; RABBITMQ_NOTIFICATION_PASSWORD = New-HexSecret; RABBITMQ_OPERATOR_PASSWORD = New-HexSecret
+    PAYMENT_DB_NAME = 'autostrada_payment'; PAYMENT_DB_USERNAME = 'payment_runtime'; PAYMENT_DB_PASSWORD = New-HexSecret
+    RABBITMQ_BACKEND_PASSWORD = New-HexSecret; RABBITMQ_IDENTITY_PASSWORD = New-HexSecret; RABBITMQ_NOTIFICATION_PASSWORD = New-HexSecret; RABBITMQ_PAYMENT_PASSWORD = New-HexSecret; RABBITMQ_OPERATOR_PASSWORD = New-HexSecret
     NOTIFICATION_DELIVERY_KEY = [Convert]::ToBase64String($delivery)
 }
 if (-not $PSCmdlet.ShouldProcess($full, 'write new local deployment credentials')) { return }

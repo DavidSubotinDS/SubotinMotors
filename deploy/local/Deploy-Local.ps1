@@ -20,7 +20,7 @@ $backupDir = Join-Path $paths.StateRoot ('backups\' + [DateTime]::UtcNow.ToStrin
 New-Item -ItemType Directory -Force -Path $backupDir | Out-Null
 
 try {
-    Invoke-Compose $paths.EnvFile @('exec', '-T', 'mysql', 'sh', '-c', 'MYSQL_PWD="$MYSQL_ROOT_PASSWORD" mysqldump -uroot --single-transaction --routines --events --databases "$MYSQL_DATABASE" "$IDENTITY_DB_NAME" "$NOTIFICATION_DB_NAME" > /tmp/autostrada-predeploy.sql')
+    Invoke-Compose $paths.EnvFile @('exec', '-T', 'mysql', 'sh', '-c', 'schemas="$MYSQL_DATABASE $IDENTITY_DB_NAME $NOTIFICATION_DB_NAME"; if [ -n "${PAYMENT_DB_NAME:-}" ] && MYSQL_PWD="$MYSQL_ROOT_PASSWORD" mysql -uroot -e "USE \`$PAYMENT_DB_NAME\`" >/dev/null 2>&1; then schemas="$schemas $PAYMENT_DB_NAME"; fi; MYSQL_PWD="$MYSQL_ROOT_PASSWORD" mysqldump -uroot --single-transaction --routines --events --databases $schemas > /tmp/autostrada-predeploy.sql')
     & docker cp "${mysqlId}:/tmp/autostrada-predeploy.sql" (Join-Path $backupDir 'databases.sql')
     if ($LASTEXITCODE -ne 0) { throw 'Unable to copy the pre-deploy database backup.' }
     Invoke-Compose $paths.EnvFile @('exec', '-T', 'mysql', 'rm', '-f', '/tmp/autostrada-predeploy.sql')
@@ -29,6 +29,17 @@ try {
 
     Build-ReleaseImages $Sha
     Invoke-Compose $paths.EnvFile @('config', '--quiet')
+    Invoke-Compose $paths.EnvFile @('up', '--detach', '--wait', '--wait-timeout', '120', 'mysql')
+    Invoke-Compose $paths.EnvFile @('exec', '-T', 'mysql', 'sh', '/docker-entrypoint-initdb.d/20-autostrada-users.sh')
+    Invoke-Compose $paths.EnvFile @('stop', 'gateway', 'backend', 'payment')
+    Invoke-Compose $paths.EnvFile @('up', '--detach', '--wait', '--wait-timeout', '240', 'backend', 'payment')
+    Invoke-Compose $paths.EnvFile @('stop', 'backend', 'payment')
+    $paymentState = (Invoke-Compose $paths.EnvFile @('exec', '-T', 'mysql', 'sh', '-c', 'MYSQL_PWD="$MYSQL_ROOT_PASSWORD" mysql -uroot --batch --skip-column-names "$MYSQL_DATABASE" -e "SELECT state FROM payment_cutover WHERE id=1"') | Out-String).Trim()
+    if ($paymentState -ne 'PARITY_VERIFIED') {
+        $env:BACKEND_FLYWAY_TARGET = '26'
+        Invoke-Compose $paths.EnvFile @('run', '--rm', '--no-deps', 'payment-copy') @((Join-Path $PSScriptRoot 'compose.bootstrap.yaml'))
+        Remove-Item Env:BACKEND_FLYWAY_TARGET
+    }
     Invoke-Compose $paths.EnvFile @('up', '--detach', '--wait', '--wait-timeout', '300', '--remove-orphans')
     Test-PublicOrigin $paths.EnvFile
     Set-Content -LiteralPath $currentFile -Value $Sha -Encoding ascii
@@ -41,4 +52,6 @@ try {
         Invoke-Compose $paths.EnvFile @('logs', '--no-color', '--tail', '500') | Set-Content -LiteralPath (Join-Path $privateFailure 'compose.log')
     } catch {}
     throw "Deployment failed. The database backup is at $backupDir. No automatic image or database rollback was attempted because post-cutover identity, role, reset, inbox, outbox, and broker state must not be made stale. $($_.Exception.Message)"
+} finally {
+    Remove-Item Env:BACKEND_FLYWAY_TARGET -ErrorAction SilentlyContinue
 }

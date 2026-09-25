@@ -1,12 +1,11 @@
 # Autostrada Auctions Backend
 
-S7 working-tree update: checkout preparation is now a committed local state
-transition followed by an idempotent provider call. Flyway V22/V23 add attempts,
-stock holds, verified webhook inbox storage and least-privilege runtime grants.
-`POST /api/store/checkout` and listing deposits accept `Idempotency-Key`; the
-additive result includes `attemptId`, `status` and `retryable`. See the
-[S7 runbook](../docs/checkout-reliability.md). Stripe/webhook ownership remains
-in this backend until S8.
+S8 working-tree update: Stripe SDK/configuration and webhook ownership have moved
+to `services/payment-service`. This backend retains carts, stock/holds, orders,
+listings and deposit reservations; it creates payment intents through a bounded
+idempotent REST client and consumes terminal results through a durable RabbitMQ
+inbox. V24-V26 add that inbox, its least-privilege grant and the source cutover
+marker. See the [S8 runbook](../docs/payment-service.md).
 
 S6 working-tree update: notification inbox and mail delivery now have a separate owner,
 RabbitMQ and guarded data cutover. Read the [S6 runbook](../docs/notification-service.md) before starting
@@ -36,9 +35,10 @@ together. Existing default/direct startup remains available for recovery.
 return URLs and the CLI webhook listener through the gateway; its default remains
 the backend port for direct development. No session/CSRF redesign or data move.
 
-This folder contains the Spring Boot backend. The React frontend in `../front`
-owns the UI; this backend provides REST APIs, persistence, security, Flyway
-migrations, Stripe webhook handling, and legacy route redirects.
+This folder contains the coexistence Spring Boot backend. The React frontend in
+`../front` owns the UI; this backend provides commerce/marketplace REST APIs,
+business persistence, authorization and legacy route redirects. Identity,
+notification and payment runtime ownership live in their independent services.
 
 ## Run
 

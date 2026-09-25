@@ -37,6 +37,8 @@ public class ComposeE2eApplication {
         "--notification.broker.password=" + System.getenv("RABBITMQ_PASSWORD"),
         "--identity.base-url=" + System.getenv("IDENTITY_URL"),
         "--identity.service-secret=" + System.getenv("IDENTITY_BACKEND_SECRET"),
-        "--identity.verification-jwks=" + System.getenv("IDENTITY_VERIFICATION_JWKS"));
+        "--identity.verification-jwks=" + System.getenv("IDENTITY_VERIFICATION_JWKS"),
+        "--payment.base-url=" + System.getenv("PAYMENT_URL"),
+        "--payment.results.enabled=true");
   }
 }

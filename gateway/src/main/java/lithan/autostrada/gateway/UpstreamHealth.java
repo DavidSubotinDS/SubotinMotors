@@ -10,15 +10,18 @@ import reactor.core.publisher.Mono;
 
 @Component("upstream")
 class UpstreamHealth implements ReactiveHealthIndicator {
-  private final WebClient client = WebClient.builder().clientConnector(new org.springframework.http.client.reactive.ReactorClientHttpConnector(
-      UpstreamTransport.bounded(reactor.netty.http.client.HttpClient.newConnection()))).build();
+  private final WebClient client;
   private final String backend;
   private final String frontend;
   private final String identity;
   private final String payment;
+  @Value("${gateway.probe-path:}")
+  private String probePath = "";
   UpstreamHealth(@Value("${gateway.backend-url}") String backend, @Value("${gateway.frontend-url}") String frontend,
       @Value("${gateway.identity-url:http://127.0.0.1:8082}") String identity,
-      @Value("${gateway.payment-url:http://127.0.0.1:8084}") String payment) {
+      @Value("${gateway.payment-url:http://127.0.0.1:8084}") String payment, WebClient.Builder builder) {
+    client = builder.clone().clientConnector(new org.springframework.http.client.reactive.ReactorClientHttpConnector(
+        UpstreamTransport.bounded(reactor.netty.http.client.HttpClient.newConnection()))).build();
     this.backend = backend; this.frontend = frontend; this.identity=identity;this.payment=payment;
   }
   private Mono<Boolean> available(String url) {
@@ -27,7 +30,7 @@ class UpstreamHealth implements ReactiveHealthIndicator {
         .timeout(Duration.ofSeconds(2)).onErrorReturn(false);
   }
   @Override public Mono<Health> health() {
-    return Mono.zip(available(backend + "/actuator/health"), available(frontend + "/"), available(identity + "/actuator/health/readiness"),available(payment+"/actuator/health/readiness"))
+    return Mono.zip(available(backend + (probePath.isEmpty() ? "/actuator/health" : probePath)), available(frontend + "/"), available(identity + (probePath.isEmpty() ? "/actuator/health/readiness" : probePath)),available(payment+(probePath.isEmpty() ? "/actuator/health/readiness" : probePath)))
         .map(states -> states.getT1() && states.getT2() && states.getT3() && states.getT4() ? Health.up().build() : Health.down().build());
   }
 }

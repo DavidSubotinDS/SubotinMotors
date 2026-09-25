@@ -309,9 +309,18 @@ webhook is the source of truth.
 CRUD coverage and authorization rules are documented in
 [`docs/crud-coverage.md`](docs/crud-coverage.md).
 
-## S4b identity boundary preparation
+## Historical S4b identity boundary preparation
 
 Business records now keep scalar account IDs and use in-process profile clients.
-Identity/session ownership and topology remain in the backend. See the
+At that stage identity/session ownership remained in the backend. S5 subsequently
+extracted identity, S6 notification, and S8 payment. See the
 [boundary contract](docs/identity-boundary.md) and [owner handoff](docs/identity-boundary-pr.md)
 for permitted dependencies, privacy changes, local evidence and outstanding remote CI gates.
+
+## Local observability and course defence
+
+The optional monitoring overlay covers the four application owners and gateway.
+Read the [observability evidence and merge/CD/startup guide](docs/observability.md) and
+[defence guide in specification order](docs/observability-defense.md).
+The guide includes Docker questions, GitHub workflow locations and a page-by-page
+application walkthrough. Further service extraction is deferred by owner decision.

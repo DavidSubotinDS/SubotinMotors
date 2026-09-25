@@ -94,7 +94,7 @@ public class SecurityConfig {
     http.authorizeHttpRequests(configurer -> configurer
         .dispatcherTypeMatchers(DispatcherType.FORWARD, DispatcherType.ERROR).permitAll()
         .requestMatchers("/css/**", "/images/**", "/js/**").permitAll()
-        .requestMatchers("/actuator/health", "/actuator/health/liveness", "/actuator/health/readiness").permitAll()
+        .requestMatchers("/livez", "/readyz", "/actuator/health", "/actuator/health/liveness", "/actuator/health/readiness").permitAll()
         .requestMatchers("/api/auth/**").permitAll()
         .requestMatchers(HttpMethod.GET, "/api/csrf", "/api/session", "/api/public/**").permitAll()
         .requestMatchers("/api/admin/**").hasRole("ADMIN")

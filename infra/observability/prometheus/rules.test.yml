@@ -1,0 +1,91 @@
+rule_files: [rules.yml]
+evaluation_interval: 1m
+tests:
+  - name: histogram latency alerts for sustained slow traffic
+    interval: 1m
+    input_series:
+      - series: 'http_server_requests_seconds_count{job="autostrada",service="gateway",uri="/api/orders",status="200"}'
+        values: '0+60x15'
+      - series: 'http_server_requests_seconds_bucket{job="autostrada",service="gateway",uri="/api/orders",status="200",le="1"}'
+        values: '0x15'
+      - series: 'http_server_requests_seconds_bucket{job="autostrada",service="gateway",uri="/api/orders",status="200",le="4"}'
+        values: '0+60x15'
+      - series: 'http_server_requests_seconds_bucket{job="autostrada",service="gateway",uri="/api/orders",status="200",le="+Inf"}'
+        values: '0+60x15'
+    alert_rule_test:
+      - eval_time: 3m
+        alertname: AutostradaHttpLatency
+        exp_alerts: []
+      - eval_time: 10m
+        alertname: AutostradaHttpLatency
+        exp_alerts:
+          - exp_labels: {service: gateway, severity: warning}
+            exp_annotations: {summary: 'gateway has sustained slow HTTP responses'}
+  - name: errors are measured as a ratio and alert only after a sustained failure
+    interval: 1m
+    input_series:
+      - series: 'http_server_requests_seconds_count{job="autostrada",service="backend",uri="/api/orders",status="200"}'
+        values: '0+54x15'
+      - series: 'http_server_requests_seconds_count{job="autostrada",service="backend",uri="/api/orders",status="500"}'
+        values: '0+6x15'
+    promql_expr_test:
+      - expr: autostrada:http_requests:rate5m
+        eval_time: 10m
+        exp_samples:
+          - labels: 'autostrada:http_requests:rate5m{service="backend"}'
+            value: 1
+      - expr: autostrada:http_error:ratio5m
+        eval_time: 10m
+        exp_samples:
+          - labels: 'autostrada:http_error:ratio5m{service="backend"}'
+            value: 0.1
+    alert_rule_test:
+      - eval_time: 3m
+        alertname: AutostradaHttpErrors
+        exp_alerts: []
+      - eval_time: 10m
+        alertname: AutostradaHttpErrors
+        exp_alerts:
+          - exp_labels: {service: backend, severity: warning}
+            exp_annotations: {summary: 'backend has sustained HTTP server errors'}
+  - name: successful traffic has zero errors but idle services have no ratio
+    interval: 1m
+    input_series:
+      - series: 'http_server_requests_seconds_count{job="autostrada",service="identity",uri="/api/profile",status="200"}'
+        values: '0+60x10'
+      - series: 'http_server_requests_seconds_count{job="autostrada",service="payment",uri="/api/payments",status="200"}'
+        values: '0x10'
+      - series: 'http_server_requests_seconds_count{job="autostrada",service="notification",uri="/actuator/health",status="200"}'
+        values: '0+60x10'
+      - series: 'http_server_requests_seconds_count{job="autostrada",service="notification",uri="/readyz",status="200"}'
+        values: '0+60x10'
+    promql_expr_test:
+      - expr: autostrada:http_error:ratio5m
+        eval_time: 10m
+        exp_samples:
+          - labels: 'autostrada:http_error:ratio5m{service="identity"}'
+            value: 0
+      - expr: 'autostrada:http_requests:rate5m{service="notification"}'
+        eval_time: 10m
+        exp_samples: []
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: AutostradaHttpErrors
+        exp_alerts: []
+  - name: scrape outage alerts after two minutes and recovers
+    interval: 1m
+    input_series:
+      - series: 'up{job="autostrada",service="payment",instance="payment:9080"}'
+        values: '1 0 0 0 1 1'
+    alert_rule_test:
+      - eval_time: 2m
+        alertname: AutostradaServiceUnreachable
+        exp_alerts: []
+      - eval_time: 3m
+        alertname: AutostradaServiceUnreachable
+        exp_alerts:
+          - exp_labels: {job: autostrada, service: payment, instance: 'payment:9080', severity: critical}
+            exp_annotations: {summary: 'Telemetry endpoint for payment is unreachable'}
+      - eval_time: 4m
+        alertname: AutostradaServiceUnreachable
+        exp_alerts: []

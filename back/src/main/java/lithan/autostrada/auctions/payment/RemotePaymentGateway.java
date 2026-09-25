@@ -16,10 +16,10 @@ public class RemotePaymentGateway implements StripeGateway {
   private final RestClient identity,payment;private final String secret;private final Semaphore capacity=new Semaphore(24);
   private final java.util.concurrent.atomic.AtomicBoolean dependencyUnavailable=new java.util.concurrent.atomic.AtomicBoolean();
   public RemotePaymentGateway(@Value("${identity.base-url}")String identityUrl,@Value("${identity.service-secret}")String secret,
-      @Value("${payment.base-url:http://127.0.0.1:8084}")String paymentUrl){
+      @Value("${payment.base-url:http://127.0.0.1:8084}")String paymentUrl, RestClient.Builder builder){
     var transport=new JdkClientHttpRequestFactory(java.net.http.HttpClient.newBuilder().connectTimeout(Duration.ofMillis(300)).followRedirects(java.net.http.HttpClient.Redirect.NEVER).build());
-    transport.setReadTimeout(Duration.ofSeconds(2));identity=RestClient.builder().baseUrl(identityUrl).requestFactory(transport).build();
-    payment=RestClient.builder().baseUrl(paymentUrl).requestFactory(transport).build();this.secret=secret;
+    transport.setReadTimeout(Duration.ofSeconds(2));identity=builder.clone().baseUrl(identityUrl).requestFactory(transport).build();
+    payment=builder.clone().baseUrl(paymentUrl).requestFactory(transport).build();this.secret=secret;
   }
   private record Token(String accessToken){@Override public String toString(){return "Token[redacted]";}}
   private record Capability(boolean enabled,List<String> acceptedCurrencies,String mode){}

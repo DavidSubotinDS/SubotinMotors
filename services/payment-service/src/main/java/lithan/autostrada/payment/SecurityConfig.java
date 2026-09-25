@@ -14,7 +14,7 @@ class SecurityConfig {
         .formLogin(c->c.disable()).httpBasic(c->c.disable()).logout(c->c.disable())
         .oauth2ResourceServer(o->o.jwt(j->j.jwtAuthenticationConverter(AssertionSecurity.converter())))
         .authorizeHttpRequests(a->a
-            .requestMatchers("/actuator/health","/actuator/health/liveness","/actuator/health/readiness").permitAll()
+            .requestMatchers("/livez", "/readyz", "/actuator/health","/actuator/health/liveness","/actuator/health/readiness").permitAll()
             .requestMatchers(HttpMethod.POST,"/webhooks/stripe").permitAll()
             .requestMatchers("/internal/v1/capabilities").hasAnyAuthority("SCOPE_payment-lookup","SCOPE_create-store-payment","SCOPE_create-deposit-payment")
             .requestMatchers(org.springframework.http.HttpMethod.POST,"/internal/v1/payments").hasAnyAuthority("SCOPE_create-store-payment","SCOPE_create-deposit-payment")

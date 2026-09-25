@@ -34,6 +34,14 @@ try {
         if (@($lines | Where-Object { $_ -match "^$name=" }).Count -ne 1) { throw "Expected one $name setting." }
     }
     . (Join-Path $PSScriptRoot 'Common.ps1')
+    & (Join-Path $PSScriptRoot 'Enable-LocalObservability.ps1') -Path $fixture -WhatIf | Out-Null
+    if ((Get-FileHash -LiteralPath $fixture).Hash -ne $firstHash) { throw 'Monitoring WhatIf modified the environment.' }
+    & (Join-Path $PSScriptRoot 'Enable-LocalObservability.ps1') -Path $fixture -Confirm:$false | Out-Null
+    $monitoringHash = (Get-FileHash -LiteralPath $fixture).Hash
+    & (Join-Path $PSScriptRoot 'Enable-LocalObservability.ps1') -Path $fixture -Confirm:$false | Out-Null
+    if ((Get-FileHash -LiteralPath $fixture).Hash -ne $monitoringHash) { throw 'Monitoring updater is not idempotent.' }
+    if (-not (Test-ObservabilityEnabled $fixture)) { throw 'Monitoring was not enabled.' }
+    if (@(Get-Content -LiteralPath $fixture) -notcontains 'PAYMENT_DB_PASSWORD=preserve-existing-value') { throw 'Monitoring changed an existing password.' }
     foreach ($path in @('C:\deployment\state', '\\server\share\state')) {
         if (-not (Test-WindowsAbsolutePath $path)) { throw 'Absolute path rejected.' }
     }

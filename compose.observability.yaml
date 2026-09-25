@@ -1,0 +1,68 @@
+# Optional overlay: docker compose -f compose.yaml -f compose.observability.yaml ...
+# Supply OBSERVABILITY_ADMIN_PASSWORD privately. Do not publish management ports.
+x-telemetry-environment: &telemetry-environment
+  SPRING_PROFILES_INCLUDE: observability
+  OBSERVABILITY_BIND_ADDRESS: 0.0.0.0
+  OBSERVABILITY_PORT: '9080'
+  MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: health,prometheus
+  HEALTHCHECK_PATH: /readyz
+  TELEMETRY_TRACE_URL: http://tempo:4318/v1/traces
+  TELEMETRY_LOG_PATH: /var/log/autostrada/requests.log
+
+services:
+  backend:
+    environment: *telemetry-environment
+    networks: [telemetry]
+    volumes: [backend-logs:/var/log/autostrada]
+  identity:
+    environment: *telemetry-environment
+    networks: [telemetry]
+    volumes: [identity-logs:/var/log/autostrada]
+  notification:
+    environment: *telemetry-environment
+    networks: [telemetry]
+    volumes: [notification-logs:/var/log/autostrada]
+  payment:
+    environment: *telemetry-environment
+    networks: [telemetry]
+    volumes: [payment-logs:/var/log/autostrada]
+  gateway:
+    environment: *telemetry-environment
+    networks: [telemetry]
+    volumes: [gateway-logs:/var/log/autostrada]
+  tempo:
+    extends:
+      file: infra/observability/compose.lab.yml
+      service: tempo
+  loki:
+    extends:
+      file: infra/observability/compose.lab.yml
+      service: loki
+  alloy:
+    extends:
+      file: infra/observability/compose.lab.yml
+      service: alloy
+  prometheus:
+    extends:
+      file: infra/observability/compose.lab.yml
+      service: prometheus
+  grafana:
+    extends:
+      file: infra/observability/compose.lab.yml
+      service: grafana
+
+networks:
+  telemetry:
+    internal: true
+  ui: {}
+volumes:
+  tempo-data:
+  loki-data:
+  alloy-data:
+  backend-logs:
+  identity-logs:
+  notification-logs:
+  payment-logs:
+  gateway-logs:
+  prometheus-data:
+  grafana-data:

@@ -1,0 +1,25 @@
+logging {
+  level = "warn"
+}
+
+local.file_match "application" {
+  sync_period = "1s"
+  path_targets = [
+    {__path__ = "/logs/backend/requests.log", service = "backend"},
+    {__path__ = "/logs/identity/requests.log", service = "identity"},
+    {__path__ = "/logs/notification/requests.log", service = "notification"},
+    {__path__ = "/logs/payment/requests.log", service = "payment"},
+    {__path__ = "/logs/gateway/requests.log", service = "gateway"},
+  ]
+}
+
+loki.source.file "application" {
+  targets = local.file_match.application.targets
+  forward_to = [loki.write.local.receiver]
+}
+
+loki.write "local" {
+  endpoint {
+    url = "http://loki:3100/loki/api/v1/push"
+  }
+}

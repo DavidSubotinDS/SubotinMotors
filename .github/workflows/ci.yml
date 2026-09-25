@@ -20,6 +20,27 @@ env:
   CI: "true"
 
 jobs:
+  observability:
+    name: Observability configuration
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+      - name: Monitoring rules, provisioning and isolated startup
+        run: node infra/observability/smoke.mjs
+      - name: Retain monitoring diagnostics
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: observability-${{ github.sha }}
+          path: target/observability
+          retention-days: 7
+
   deployment-scripts:
     name: Deployment environment scripts
     runs-on: windows-latest
@@ -37,7 +58,7 @@ jobs:
 
   backend:
     name: Backend
-    needs: [deployment-scripts]
+    needs: [deployment-scripts, observability]
     if: ${{ always() }}
     runs-on: ubuntu-latest
     timeout-minutes: 40
@@ -48,8 +69,8 @@ jobs:
         working-directory: back
 
     steps:
-      - name: Require deployment script checks
-        if: ${{ needs.deployment-scripts.result != 'success' }}
+      - name: Require deployment script and observability checks
+        if: ${{ needs.deployment-scripts.result != 'success' || needs.observability.result != 'success' }}
         working-directory: .
         run: exit 1
 
@@ -248,7 +269,7 @@ jobs:
 
       - name: Production containers and MySQL integration
         working-directory: .
-        run: node front/e2e/compose.mjs --integration-only
+        run: node front/e2e/compose.mjs --integration-only --observability
 
       - name: Clean up owned Compose resources after any outcome
         if: ${{ always() }}
@@ -360,7 +381,7 @@ jobs:
         run: npm run test:e2e
 
       - name: Browser E2E through Compose with isolated MySQL
-        run: npm run test:compose
+        run: npm run test:compose -- --observability
 
       - name: Clean up owned Compose resources after any outcome
         if: ${{ always() }}

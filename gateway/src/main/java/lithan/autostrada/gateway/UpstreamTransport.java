@@ -13,4 +13,9 @@ class UpstreamTransport {
         .cacheMaxTimeToLive(Duration.ofSeconds(5)).cacheNegativeTimeToLive(Duration.ZERO));
   }
   @Bean HttpClientCustomizer ownerAddressLifetime(){return UpstreamTransport::bounded;}
+  @Bean org.springframework.cloud.gateway.filter.headers.observation.GatewayObservationConvention gatewayObservationConvention() {
+    return new org.springframework.cloud.gateway.filter.headers.observation.DefaultGatewayObservationConvention() {
+      @Override public String getName() { return "gateway.http.client.requests"; }
+    };
+  }
 }

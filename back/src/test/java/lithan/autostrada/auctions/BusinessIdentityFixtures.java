@@ -17,7 +17,7 @@ import java.util.*;
 @org.springframework.data.jpa.repository.config.EnableJpaRepositories(basePackages={"lithan.autostrada.auctions.repository","fixtures.identity.repository","fixtures.notification.repository"})
 public class BusinessIdentityFixtures {
   @Bean @Primary lithan.autostrada.auctions.notification.NotificationClient fixtureNotificationCounts(CurrentIdentity actor) {
-    return new lithan.autostrada.auctions.notification.NotificationClient("http://127.0.0.1:1","http://127.0.0.1:1","fixture-only",actor) {
+    return new lithan.autostrada.auctions.notification.NotificationClient("http://127.0.0.1:1","http://127.0.0.1:1","fixture-only",actor,org.springframework.web.client.RestClient.builder()) {
       @Override public long unreadCount(){return 0;}
     };
   }
@@ -34,7 +34,8 @@ public class BusinessIdentityFixtures {
   @Bean @Primary RemoteProfileClient fixtureProfiles(jakarta.persistence.EntityManager em, CurrentIdentity actor, UserRepository users) {
     var local=new InProcessProfileClient(em,actor);
     var mapper=new IdentityApiMapper();
-    return new RemoteProfileClient("http://127.0.0.1:1","fixture-only",actor) {
+    return new RemoteProfileClient("http://127.0.0.1:1","fixture-only",actor,
+      org.springframework.web.client.RestClient.builder()) {
       @Override public Map<Integer,PublicProfile> findAll(Collection<Integer> ids){return local.findAll(ids);}
       @Override public Optional<PublicProfile> findByProfileId(int id){return local.findByProfileId(id);}
       @Override public CheckoutProfile current(){return local.current();}

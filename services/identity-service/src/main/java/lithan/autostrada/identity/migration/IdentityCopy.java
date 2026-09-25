@@ -29,7 +29,7 @@ public final class IdentityCopy {
     target.setAutoCommit(false);
     try {
       boolean empty=true;
-      for(String table:TABLES) try(var s=target.createStatement();var r=s.executeQuery("SELECT COUNT(*) FROM "+table)) {r.next();empty &= r.getLong(1)==0;}
+      for(String table:TABLES) try(var s=target.createStatement();var r=s.executeQuery("SELECT COUNT(*) FROM "+table)) {if(!r.next())throw new SQLException("Missing target count");empty &= r.getLong(1)==0;}
       if(empty) for(String table:TABLES) {
         try(var s=source.createStatement();var rows=s.executeQuery("SELECT * FROM "+table+" ORDER BY 1")) {
           var meta=rows.getMetaData();int count=meta.getColumnCount();var names=new ArrayList<String>();

@@ -119,7 +119,7 @@ async function performRequest(path, options = {}, unsafe = false) {
   }
 
   if (!response.ok) {
-    let payload = {};
+    let payload;
     try {
       payload = await response.json();
     } catch {

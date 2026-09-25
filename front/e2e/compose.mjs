@@ -130,13 +130,6 @@ async function captureFailureDiagnostics(error) {
     }
   }
 }
-async function identitySnapshot() {
-  const tables = ['tb_user', 'tb_role', 'tb_user_profile', 'tb_profile_picture', 'tb_password_reset_token'];
-  const source = await rootValue(tables.map(table => `SELECT '${table}',COUNT(*) FROM \`${schema}\`.\`${table}\``).join(';'));
-  const target = await rootValue(tables.map(table => `SELECT '${table}',COUNT(*) FROM \`${identitySchema}\`.\`${table}\``).join(';'));
-  assert.equal(target, source, 'Identity copy count parity failed');
-  return source;
-}
 async function copyIdentityTables() {
   const tables = ['tb_password_reset_token', 'tb_profile_picture', 'tb_user_profile', 'tb_role', 'tb_user'];
   config.services['identity-copy'] = {

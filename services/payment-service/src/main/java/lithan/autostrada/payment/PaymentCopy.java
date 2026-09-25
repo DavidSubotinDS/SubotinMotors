@@ -60,7 +60,7 @@ public final class PaymentCopy {
   private static List<List<Object>> rows(Connection c,String sql,int columns)throws Exception{var out=new ArrayList<List<Object>>();try(var s=c.createStatement();var r=s.executeQuery(sql)){while(r.next()){var row=new ArrayList<>();for(int i=1;i<=columns;i++)row.add(r.getObject(i));out.add(row);}}return out;}
   private static void insert(Connection c,String sql,List<List<Object>> rows)throws Exception{try(var p=c.prepareStatement(sql)){for(var row:rows){for(int i=0;i<row.size();i++)p.setObject(i+1,row.get(i));p.addBatch();}p.executeBatch();}}
   private static void verify(Connection c,String table,List<List<Object>> expected)throws Exception{if(count(c,table)!=expected.size())throw new SQLException(table+" count parity mismatch");}
-  private static long count(Connection c,String table)throws Exception{try(var s=c.createStatement();var r=s.executeQuery("SELECT COUNT(*) FROM "+table)){r.next();return r.getLong(1);}}
+  private static long count(Connection c,String table)throws Exception{try(var s=c.createStatement();var r=s.executeQuery("SELECT COUNT(*) FROM "+table)){if(!r.next())throw new SQLException("Missing table count");return r.getLong(1);}}
   private static void requireEmpty(Connection c,String table)throws Exception{if(count(c,table)!=0)throw new SQLException("Target "+table+" is not empty");}
   private static String fingerprint(List<?>... values)throws Exception{return sha(new ObjectMapper().writeValueAsBytes(Arrays.asList(values)));}
   private static String sha(byte[] bytes)throws Exception{return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(bytes));}

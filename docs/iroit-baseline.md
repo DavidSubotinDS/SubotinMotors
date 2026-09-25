@@ -1,5 +1,18 @@
 # IROIT application baseline
 
+**Selected course scope (2026-09-25):** S8 is merged at
+`5ee4cb8b5c0445b8ffded0577709475cd876af8e`; Backend and Frontend passed on that
+exact commit. Its local CD run failed; deployment success is not established.
+The owner has deferred S9-S11 service extraction. The selected delivery keeps
+backend, identity, notification and payment as four application owners, plus
+the gateway. Commerce/marketplace coupling remains in backend. Continue with
+static analysis, observability/reactive evidence, then defence preparation.
+This decision supersedes later "next S9" statements and the five-service target;
+the extraction chapters remain a future design, not acceptance requirements
+for this delivery. See [the current requirement matrix](iroit-requirements-status.md).
+Earlier dated paragraphs below are historical records.
+
+
 Current status (2026-09-24): `master` is
 `42cde105c2c3f744f6a60bfb1984f842c3383cd2`; it contains merged S7 checkout
 reliability. S8 payment-service extraction is implemented locally on the focused

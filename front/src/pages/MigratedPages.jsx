@@ -4,7 +4,6 @@ import {
   ArrowRight,
   Bell,
   CalendarClock,
-  Camera,
   Check,
   CheckCircle2,
   CreditCard,

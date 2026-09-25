@@ -1,5 +1,18 @@
 # IROIT authentication and authorization design
 
+**Selected course scope (2026-09-25):** S8 is merged at
+`5ee4cb8b5c0445b8ffded0577709475cd876af8e`; Backend and Frontend passed on that
+exact commit. Its local CD run failed; deployment success is not established.
+The owner has deferred S9-S11 service extraction. The selected delivery keeps
+backend, identity, notification and payment as four application owners, plus
+the gateway. Commerce/marketplace coupling remains in backend. Continue with
+static analysis, observability/reactive evidence, then defence preparation.
+This decision supersedes later "next S9" statements and the five-service target;
+the extraction chapters remain a future design, not acceptance requirements
+for this delivery. See [the current requirement matrix](iroit-requirements-status.md).
+Earlier dated paragraphs below are historical records.
+
+
 Current status (2026-09-24): S8 preserves the merged identity session/assertion
 and S4a CSRF boundary while moving provider secrets, signed receipt verification
 and private payment mappings to payment-service. Backend uses a fixed-scope,

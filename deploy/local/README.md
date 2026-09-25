@@ -4,7 +4,7 @@ This deployment targets one Windows machine running Docker Desktop. GitHub-hoste
 runners cannot reach that machine, so `.github/workflows/cd-local.yml` uses a
 repository-level self-hosted runner with the custom `autostrada-local` label.
 After a successful `CI` push run on `master`, it checks out that exact commit,
-builds six SHA-tagged images locally, backs up all three MySQL schemas, updates the
+builds seven SHA-tagged images locally, backs up all present owner schemas, updates the
 dedicated `autostrada-local` Compose project and checks the public gateway origin.
 No application service or database port other than the loopback gateway is exposed.
 
@@ -14,6 +14,20 @@ development Compose project's volumes. Private configuration, backups, current
 revision state and failure logs live outside the repository.
 
 ## One-time host setup
+
+The credential generator and S8 environment updater support Windows PowerShell
+5.1 and PowerShell 7. CI exercises both without Docker or permanent deployment
+files. The CD workflow itself still requires PowerShell 7 (`shell: pwsh`).
+For an existing deployment missing S8 credentials, run from the repository root:
+
+```powershell
+.\deploy\local\Update-LocalEnvironmentS8.ps1 -Path C:\AutostradaDeploy\autostrada.env
+```
+
+It only appends absent settings and is safe to rerun; it does not start containers.
+An `IsPathFullyQualified` error came from using a pre-fix script with Windows
+PowerShell 5.1. The corrected script also replaces unsupported cryptography APIs.
+Do not recreate the environment with `New-LocalEnvironment.ps1` to fix an upgrade.
 
 Prerequisites are Git, PowerShell 7, Docker Desktop with Linux containers, and a
 repository-level GitHub Actions runner. Do not register the runner until the
